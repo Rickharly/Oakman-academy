@@ -1,0 +1,793 @@
+// Family School — data model
+//
+// Two domains, deliberately separated (spec §46):
+//   1. CURRICULUM  — reference content imported from a provider (Oak). Mostly immutable.
+//   2. LEARNING    — our proprietary student state. Append-only wherever it is educational history.
+//
+// Conventions
+//   - ids are cuid strings
+//   - `provider` + `providerSlug` identify curriculum rows in the provider's namespace
+//   - JSON columns carry shapes defined in src/lib/**/types.ts (zod)
+//   - Nothing educational is ever deleted; overrides are separate rows (spec §35, §54)
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ───────────────────────────── Users & auth ─────────────────────────────
+
+enum Role {
+  PARENT
+  STUDENT
+}
+
+model User {
+  id           String   @id @default(cuid())
+  role         Role
+  email        String?  @unique // parents
+  username     String?  @unique // students
+  passwordHash String
+  displayName  String
+  avatar       String? // emoji or asset key
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  sessions        Session[]
+  studentProfile  StudentProfile?
+  parentLinks     ParentStudentLink[] @relation("ParentLinks")
+  studentLinks    ParentStudentLink[] @relation("StudentLinks")
+  overrides       ParentOverride[]    @relation("OverrideAuthor")
+  teacherFeedback TeacherFeedback[]   @relation("FeedbackAuthor")
+  assignmentsMade DailyAssignment[]   @relation("AssignmentAuthor")
+  reviewsMade     ReviewItem[]        @relation("ReviewAuthor")
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  tokenHash String   @unique
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+}
+
+model StudentProfile {
+  id                 String   @id @default(cuid())
+  userId             String   @unique
+  user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  yearGroup          Int // 5, 7 …
+  keyStage           String // "ks2", "ks3"
+  dailyTargetMinutes Int      @default(180)
+  maxDailyMinutes    Int      @default(210)
+  preferences        Json     @default("{}") // { gamification: "calm" | "playful", theme … }
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  enrolments     StudentEnrolment[]
+  schedules      StudentSchedule[]
+  assignments    DailyAssignment[]
+  lessonAttempts LessonAttempt[]
+  questionAttempts QuestionAttempt[]
+  progress       StudentLessonProgress[]
+  masteryRecords MasteryRecord[]
+  reviewItems    ReviewItem[]
+  conversations  AiConversation[]
+  observations   AiLearningObservation[]
+  feedback       TeacherFeedback[]
+  overrides      ParentOverride[]
+  dailySummaries DailySummary[]
+  reports        Report[]
+  activityLogs   ActivityLog[]
+  generatedQuestions Question[] @relation("GeneratedFor")
+}
+
+model ParentStudentLink {
+  parentId  String
+  parent    User   @relation("ParentLinks", fields: [parentId], references: [id], onDelete: Cascade)
+  studentId String
+  student   User   @relation("StudentLinks", fields: [studentId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@id([parentId, studentId])
+}
+
+// ───────────────────────────── Curriculum (reference) ─────────────────────────────
+
+model Subject {
+  id        String   @id @default(cuid())
+  provider  String   @default("oak")
+  slug      String // "maths"
+  title     String
+  icon      String? // lucide icon name
+  colour    String? // hex used for subtle accents
+  createdAt DateTime @default(now())
+
+  programmes Programme[]
+  schedules  StudentSchedule[]
+  assignments DailyAssignment[]
+  observations AiLearningObservation[]
+
+  @@unique([provider, slug])
+}
+
+/// A programme is one subject for one year group (e.g. "Maths, Year 7").
+/// In Oak terms it is a slice of a curriculum sequence (e.g. sequence "maths-secondary", year 7).
+model Programme {
+  id           String   @id @default(cuid())
+  provider     String   @default("oak")
+  providerSlug String // Oak: "<sequenceSlug>:<year>" e.g. "maths-secondary:7"
+  sequenceSlug String? // Oak sequence slug
+  subjectId    String
+  subject      Subject  @relation(fields: [subjectId], references: [id])
+  yearGroup    Int
+  keyStage     String // ks2 / ks3
+  phase        String? // primary / secondary
+  title        String // "Maths — Year 7"
+  examBoard    String?
+  tier         String?
+  syncedAt     DateTime?
+  createdAt    DateTime @default(now())
+
+  units      Unit[]
+  enrolments StudentEnrolment[]
+
+  @@unique([provider, providerSlug])
+  @@index([subjectId, yearGroup])
+}
+
+model Unit {
+  id                 String   @id @default(cuid())
+  provider           String   @default("oak")
+  providerSlug       String // Oak unitSlug
+  programmeId        String
+  programme          Programme @relation(fields: [programmeId], references: [id], onDelete: Cascade)
+  title              String
+  order              Int
+  description        String?
+  whyThisWhyNow      String?
+  priorKnowledge     Json     @default("[]") // string[]
+  nationalCurriculum Json     @default("[]") // string[]
+  threads            Json     @default("[]") // {slug,title,order}[]
+  categories         Json     @default("[]") // {categoryTitle,categorySlug?}[]
+  unitOptionGroup    String?
+  rawSummary         Json?
+  syncedAt           DateTime?
+  createdAt          DateTime @default(now())
+
+  lessons Lesson[]
+  reviewItems ReviewItem[]
+
+  @@unique([programmeId, providerSlug])
+  @@index([programmeId, order])
+}
+
+enum LicenceStatus {
+  OGL_COMPATIBLE
+  RESTRICTED
+  UNKNOWN
+}
+
+model Lesson {
+  id                 String        @id @default(cuid())
+  provider           String        @default("oak")
+  providerSlug       String // Oak lessonSlug (Oak's stable identifier)
+  providerId         String? // reserved for a numeric/opaque provider id if one appears later
+  unitId             String
+  unit               Unit          @relation(fields: [unitId], references: [id], onDelete: Cascade)
+  title              String
+  order              Int
+  pupilOutcome       String?
+  keyLearningPoints  Json          @default("[]") // string[]
+  keywords           Json          @default("[]") // {keyword,description}[]
+  misconceptions     Json          @default("[]") // {misconception,response}[]
+  teacherTips        Json          @default("[]") // string[]
+  contentGuidance    Json? // Oak contentGuidance[]
+  supervisionLevel   String?
+  transcript         String? // plain text
+  transcriptVtt      String?
+  estimatedMinutes   Int           @default(50)
+  licence            LicenceStatus @default(UNKNOWN)
+  canonicalUrl       String?
+  providerUrl        String? // oakUrl
+  downloadsAvailable Boolean       @default(false)
+  state              String        @default("published") // published | new
+  rawSummary         Json?
+  syncedAt           DateTime?
+  createdAt          DateTime      @default(now())
+  updatedAt          DateTime      @updatedAt
+
+  resources   LessonResource[]
+  questions   Question[]
+  assignments DailyAssignment[]
+  attempts    LessonAttempt[]
+  progress    StudentLessonProgress[]
+  mastery     MasteryRecord[]
+  reviewItems ReviewItem[]
+  conversations AiConversation[]
+  observations AiLearningObservation[]
+  overrides   ParentOverride[]
+
+  @@unique([provider, providerSlug])
+  @@index([unitId, order])
+}
+
+enum ResourceType {
+  VIDEO
+  SLIDE_DECK
+  WORKSHEET
+  WORKSHEET_ANSWERS
+  STARTER_QUIZ
+  STARTER_QUIZ_ANSWERS
+  EXIT_QUIZ
+  EXIT_QUIZ_ANSWERS
+  SUPPLEMENTARY
+  TRANSCRIPT
+}
+
+model LessonResource {
+  id          String       @id @default(cuid())
+  lessonId    String
+  lesson      Lesson       @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  type        ResourceType
+  label       String
+  providerUrl String? // signed URL from provider (may expire)
+  storedPath  String? // local/S3 path once downloaded
+  mimeType    String?
+  metadata    Json         @default("{}") // e.g. { durationSeconds, pages, extractedText }
+  syncedAt    DateTime?
+  createdAt   DateTime     @default(now())
+
+  @@index([lessonId, type])
+}
+
+enum QuestionType {
+  MULTIPLE_CHOICE
+  MULTI_SELECT
+  TRUE_FALSE
+  SHORT_ANSWER
+  EXTENDED_TEXT
+  NUMERIC
+  MATCHING
+  ORDERING
+}
+
+enum QuestionSource {
+  OAK_STARTER_QUIZ
+  OAK_EXIT_QUIZ
+  OAK_WORKSHEET
+  AI_GENERATED
+  PARENT_CUSTOM
+}
+
+/// Which lesson stage a question belongs to.
+enum LessonStage {
+  STARTER
+  LEARN
+  PRACTICE
+  CHECK
+  FEEDBACK
+  COMPLETE
+}
+
+enum GradingMode {
+  DETERMINISTIC
+  AI
+}
+
+model Question {
+  id          String         @id @default(cuid())
+  lessonId    String
+  lesson      Lesson         @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  source      QuestionSource
+  stage       LessonStage // STARTER | PRACTICE | CHECK
+  order       Int
+  type        QuestionType
+  prompt      String
+  promptImage Json? // {url,width,height,alt?,attribution?}
+  options     Json? // type-specific, see src/lib/questions/types.ts
+  answerKey   Json // type-specific, see src/lib/questions/types.ts
+  explanation String?
+  rubric      String?
+  maxScore    Int            @default(1)
+  difficulty  Int? // 1–5
+  gradingMode GradingMode    @default(DETERMINISTIC)
+  excluded    Boolean        @default(false) // parent excluded it
+  providerRef String? // hash of the Oak question for idempotent re-sync
+  generatedForStudentId String?
+  generatedFor StudentProfile? @relation("GeneratedFor", fields: [generatedForStudentId], references: [id])
+  generationContext Json? // why it was generated (misconception, source question)
+  createdAt   DateTime       @default(now())
+
+  attempts    QuestionAttempt[]
+  reviewItems ReviewItem[]
+  overrides   ParentOverride[]
+
+  @@unique([lessonId, source, providerRef])
+  @@index([lessonId, stage, order])
+}
+
+// ───────────────────────────── Scheduling ─────────────────────────────
+
+model StudentEnrolment {
+  id          String         @id @default(cuid())
+  studentId   String
+  student     StudentProfile @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  programmeId String
+  programme   Programme      @relation(fields: [programmeId], references: [id])
+  active      Boolean        @default(true)
+  startedAt   DateTime       @default(now())
+
+  @@unique([studentId, programmeId])
+}
+
+/// Weekly frequency rules per subject (spec §29). The planner distributes lessons.
+model StudentSchedule {
+  id              String         @id @default(cuid())
+  studentId       String
+  student         StudentProfile @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  subjectId       String
+  subject         Subject        @relation(fields: [subjectId], references: [id])
+  weeklyFrequency Int // lessons per week
+  preferredDays   Json           @default("[]") // number[] 1=Mon … 5=Fri, empty = any
+  priority        Int            @default(0) // higher schedules first in the day
+  active          Boolean        @default(true)
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  @@unique([studentId, subjectId])
+}
+
+enum AssignmentKind {
+  LESSON
+  REVIEW
+  CUSTOM
+}
+
+enum AssignmentSource {
+  AUTO
+  PARENT
+  REVIEW_ENGINE
+}
+
+enum AssignmentStatus {
+  PLANNED
+  IN_PROGRESS
+  COMPLETED
+  SKIPPED
+  MOVED
+}
+
+model DailyAssignment {
+  id               String           @id @default(cuid())
+  studentId        String
+  student          StudentProfile   @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  date             DateTime         @db.Date
+  order            Int
+  kind             AssignmentKind
+  source           AssignmentSource
+  status           AssignmentStatus @default(PLANNED)
+  subjectId        String?
+  subject          Subject?         @relation(fields: [subjectId], references: [id])
+  lessonId         String?
+  lesson           Lesson?          @relation(fields: [lessonId], references: [id])
+  reviewItemId     String?
+  reviewItem       ReviewItem?      @relation(fields: [reviewItemId], references: [id])
+  customTitle      String?
+  customInstructions String?
+  estimatedMinutes Int              @default(45)
+  optional         Boolean          @default(false)
+  createdById      String?
+  createdBy        User?            @relation("AssignmentAuthor", fields: [createdById], references: [id])
+  movedToDate      DateTime?        @db.Date
+  completedAt      DateTime?
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+
+  lessonAttempts LessonAttempt[]
+
+  @@index([studentId, date])
+  @@index([studentId, lessonId])
+}
+
+// ───────────────────────────── Learning history (append-only) ─────────────────────────────
+
+enum LessonStatus {
+  NOT_STARTED
+  IN_PROGRESS
+  COMPLETED
+  NEEDS_REVIEW
+  MASTERED
+}
+
+model LessonAttempt {
+  id                      String         @id @default(cuid())
+  studentId               String
+  student                 StudentProfile @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  lessonId                String
+  lesson                  Lesson         @relation(fields: [lessonId], references: [id])
+  assignmentId            String?
+  assignment              DailyAssignment? @relation(fields: [assignmentId], references: [id])
+  attemptNumber           Int
+  status                  LessonStatus   @default(IN_PROGRESS)
+  currentStage            LessonStage    @default(STARTER)
+  startedAt               DateTime       @default(now())
+  starterCompletedAt      DateTime?
+  instructionCompletedAt  DateTime?
+  practiceCompletedAt     DateTime?
+  assessmentCompletedAt   DateTime?
+  completedAt             DateTime?
+  videoProgress           Json           @default("{}") // { started, percentWatched, completed, positionSeconds, updatedAt }
+  timeSpentSeconds        Int            @default(0)
+  score                   Float?
+  maxScore                Float?
+  masteryScore            Float? // 0–1 from the CHECK stage (+ AI signals)
+  feedbackSummary         String? // AI end-of-lesson feedback shown to student
+  createdAt               DateTime       @default(now())
+  updatedAt               DateTime       @updatedAt
+
+  activities    ActivityAttempt[]
+  conversations AiConversation[]
+  feedback      TeacherFeedback[]
+  overrides     ParentOverride[]
+
+  @@unique([studentId, lessonId, attemptNumber])
+  @@index([studentId, startedAt])
+}
+
+enum ActivityStatus {
+  IN_PROGRESS
+  SUBMITTED
+  GRADED
+}
+
+model ActivityAttempt {
+  id              String         @id @default(cuid())
+  lessonAttemptId String
+  lessonAttempt   LessonAttempt  @relation(fields: [lessonAttemptId], references: [id], onDelete: Cascade)
+  stage           LessonStage
+  attemptNumber   Int
+  status          ActivityStatus @default(IN_PROGRESS)
+  startedAt       DateTime       @default(now())
+  submittedAt     DateTime?
+  gradedAt        DateTime?
+  score           Float?
+  maxScore        Float?
+  percentage      Float?
+
+  questionAttempts QuestionAttempt[]
+
+  @@unique([lessonAttemptId, stage, attemptNumber])
+}
+
+enum GradedBy {
+  PENDING
+  DETERMINISTIC
+  AI
+  PARENT
+}
+
+/// One submitted answer. Immutable once graded; parent changes live in ParentOverride.
+model QuestionAttempt {
+  id                String          @id @default(cuid())
+  activityAttemptId String
+  activityAttempt   ActivityAttempt @relation(fields: [activityAttemptId], references: [id], onDelete: Cascade)
+  questionId        String
+  question          Question        @relation(fields: [questionId], references: [id])
+  studentId         String
+  student           StudentProfile  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  attemptNumber     Int // retry count within the activity
+  response          Json // type-specific, see src/lib/questions/types.ts
+  submittedAt       DateTime        @default(now())
+  gradedBy          GradedBy        @default(PENDING)
+  gradedAt          DateTime?
+  isCorrect         Boolean?
+  score             Float?
+  maxScore          Float
+  mastery           Float? // AI estimate 0–1
+  feedback          String? // for student
+  reasoning         String? // for parent
+  misconceptions    Json            @default("[]") // string[]
+  needsReview       Boolean         @default(false)
+  gradingRaw        Json? // full structured AI output / deterministic trace
+  model             String?
+
+  overrides ParentOverride[]
+
+  @@index([studentId, questionId])
+  @@index([activityAttemptId])
+}
+
+/// Current state per student+lesson (denormalised for fast Today/Progress screens).
+model StudentLessonProgress {
+  id             String         @id @default(cuid())
+  studentId      String
+  student        StudentProfile @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  lessonId       String
+  lesson         Lesson         @relation(fields: [lessonId], references: [id])
+  status         LessonStatus   @default(NOT_STARTED)
+  attempts       Int            @default(0)
+  bestScorePct   Float?
+  latestScorePct Float?
+  mastery        Float? // 0–1, current
+  completedAt    DateTime?
+  lastActivityAt DateTime?
+  needsReview    Boolean        @default(false)
+  timeSpentSeconds Int          @default(0)
+  updatedAt      DateTime       @updatedAt
+
+  @@unique([studentId, lessonId])
+  @@index([studentId, status])
+}
+
+/// Append-only mastery history so we can show how mastery changed over time.
+model MasteryRecord {
+  id              String         @id @default(cuid())
+  studentId       String
+  student         StudentProfile @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  lessonId        String
+  lesson          Lesson         @relation(fields: [lessonId], references: [id])
+  mastery         Float
+  previousMastery Float?
+  confidence      Float          @default(0.5)
+  reason          String // "check_quiz" | "review" | "parent_override" | "ai_observation"
+  sourceId        String? // attempt / override id
+  createdAt       DateTime       @default(now())
+
+  @@index([studentId, lessonId, createdAt])
+}
+
+enum ReviewReason {
+  LOW_SCORE
+  MISCONCEPTION
+  REPEATED_MISTAKE
+  PARENT_ASSIGNED
+  SPACED
+}
+
+enum ReviewStatus {
+  PENDING
+  SCHEDULED
+  DONE
+  DISMISSED
+}
+
+model ReviewItem {
+  id           String         @id @default(cuid())
+  studentId    String
+  student      StudentProfile @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  lessonId     String
+  lesson       Lesson         @relation(fields: [lessonId], references: [id])
+  unitId       String?
+  unit         Unit?          @relation(fields: [unitId], references: [id])
+  questionId   String?
+  question     Question?      @relation(fields: [questionId], references: [id])
+  reason       ReviewReason
+  status       ReviewStatus   @default(PENDING)
+  detail       String? // e.g. the misconception text
+  dueAt        DateTime
+  intervalStep Int            @default(0) // 0 → 1 day, 1 → 7 days, 2 → 30 days
+  createdById  String?
+  createdBy    User?          @relation("ReviewAuthor", fields: [createdById], references: [id])
+  outcomeScorePct Float?
+  completedAt  DateTime?
+  createdAt    DateTime       @default(now())
+
+  assignments DailyAssignment[]
+
+  @@index([studentId, status, dueAt])
+}
+
+// ───────────────────────────── AI teacher ─────────────────────────────
+
+enum TeacherMode {
+  LEARN
+  PRACTICE
+  ASSESSMENT
+}
+
+model AiConversation {
+  id              String         @id @default(cuid())
+  studentId       String
+  student         StudentProfile @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  lessonId        String?
+  lesson          Lesson?        @relation(fields: [lessonId], references: [id])
+  lessonAttemptId String?
+  lessonAttempt   LessonAttempt? @relation(fields: [lessonAttemptId], references: [id])
+  mode            TeacherMode    @default(LEARN)
+  title           String?
+  summary         String? // rolling summary used to keep context small
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  messages AiMessage[]
+
+  @@index([studentId, createdAt])
+  @@index([lessonAttemptId])
+}
+
+enum MessageRole {
+  SYSTEM
+  USER
+  ASSISTANT
+  TOOL
+}
+
+model AiMessage {
+  id             String         @id @default(cuid())
+  conversationId String
+  conversation   AiConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  role           MessageRole
+  content        String
+  contextSnapshot Json? // the composed context that was sent (stage, question id, mode …)
+  toolCalls      Json? // tool calls / results, for inspection
+  model          String?
+  tokensIn       Int?
+  tokensOut      Int?
+  createdAt      DateTime       @default(now())
+
+  @@index([conversationId, createdAt])
+}
+
+enum ObservationKind {
+  STRENGTH
+  DEVELOPING
+  MISCONCEPTION
+  NOTE
+}
+
+enum ObservationSource {
+  AI
+  PARENT
+  SYSTEM
+}
+
+/// Structured learning profile (spec §23). Retrieved by the tutor instead of raw chat history.
+model AiLearningObservation {
+  id         String            @id @default(cuid())
+  studentId  String
+  student    StudentProfile    @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  subjectId  String?
+  subject    Subject?          @relation(fields: [subjectId], references: [id])
+  lessonId   String?
+  lesson     Lesson?           @relation(fields: [lessonId], references: [id])
+  kind       ObservationKind
+  topic      String // "fractions: common denominators"
+  detail     String
+  confidence Float             @default(0.5)
+  occurrences Int              @default(1)
+  source     ObservationSource @default(AI)
+  active     Boolean           @default(true)
+  createdAt  DateTime          @default(now())
+  lastSeenAt DateTime          @default(now())
+
+  @@index([studentId, active, kind])
+}
+
+enum FeedbackAuthorType {
+  AI
+  PARENT
+}
+
+model TeacherFeedback {
+  id              String             @id @default(cuid())
+  studentId       String
+  student         StudentProfile     @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  lessonAttemptId String?
+  lessonAttempt   LessonAttempt?     @relation(fields: [lessonAttemptId], references: [id])
+  authorType      FeedbackAuthorType
+  authorId        String?
+  author          User?              @relation("FeedbackAuthor", fields: [authorId], references: [id])
+  content         String
+  visibleToStudent Boolean           @default(true)
+  createdAt       DateTime           @default(now())
+
+  @@index([studentId, createdAt])
+}
+
+model DailySummary {
+  id        String         @id @default(cuid())
+  studentId String
+  student   StudentProfile @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  date      DateTime       @db.Date
+  content   String // AI narrative for the parent
+  data      Json           @default("{}") // lessons, scores, minutes, recommendations
+  createdAt DateTime       @default(now())
+
+  @@unique([studentId, date])
+}
+
+// ───────────────────────────── Parent oversight ─────────────────────────────
+
+enum OverrideType {
+  SCORE
+  MARK_CORRECT
+  MASTERY
+  LESSON_COMPLETE
+  RESET_QUIZ
+  REOPEN_LESSON
+  EXCLUDE_QUESTION
+  COMMENT
+}
+
+/// Parent decisions are stored alongside, never instead of, the AI/deterministic decision.
+model ParentOverride {
+  id                String           @id @default(cuid())
+  parentId          String
+  parent            User             @relation("OverrideAuthor", fields: [parentId], references: [id])
+  studentId         String
+  student           StudentProfile   @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  type              OverrideType
+  questionAttemptId String?
+  questionAttempt   QuestionAttempt? @relation(fields: [questionAttemptId], references: [id])
+  lessonAttemptId   String?
+  lessonAttempt     LessonAttempt?   @relation(fields: [lessonAttemptId], references: [id])
+  lessonId          String?
+  lesson            Lesson?          @relation(fields: [lessonId], references: [id])
+  questionId        String?
+  question          Question?        @relation(fields: [questionId], references: [id])
+  previousValue     Json?
+  newValue          Json?
+  comment           String?
+  createdAt         DateTime         @default(now())
+
+  @@index([studentId, createdAt])
+}
+
+enum ReportPeriod {
+  WEEKLY
+  MONTHLY
+}
+
+model Report {
+  id             String         @id @default(cuid())
+  studentId      String
+  student        StudentProfile @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  period         ReportPeriod
+  periodStart    DateTime       @db.Date
+  periodEnd      DateTime       @db.Date
+  data           Json // computed stats, see src/lib/reports/types.ts
+  teacherSummary String?
+  createdAt      DateTime       @default(now())
+
+  @@index([studentId, periodStart])
+}
+
+model ActivityLog {
+  id        String         @id @default(cuid())
+  studentId String
+  student   StudentProfile @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  kind      String // "login" | "lesson_started" | "stage_completed" | "video_progress" | "quiz_submitted" | …
+  data      Json           @default("{}")
+  createdAt DateTime       @default(now())
+
+  @@index([studentId, createdAt])
+}
+
+// ───────────────────────────── Curriculum sync ─────────────────────────────
+
+enum SyncStatus {
+  PENDING
+  RUNNING
+  SUCCESS
+  FAILED
+}
+
+model CurriculumSyncJob {
+  id         String     @id @default(cuid())
+  provider   String
+  scope      Json // { subjectSlug, yearGroup, lessonSlugs? }
+  status     SyncStatus @default(PENDING)
+  startedAt  DateTime?
+  finishedAt DateTime?
+  stats      Json       @default("{}") // counts
+  error      String?
+  log        String? // newline-separated progress lines
+  createdAt  DateTime   @default(now())
+}
