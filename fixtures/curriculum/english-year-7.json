@@ -1,0 +1,1883 @@
+{
+  "subject": {
+    "slug": "english",
+    "title": "English"
+  },
+  "programme": {
+    "sequenceSlug": "english-secondary",
+    "yearGroup": 7,
+    "keyStage": "ks3",
+    "phase": "secondary",
+    "title": "English — Year 7"
+  },
+  "units": [
+    {
+      "unitSlug": "narrative-writing-descriptive-settings",
+      "unitTitle": "Narrative writing: descriptive settings",
+      "unitOrder": 1,
+      "description": "Pupils learn to write vivid, sensory descriptions of settings using figurative language and precise word choices to create atmosphere in narrative writing.",
+      "whyThisWhyNow": "Descriptive setting-writing is a foundational narrative skill that pupils will draw on throughout KS3 for creative writing tasks and analysing published fiction.",
+      "priorKnowledgeRequirements": [
+        "Pupils can write in full sentences using a range of simple punctuation.",
+        "Pupils are familiar with adjectives and simple similes from primary school.",
+        "Pupils can identify the five senses."
+      ],
+      "nationalCurriculumContent": [
+        "Write for a range of purposes and audiences, including narrative and descriptive writing.",
+        "Use a range of vocabulary and sentence structures for effect.",
+        "Use figurative language, including simile and metaphor, to create effects."
+      ],
+      "threads": [],
+      "categories": [],
+      "unitLessons": [
+        {
+          "lessonSlug": "using-the-five-senses",
+          "lessonTitle": "Using the five senses to build a setting",
+          "lessonOrder": 1,
+          "state": "published"
+        },
+        {
+          "lessonSlug": "creating-atmosphere-with-figurative-language",
+          "lessonTitle": "Creating atmosphere with figurative language",
+          "lessonOrder": 2,
+          "state": "published"
+        },
+        {
+          "lessonSlug": "choosing-precise-vocabulary",
+          "lessonTitle": "Choosing precise vocabulary for effect",
+          "lessonOrder": 3,
+          "state": "published"
+        }
+      ]
+    },
+    {
+      "unitSlug": "introduction-to-poetry-form-and-language",
+      "unitTitle": "Introduction to poetry: form and language",
+      "unitOrder": 2,
+      "description": "Pupils explore how poets use form, structure and language choices to create meaning and effect, developing skills to read and analyse unfamiliar poems.",
+      "whyThisWhyNow": "This unit introduces the key terminology and analytical approaches pupils will use throughout KS3 and KS4 when studying poetry.",
+      "priorKnowledgeRequirements": [
+        "Pupils have encountered rhyme and rhythm in poems read at primary school.",
+        "Pupils can identify a simile and a metaphor.",
+        "Pupils understand what a stanza is."
+      ],
+      "nationalCurriculumContent": [
+        "Read and appreciate the depth and power of the English literary heritage through poetry.",
+        "Analyse the language, structure and form of texts.",
+        "Develop the confident use of Standard English in analytical writing."
+      ],
+      "threads": [],
+      "categories": [],
+      "unitLessons": [
+        {
+          "lessonSlug": "exploring-rhyme-and-rhythm",
+          "lessonTitle": "Exploring rhyme and rhythm",
+          "lessonOrder": 1,
+          "state": "published"
+        },
+        {
+          "lessonSlug": "understanding-stanza-and-structure",
+          "lessonTitle": "Understanding stanza and structure",
+          "lessonOrder": 2,
+          "state": "published"
+        },
+        {
+          "lessonSlug": "analysing-word-choice-in-poetry",
+          "lessonTitle": "Analysing word choice in poetry",
+          "lessonOrder": 3,
+          "state": "published"
+        }
+      ]
+    }
+  ],
+  "lessons": {
+    "using-the-five-senses": {
+      "summary": {
+        "lessonTitle": "Using the five senses to build a setting",
+        "pupilLessonOutcome": "I can use sensory detail to describe a setting vividly.",
+        "keyLearningPoints": [
+          {
+            "keyLearningPoint": "Skilled descriptive writing appeals to more than one of the five senses: sight, sound, smell, touch and taste."
+          },
+          {
+            "keyLearningPoint": "Choosing specific, concrete details is more effective than vague, general statements."
+          },
+          {
+            "keyLearningPoint": "Sensory description helps the reader imagine they are physically present in the setting."
+          },
+          {
+            "keyLearningPoint": "Not every sense needs to be used in every description — writers select senses that suit the mood they want to create."
+          }
+        ],
+        "lessonKeywords": [
+          {
+            "keyword": "sensory detail",
+            "description": "Descriptive language that appeals to one or more of the five senses to help the reader imagine a scene."
+          },
+          {
+            "keyword": "setting",
+            "description": "The time and place in which a story or scene happens."
+          },
+          {
+            "keyword": "atmosphere",
+            "description": "The mood or feeling created in a piece of writing, e.g. tense, peaceful, eerie."
+          }
+        ],
+        "misconceptionsAndCommonMistakes": [
+          {
+            "misconception": "Pupils think good description just means using lots of adjectives.",
+            "response": "Show that precise, well-chosen details (e.g. 'the damp smell of moss') are more powerful than piling up adjectives (e.g. 'the big, dark, scary, old forest')."
+          },
+          {
+            "misconception": "Pupils believe they must use all five senses in every paragraph.",
+            "response": "Explain that skilled writers choose the senses that best suit the mood — for instance, a description of a bakery might focus on smell and taste rather than sound."
+          }
+        ],
+        "teacherTips": [
+          {
+            "teacherTip": "Model annotating a short published extract to identify which senses the writer has used and why."
+          },
+          {
+            "teacherTip": "Give pupils a simple setting (e.g. a beach, a forest) and ask them to brainstorm one detail for each sense before they start writing, to build the habit."
+          }
+        ],
+        "contentGuidance": null,
+        "supervisionLevel": null,
+        "canonicalUrl": "https://example-fixture.invalid/lessons/using-the-five-senses",
+        "oakUrl": "https://example-fixture.invalid/lessons/using-the-five-senses",
+        "downloadsAvailable": true
+      },
+      "quiz": {
+        "starterQuiz": [
+          {
+            "question": "How many senses can descriptive writing appeal to?",
+            "questionType": "multiple-choice",
+            "answers": [
+              {
+                "type": "text",
+                "content": "Three",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "Five",
+                "distractor": false
+              },
+              {
+                "type": "text",
+                "content": "Two",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "Ten",
+                "distractor": true
+              }
+            ]
+          },
+          {
+            "question": "What is the 'setting' of a story?",
+            "questionType": "multiple-choice",
+            "answers": [
+              {
+                "type": "text",
+                "content": "The main character",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "The time and place in which the story happens",
+                "distractor": false
+              },
+              {
+                "type": "text",
+                "content": "The problem in the story",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "The ending",
+                "distractor": true
+              }
+            ]
+          },
+          {
+            "question": "Name one of the five senses.",
+            "questionType": "short-answer",
+            "answers": [
+              {
+                "type": "text",
+                "content": "sight"
+              },
+              {
+                "type": "text",
+                "content": "sound"
+              },
+              {
+                "type": "text",
+                "content": "smell"
+              },
+              {
+                "type": "text",
+                "content": "touch"
+              },
+              {
+                "type": "text",
+                "content": "taste"
+              }
+            ]
+          }
+        ],
+        "exitQuiz": [
+          {
+            "question": "Which sentence uses sensory detail most effectively?",
+            "questionType": "multiple-choice",
+            "answers": [
+              {
+                "type": "text",
+                "content": "The forest was scary.",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "The damp smell of moss clung to the cold morning air.",
+                "distractor": false
+              },
+              {
+                "type": "text",
+                "content": "It was a forest.",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "The forest was big and dark and scary and old.",
+                "distractor": true
+              }
+            ]
+          },
+          {
+            "question": "Which of these are examples of sensory detail? (select all that apply)",
+            "questionType": "multiple-choice",
+            "answers": [
+              {
+                "type": "text",
+                "content": "the story had three chapters",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "the sharp tang of salt in the air",
+                "distractor": false
+              },
+              {
+                "type": "text",
+                "content": "the character was called Sam",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "the crunch of gravel underfoot",
+                "distractor": false
+              }
+            ]
+          },
+          {
+            "question": "Name the mood or feeling created in a piece of writing.",
+            "questionType": "short-answer",
+            "answers": [
+              {
+                "type": "text",
+                "content": "atmosphere"
+              }
+            ]
+          },
+          {
+            "question": "Match each sense to an example detail.",
+            "questionType": "match",
+            "answers": [
+              {
+                "matchOption": {
+                  "type": "text",
+                  "content": "sight"
+                },
+                "correctChoice": {
+                  "type": "text",
+                  "content": "the flickering orange glow of the fire"
+                }
+              },
+              {
+                "matchOption": {
+                  "type": "text",
+                  "content": "smell"
+                },
+                "correctChoice": {
+                  "type": "text",
+                  "content": "the sweet scent of fresh bread"
+                }
+              },
+              {
+                "matchOption": {
+                  "type": "text",
+                  "content": "sound"
+                },
+                "correctChoice": {
+                  "type": "text",
+                  "content": "the distant rumble of thunder"
+                }
+              }
+            ]
+          },
+          {
+            "question": "Order these from vaguest to most vivid: 'It was dark.', 'The forest was dark and scary.', 'Twisted branches blotted out the last of the daylight.'",
+            "questionType": "order",
+            "answers": [
+              {
+                "order": 1,
+                "type": "text",
+                "content": "It was dark."
+              },
+              {
+                "order": 2,
+                "type": "text",
+                "content": "The forest was dark and scary."
+              },
+              {
+                "order": 3,
+                "type": "text",
+                "content": "Twisted branches blotted out the last of the daylight."
+              }
+            ]
+          }
+        ]
+      },
+      "transcript": {
+        "transcript": "Today we're starting a new unit on narrative writing, and we're focusing on how to describe a setting vividly using our five senses.\n\nWhen we write a story, the setting is the time and place where the action happens. A weak description might simply say, 'The forest was dark and scary.' That tells the reader something, but it doesn't help them really imagine being there. Strong descriptive writing appeals to the reader's senses — sight, sound, smell, touch, and taste — so they can picture, hear, and even smell the scene in their mind.\n\nLet's take that forest example and add sensory detail. Instead of just 'dark and scary', we might write: 'Twisted branches blotted out the last of the daylight, and the damp smell of moss clung to the air. Somewhere close by, a twig snapped.' Notice how this description uses sight — the twisted branches blotting out light — smell — the damp moss — and sound — the snapping twig. Together, these specific, concrete details do far more work than a vague adjective like 'scary'.\n\nIt's a common misconception that good description simply means using lots of adjectives. Actually, one precise, carefully chosen detail is far more powerful than a string of general adjectives. Compare 'the big, dark, scary, old forest' with 'the damp smell of moss and rotting leaves' — the second version, using a single sensory detail, creates a much stronger picture in the reader's mind.\n\nYou also don't need to use all five senses in every description. Skilled writers choose the senses that best fit the atmosphere, or mood, they want to create. A description of a busy bakery might focus on smell — the scent of fresh bread — and sound — the chatter of customers — rather than touch.\n\nToday, you'll be practising writing sensory descriptions of a setting of your choice, thinking carefully about which senses will create the atmosphere you want."
+      },
+      "assets": {
+        "assets": [
+          {
+            "type": "worksheet",
+            "label": "Worksheet",
+            "url": "fixture://worksheet/using-the-five-senses.pdf"
+          },
+          {
+            "type": "video",
+            "label": "Video",
+            "url": "fixture://video/using-the-five-senses"
+          }
+        ],
+        "attribution": []
+      },
+      "worksheet": {
+        "questions": [
+          {
+            "number": "1",
+            "text": "Write one sentence describing a beach using the sense of sound.",
+            "type": "extended"
+          },
+          {
+            "number": "2",
+            "text": "Name two senses other than sight that a writer could use to describe a busy kitchen.",
+            "type": "short",
+            "answer": "smell and sound"
+          },
+          {
+            "number": "3",
+            "text": "Explain why one precise sensory detail is often more effective than several vague adjectives.",
+            "type": "extended"
+          },
+          {
+            "number": "4",
+            "text": "Rewrite this sentence to include sensory detail: 'The room was cold.'",
+            "type": "extended"
+          }
+        ]
+      }
+    },
+    "creating-atmosphere-with-figurative-language": {
+      "summary": {
+        "lessonTitle": "Creating atmosphere with figurative language",
+        "pupilLessonOutcome": "I can use simile, metaphor and personification to create a particular atmosphere in a description.",
+        "keyLearningPoints": [
+          {
+            "keyLearningPoint": "A simile compares one thing to another using 'like' or 'as'."
+          },
+          {
+            "keyLearningPoint": "A metaphor describes one thing as if it were another, without using 'like' or 'as'."
+          },
+          {
+            "keyLearningPoint": "Personification gives human qualities or actions to non-human things."
+          },
+          {
+            "keyLearningPoint": "Figurative language should be chosen deliberately to reinforce the atmosphere a writer wants to create."
+          }
+        ],
+        "lessonKeywords": [
+          {
+            "keyword": "simile",
+            "description": "A comparison between two different things using 'like' or 'as', e.g. 'as cold as ice'."
+          },
+          {
+            "keyword": "metaphor",
+            "description": "A description of one thing as though it were another, without using 'like' or 'as', e.g. 'the classroom was a zoo'."
+          },
+          {
+            "keyword": "personification",
+            "description": "Giving human qualities or actions to something that is not human, e.g. 'the wind howled'."
+          }
+        ],
+        "misconceptionsAndCommonMistakes": [
+          {
+            "misconception": "Pupils confuse similes and metaphors, thinking any comparison is a simile.",
+            "response": "Contrast the two directly: 'the fog was like a blanket' (simile, uses 'like') versus 'the fog was a blanket' (metaphor, no 'like' or 'as')."
+          },
+          {
+            "misconception": "Pupils use figurative language randomly, without considering whether it fits the intended atmosphere.",
+            "response": "Discuss how a metaphor like 'the sun was a golden coin' suits a cheerful mood, while 'the sun was a burning eye' suits a threatening one — the same idea, different effect."
+          }
+        ],
+        "teacherTips": [
+          {
+            "teacherTip": "Give pupils pairs of similes/metaphors describing the same thing with opposite moods, and ask them to identify which mood each creates."
+          },
+          {
+            "teacherTip": "Encourage pupils to draft a simile or metaphor and then ask themselves: 'does this fit the atmosphere I want?'"
+          }
+        ],
+        "contentGuidance": null,
+        "supervisionLevel": null,
+        "canonicalUrl": "https://example-fixture.invalid/lessons/creating-atmosphere-with-figurative-language",
+        "oakUrl": "https://example-fixture.invalid/lessons/creating-atmosphere-with-figurative-language",
+        "downloadsAvailable": true
+      },
+      "quiz": {
+        "starterQuiz": [
+          {
+            "question": "Which words does a simile use to compare two things?",
+            "questionType": "multiple-choice",
+            "answers": [
+              {
+                "type": "text",
+                "content": "is or was",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "like or as",
+                "distractor": false
+              },
+              {
+                "type": "text",
+                "content": "and or but",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "if or then",
+                "distractor": true
+              }
+            ]
+          },
+          {
+            "question": "What is personification?",
+            "questionType": "multiple-choice",
+            "answers": [
+              {
+                "type": "text",
+                "content": "Comparing two things using 'like'",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "Giving human qualities to non-human things",
+                "distractor": false
+              },
+              {
+                "type": "text",
+                "content": "Describing a setting using only sound",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "Repeating a word for effect",
+                "distractor": true
+              }
+            ]
+          },
+          {
+            "question": "Is 'the lake was like glass' a simile or a metaphor?",
+            "questionType": "short-answer",
+            "answers": [
+              {
+                "type": "text",
+                "content": "simile"
+              }
+            ]
+          }
+        ],
+        "exitQuiz": [
+          {
+            "question": "Which sentence is a metaphor?",
+            "questionType": "multiple-choice",
+            "answers": [
+              {
+                "type": "text",
+                "content": "The classroom was like a zoo.",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "The classroom was a zoo.",
+                "distractor": false
+              },
+              {
+                "type": "text",
+                "content": "The classroom was as loud as a zoo.",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "The classroom had many animals.",
+                "distractor": true
+              }
+            ]
+          },
+          {
+            "question": "Which of these sentences use personification? (select all that apply)",
+            "questionType": "multiple-choice",
+            "answers": [
+              {
+                "type": "text",
+                "content": "The wind was strong.",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "The wind howled through the trees.",
+                "distractor": false
+              },
+              {
+                "type": "text",
+                "content": "The house was old.",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "The old house groaned in the storm.",
+                "distractor": false
+              }
+            ]
+          },
+          {
+            "question": "Write a simile describing snow.",
+            "questionType": "short-answer",
+            "answers": [
+              {
+                "type": "text",
+                "content": "as white as snow"
+              },
+              {
+                "type": "text",
+                "content": "white as cotton wool"
+              }
+            ]
+          },
+          {
+            "question": "Match each term to its definition.",
+            "questionType": "match",
+            "answers": [
+              {
+                "matchOption": {
+                  "type": "text",
+                  "content": "simile"
+                },
+                "correctChoice": {
+                  "type": "text",
+                  "content": "a comparison using like or as"
+                }
+              },
+              {
+                "matchOption": {
+                  "type": "text",
+                  "content": "metaphor"
+                },
+                "correctChoice": {
+                  "type": "text",
+                  "content": "describing one thing as if it were another"
+                }
+              },
+              {
+                "matchOption": {
+                  "type": "text",
+                  "content": "personification"
+                },
+                "correctChoice": {
+                  "type": "text",
+                  "content": "giving human qualities to non-human things"
+                }
+              }
+            ]
+          },
+          {
+            "question": "Order these techniques from most direct comparison to least direct: metaphor, simile, plain description.",
+            "questionType": "order",
+            "answers": [
+              {
+                "order": 1,
+                "type": "text",
+                "content": "metaphor"
+              },
+              {
+                "order": 2,
+                "type": "text",
+                "content": "simile"
+              },
+              {
+                "order": 3,
+                "type": "text",
+                "content": "plain description"
+              }
+            ]
+          }
+        ]
+      },
+      "transcript": {
+        "transcript": "In our last lesson we looked at using our five senses to describe a setting. Today we're adding another powerful tool to our writing: figurative language, specifically simile, metaphor and personification.\n\nA simile compares one thing to another using the words 'like' or 'as'. For example: 'The lake was as still as glass.' Here we're comparing the stillness of the lake to glass, using the word 'as' to make the comparison clear.\n\nA metaphor also compares two things, but it does so without using 'like' or 'as' — instead, it describes one thing as if it actually were the other. For example: 'The lake was a sheet of glass.' Notice there's no 'like' or 'as' here; we are saying the lake is glass, even though we know it isn't literally glass. This creates a stronger, more direct image than a simile.\n\nPersonification is when we give human qualities or actions to something that isn't human. For example: 'The wind howled through the trees' — wind can't literally howl like an animal or a person crying out, but describing it that way makes it feel alive and threatening.\n\nThe most important thing to remember is that figurative language should always be chosen deliberately, to support the atmosphere you want to create. Let's compare two descriptions of the sun. 'The sun was a golden coin in the sky' creates a warm, cheerful atmosphere. But 'the sun was a burning eye, watching everything below' creates a much more threatening, uncomfortable atmosphere — even though both are metaphors describing the sun. The choice of figurative language completely changes how the reader feels.\n\nA common error is mixing up similes and metaphors. Remember: if you see 'like' or 'as', it's a simile; if there's a direct comparison with no 'like' or 'as', it's a metaphor. Today, you'll practise writing similes, metaphors and personification, thinking carefully about the atmosphere each choice creates."
+      },
+      "assets": {
+        "assets": [
+          {
+            "type": "worksheet",
+            "label": "Worksheet",
+            "url": "fixture://worksheet/creating-atmosphere-with-figurative-language.pdf"
+          },
+          {
+            "type": "video",
+            "label": "Video",
+            "url": "fixture://video/creating-atmosphere-with-figurative-language"
+          }
+        ],
+        "attribution": []
+      },
+      "worksheet": {
+        "questions": [
+          {
+            "number": "1",
+            "text": "Write a simile describing a thunderstorm.",
+            "type": "extended"
+          },
+          {
+            "number": "2",
+            "text": "Write a metaphor describing the moon.",
+            "type": "extended"
+          },
+          {
+            "number": "3",
+            "text": "Explain the difference between a simile and a metaphor, using an example of each.",
+            "type": "extended"
+          },
+          {
+            "number": "4",
+            "text": "Write a sentence using personification to describe the sea.",
+            "type": "extended"
+          }
+        ]
+      }
+    },
+    "choosing-precise-vocabulary": {
+      "summary": {
+        "lessonTitle": "Choosing precise vocabulary for effect",
+        "pupilLessonOutcome": "I can select precise, ambitious vocabulary to strengthen the effect of a description.",
+        "keyLearningPoints": [
+          {
+            "keyLearningPoint": "Precise vocabulary creates a clearer, more specific image than general or overused words."
+          },
+          {
+            "keyLearningPoint": "Verbs and adjectives can be upgraded to more powerful synonyms to strengthen a description."
+          },
+          {
+            "keyLearningPoint": "Word choice affects the connotations, or associated feelings, a reader experiences."
+          },
+          {
+            "keyLearningPoint": "Writers should avoid overusing the same words and instead vary vocabulary for effect."
+          }
+        ],
+        "lessonKeywords": [
+          {
+            "keyword": "connotation",
+            "description": "The feeling or idea a word suggests beyond its literal meaning, e.g. 'stroll' suggests calm, while 'stride' suggests purpose."
+          },
+          {
+            "keyword": "synonym",
+            "description": "A word with a similar meaning to another word."
+          },
+          {
+            "keyword": "precise",
+            "description": "Exact and specific, rather than vague or general."
+          }
+        ],
+        "misconceptionsAndCommonMistakes": [
+          {
+            "misconception": "Pupils think a 'better' word is simply a longer or more unusual word.",
+            "response": "Show that the most effective word choice is the one that most precisely fits the meaning and atmosphere, not necessarily the longest or most obscure word."
+          },
+          {
+            "misconception": "Pupils believe all synonyms are interchangeable.",
+            "response": "Compare synonyms with different connotations, e.g. 'thin' versus 'skeletal', to show that word choice changes the reader's feeling, not just the literal meaning."
+          }
+        ],
+        "teacherTips": [
+          {
+            "teacherTip": "Build a class 'word bank' upgrading common overused words (e.g. 'said', 'walked', 'big') into more precise alternatives."
+          },
+          {
+            "teacherTip": "Discuss connotation directly by comparing near-synonyms and asking pupils which feels more positive or negative."
+          }
+        ],
+        "contentGuidance": null,
+        "supervisionLevel": null,
+        "canonicalUrl": "https://example-fixture.invalid/lessons/choosing-precise-vocabulary",
+        "oakUrl": "https://example-fixture.invalid/lessons/choosing-precise-vocabulary",
+        "downloadsAvailable": true
+      },
+      "quiz": {
+        "starterQuiz": [
+          {
+            "question": "What does 'precise' mean?",
+            "questionType": "multiple-choice",
+            "answers": [
+              {
+                "type": "text",
+                "content": "Long and unusual",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "Exact and specific",
+                "distractor": false
+              },
+              {
+                "type": "text",
+                "content": "Simple and short",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "Repeated often",
+                "distractor": true
+              }
+            ]
+          },
+          {
+            "question": "What is a synonym?",
+            "questionType": "multiple-choice",
+            "answers": [
+              {
+                "type": "text",
+                "content": "A word that means the opposite of another word",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "A word with a similar meaning to another word",
+                "distractor": false
+              },
+              {
+                "type": "text",
+                "content": "A type of punctuation",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "A figure of speech",
+                "distractor": true
+              }
+            ]
+          },
+          {
+            "question": "Give a more precise synonym for 'walked' that suggests moving quietly.",
+            "questionType": "short-answer",
+            "answers": [
+              {
+                "type": "text",
+                "content": "crept"
+              },
+              {
+                "type": "text",
+                "content": "tiptoed"
+              },
+              {
+                "type": "text",
+                "content": "sneaked"
+              }
+            ]
+          }
+        ],
+        "exitQuiz": [
+          {
+            "question": "What is 'connotation'?",
+            "questionType": "multiple-choice",
+            "answers": [
+              {
+                "type": "text",
+                "content": "The opposite meaning of a word",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "The feeling or idea a word suggests beyond its literal meaning",
+                "distractor": false
+              },
+              {
+                "type": "text",
+                "content": "The spelling of a word",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "The number of syllables in a word",
+                "distractor": true
+              }
+            ]
+          },
+          {
+            "question": "Which of these words have a negative connotation? (select all that apply)",
+            "questionType": "multiple-choice",
+            "answers": [
+              {
+                "type": "text",
+                "content": "slender",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "skeletal",
+                "distractor": false
+              },
+              {
+                "type": "text",
+                "content": "aroma",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "stench",
+                "distractor": false
+              }
+            ]
+          },
+          {
+            "question": "Give a precise synonym for 'said' that shows someone spoke angrily.",
+            "questionType": "short-answer",
+            "answers": [
+              {
+                "type": "text",
+                "content": "shouted"
+              },
+              {
+                "type": "text",
+                "content": "snapped"
+              },
+              {
+                "type": "text",
+                "content": "demanded"
+              },
+              {
+                "type": "text",
+                "content": "yelled"
+              }
+            ]
+          },
+          {
+            "question": "Match each overused word to a more precise alternative.",
+            "questionType": "match",
+            "answers": [
+              {
+                "matchOption": {
+                  "type": "text",
+                  "content": "walked"
+                },
+                "correctChoice": {
+                  "type": "text",
+                  "content": "strolled"
+                }
+              },
+              {
+                "matchOption": {
+                  "type": "text",
+                  "content": "said"
+                },
+                "correctChoice": {
+                  "type": "text",
+                  "content": "whispered"
+                }
+              },
+              {
+                "matchOption": {
+                  "type": "text",
+                  "content": "big"
+                },
+                "correctChoice": {
+                  "type": "text",
+                  "content": "enormous"
+                }
+              }
+            ]
+          },
+          {
+            "question": "Order these words from most neutral to most negative connotation: 'slim', 'thin', 'skeletal'.",
+            "questionType": "order",
+            "answers": [
+              {
+                "order": 1,
+                "type": "text",
+                "content": "slim"
+              },
+              {
+                "order": 2,
+                "type": "text",
+                "content": "thin"
+              },
+              {
+                "order": 3,
+                "type": "text",
+                "content": "skeletal"
+              }
+            ]
+          }
+        ]
+      },
+      "transcript": {
+        "transcript": "Over the last two lessons, we've explored sensory detail and figurative language. Today we're focusing on something just as important: choosing precise vocabulary.\n\nPrecise vocabulary means choosing the exact word that best captures your meaning, rather than a vague, general, or overused one. Let's compare two sentences: 'He walked into the room' and 'He crept into the room.' Both use a verb meaning to move into a space, but 'crept' is far more precise — it tells us he moved quietly and carefully, perhaps because he didn't want to be noticed. 'Walked' doesn't give us any of that extra information.\n\nA common misconception is thinking that a 'better' word is just a longer or more unusual one. That's not true. The best word choice is the one that most precisely matches your meaning and the atmosphere you want to create — sometimes that will be a simple word, and sometimes a more ambitious one, but the key is precision, not length.\n\nWe also need to think about connotation — the feelings or ideas a word suggests beyond its basic dictionary meaning. Consider the words 'thin' and 'skeletal'. Both technically describe someone who isn't heavy, but 'thin' is fairly neutral, while 'skeletal' suggests something much more alarming — perhaps illness or starvation. Choosing between these words completely changes how a reader feels about a character, even though the literal meaning is similar.\n\nIt's also important to vary your vocabulary rather than repeating the same words again and again. If every character in your story 'said' something, your writing can feel flat. Building a bank of precise synonyms — 'whispered', 'demanded', 'muttered', 'exclaimed' — lets you show exactly how something was said, adding both precision and variety.\n\nToday, you'll be revising a piece of your own descriptive writing, hunting for vague or overused words and replacing them with more precise, deliberate choices."
+      },
+      "assets": {
+        "assets": [
+          {
+            "type": "worksheet",
+            "label": "Worksheet",
+            "url": "fixture://worksheet/choosing-precise-vocabulary.pdf"
+          },
+          {
+            "type": "video",
+            "label": "Video",
+            "url": "fixture://video/choosing-precise-vocabulary"
+          }
+        ],
+        "attribution": []
+      },
+      "worksheet": {
+        "questions": [
+          {
+            "number": "1",
+            "text": "Give a more precise synonym for 'happy'.",
+            "type": "short",
+            "answer": "delighted"
+          },
+          {
+            "number": "2",
+            "text": "Explain the difference in connotation between 'confident' and 'arrogant'.",
+            "type": "extended"
+          },
+          {
+            "number": "3",
+            "text": "Rewrite this sentence with more precise vocabulary: 'The dog ran across the field.'",
+            "type": "extended"
+          },
+          {
+            "number": "4",
+            "text": "Give a precise synonym for 'sad' that suggests deep grief.",
+            "type": "short",
+            "answer": "devastated"
+          }
+        ]
+      }
+    },
+    "exploring-rhyme-and-rhythm": {
+      "summary": {
+        "lessonTitle": "Exploring rhyme and rhythm",
+        "pupilLessonOutcome": "I can identify rhyme schemes and describe the effect of rhythm in a poem.",
+        "keyLearningPoints": [
+          {
+            "keyLearningPoint": "A rhyme scheme is the pattern of rhyming words at the end of each line, often described using letters, e.g. ABAB."
+          },
+          {
+            "keyLearningPoint": "Rhythm is the pattern of stressed and unstressed syllables in a line of poetry."
+          },
+          {
+            "keyLearningPoint": "Regular rhyme and rhythm can create a sense of order, musicality, or momentum."
+          },
+          {
+            "keyLearningPoint": "Poets sometimes break a regular rhyme or rhythm pattern deliberately, to draw attention to a particular line."
+          }
+        ],
+        "lessonKeywords": [
+          {
+            "keyword": "rhyme scheme",
+            "description": "The pattern of rhyming words at the ends of lines in a poem, labelled with letters such as ABAB."
+          },
+          {
+            "keyword": "rhythm",
+            "description": "The pattern of stressed and unstressed syllables in a line of poetry."
+          },
+          {
+            "keyword": "stanza",
+            "description": "A group of lines forming a unit within a poem, similar to a paragraph in prose."
+          }
+        ],
+        "misconceptionsAndCommonMistakes": [
+          {
+            "misconception": "Pupils think all poems must rhyme.",
+            "response": "Introduce free verse as an example of poetry with no fixed rhyme scheme, to show rhyme is a choice, not a requirement."
+          },
+          {
+            "misconception": "Pupils believe rhythm is only about how a poem sounds, with no meaning or effect.",
+            "response": "Demonstrate how a fast, bouncing rhythm can create excitement or urgency, while a slow, heavy rhythm can create solemnity, linking rhythm directly to meaning."
+          }
+        ],
+        "teacherTips": [
+          {
+            "teacherTip": "Read poems aloud so pupils can hear rhythm and rhyme in action, rather than only seeing them on the page."
+          },
+          {
+            "teacherTip": "Use letters (A, B, C...) on the board to help pupils physically map out a rhyme scheme before naming it."
+          }
+        ],
+        "contentGuidance": null,
+        "supervisionLevel": null,
+        "canonicalUrl": "https://example-fixture.invalid/lessons/exploring-rhyme-and-rhythm",
+        "oakUrl": "https://example-fixture.invalid/lessons/exploring-rhyme-and-rhythm",
+        "downloadsAvailable": true
+      },
+      "quiz": {
+        "starterQuiz": [
+          {
+            "question": "What is a rhyme scheme?",
+            "questionType": "multiple-choice",
+            "answers": [
+              {
+                "type": "text",
+                "content": "The number of lines in a poem",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "The pattern of rhyming words at the end of each line",
+                "distractor": false
+              },
+              {
+                "type": "text",
+                "content": "The topic of a poem",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "The number of syllables in a word",
+                "distractor": true
+              }
+            ]
+          },
+          {
+            "question": "How is a rhyme scheme usually labelled?",
+            "questionType": "multiple-choice",
+            "answers": [
+              {
+                "type": "text",
+                "content": "Using numbers, e.g. 1234",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "Using letters, e.g. ABAB",
+                "distractor": false
+              },
+              {
+                "type": "text",
+                "content": "Using colours",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "Using punctuation marks",
+                "distractor": true
+              }
+            ]
+          },
+          {
+            "question": "What do we call a group of lines forming a unit within a poem?",
+            "questionType": "short-answer",
+            "answers": [
+              {
+                "type": "text",
+                "content": "stanza"
+              }
+            ]
+          }
+        ],
+        "exitQuiz": [
+          {
+            "question": "Which of these is true about rhyme in poetry?",
+            "questionType": "multiple-choice",
+            "answers": [
+              {
+                "type": "text",
+                "content": "All poems must rhyme.",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "Not all poems rhyme.",
+                "distractor": false
+              },
+              {
+                "type": "text",
+                "content": "Only old poems rhyme.",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "Rhyme has no effect on meaning.",
+                "distractor": true
+              }
+            ]
+          },
+          {
+            "question": "Which of these effects can rhythm create in a poem? (select all that apply)",
+            "questionType": "multiple-choice",
+            "answers": [
+              {
+                "type": "text",
+                "content": "the poem's exact word count",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "excitement or urgency",
+                "distractor": false
+              },
+              {
+                "type": "text",
+                "content": "the poem's publication date",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "a solemn or serious mood",
+                "distractor": false
+              }
+            ]
+          },
+          {
+            "question": "Name the pattern of stressed and unstressed syllables in a line of poetry.",
+            "questionType": "short-answer",
+            "answers": [
+              {
+                "type": "text",
+                "content": "rhythm"
+              }
+            ]
+          },
+          {
+            "question": "Match each rhyme scheme label to its description.",
+            "questionType": "match",
+            "answers": [
+              {
+                "matchOption": {
+                  "type": "text",
+                  "content": "AABB"
+                },
+                "correctChoice": {
+                  "type": "text",
+                  "content": "lines 1&2 rhyme, lines 3&4 rhyme"
+                }
+              },
+              {
+                "matchOption": {
+                  "type": "text",
+                  "content": "ABAB"
+                },
+                "correctChoice": {
+                  "type": "text",
+                  "content": "lines 1&3 rhyme, lines 2&4 rhyme"
+                }
+              },
+              {
+                "matchOption": {
+                  "type": "text",
+                  "content": "free verse"
+                },
+                "correctChoice": {
+                  "type": "text",
+                  "content": "no fixed rhyme scheme"
+                }
+              }
+            ]
+          },
+          {
+            "question": "Order these poem types from most regular rhyme to least regular rhyme: strict AABB rhyme scheme, occasional rhyme, free verse.",
+            "questionType": "order",
+            "answers": [
+              {
+                "order": 1,
+                "type": "text",
+                "content": "strict AABB rhyme scheme"
+              },
+              {
+                "order": 2,
+                "type": "text",
+                "content": "occasional rhyme"
+              },
+              {
+                "order": 3,
+                "type": "text",
+                "content": "free verse"
+              }
+            ]
+          }
+        ]
+      },
+      "transcript": {
+        "transcript": "Welcome to our new unit on poetry. Today we're exploring two of the building blocks of poetry: rhyme and rhythm.\n\nA rhyme scheme is the pattern of rhyming words at the end of each line in a poem. We describe rhyme schemes using letters. If the first and second lines rhyme with each other, and the third and fourth lines rhyme with each other, we call that an AABB rhyme scheme. If instead the first and third lines rhyme, and the second and fourth lines rhyme, we call that ABAB.\n\nIt's a common misconception that all poems must rhyme. That's not true — many poems, called free verse, have no fixed rhyme scheme at all. Rhyme is a choice a poet makes, not a rule they must follow. A poet chooses to rhyme, or not to rhyme, depending on the effect they want to create.\n\nRhythm is a different but related idea. Rhythm is the pattern of stressed and unstressed syllables in a line — think of it like the poem's heartbeat. If you read a nursery rhyme aloud, like 'Twinkle, twinkle, little star', you can hear a strong, bouncy rhythm. That regular, bouncy rhythm suits a poem meant to be light-hearted or playful.\n\nRhythm isn't just about sound for its own sake — it affects meaning too. A fast, bouncing rhythm can create a sense of excitement or urgency, while a slow, heavy rhythm, full of long words and pauses, can create a solemn or serious mood. Poets choose their rhythm deliberately to match what they want the reader to feel.\n\nSometimes, a poet will deliberately break their own regular pattern of rhyme or rhythm. If a poem has been rhyming steadily and then suddenly a line doesn't rhyme, that's not a mistake — it's often a deliberate choice to make that line stand out and draw the reader's attention. Today, we'll read some poems aloud and practise identifying rhyme schemes and describing the effect of rhythm."
+      },
+      "assets": {
+        "assets": [
+          {
+            "type": "worksheet",
+            "label": "Worksheet",
+            "url": "fixture://worksheet/exploring-rhyme-and-rhythm.pdf"
+          },
+          {
+            "type": "video",
+            "label": "Video",
+            "url": "fixture://video/exploring-rhyme-and-rhythm"
+          }
+        ],
+        "attribution": []
+      },
+      "worksheet": {
+        "questions": [
+          {
+            "number": "1",
+            "text": "What rhyme scheme label would you give a poem where lines 1 and 2 rhyme, and lines 3 and 4 rhyme?",
+            "type": "short",
+            "answer": "AABB"
+          },
+          {
+            "number": "2",
+            "text": "Explain how a fast, bouncy rhythm might affect the mood of a poem.",
+            "type": "extended"
+          },
+          {
+            "number": "3",
+            "text": "What is 'free verse'?",
+            "type": "short",
+            "answer": "poetry with no fixed rhyme scheme"
+          },
+          {
+            "number": "4",
+            "text": "Why might a poet deliberately break their rhyme scheme on one line?",
+            "type": "extended"
+          }
+        ]
+      }
+    },
+    "understanding-stanza-and-structure": {
+      "summary": {
+        "lessonTitle": "Understanding stanza and structure",
+        "pupilLessonOutcome": "I can identify how a poem is structured into stanzas and explain how structure shapes meaning.",
+        "keyLearningPoints": [
+          {
+            "keyLearningPoint": "A stanza is a group of lines forming a unit within a poem, similar to a paragraph in prose."
+          },
+          {
+            "keyLearningPoint": "Poets can use stanza length and line length to control pace and emphasis."
+          },
+          {
+            "keyLearningPoint": "A change in structure (e.g. a shorter stanza, or a single-line stanza) can signal a shift in tone or idea."
+          },
+          {
+            "keyLearningPoint": "Structure includes features such as enjambment (a sentence running over from one line to the next) and caesura (a pause within a line)."
+          }
+        ],
+        "lessonKeywords": [
+          {
+            "keyword": "stanza",
+            "description": "A group of lines forming a unit within a poem, similar to a paragraph in prose."
+          },
+          {
+            "keyword": "enjambment",
+            "description": "When a sentence or phrase runs on from one line of poetry to the next without a pause."
+          },
+          {
+            "keyword": "caesura",
+            "description": "A deliberate pause or break within a line of poetry, often marked by punctuation."
+          }
+        ],
+        "misconceptionsAndCommonMistakes": [
+          {
+            "misconception": "Pupils think stanza breaks are random and have no purpose.",
+            "response": "Show an example where a stanza break marks a clear shift in time, place, or idea, to demonstrate that structure is a deliberate choice."
+          },
+          {
+            "misconception": "Pupils confuse enjambment with just 'a long sentence'.",
+            "response": "Clarify that enjambment specifically means a sentence continues across a line break without punctuation, forcing the reader onward, which is a specific structural technique, not just sentence length."
+          }
+        ],
+        "teacherTips": [
+          {
+            "teacherTip": "Show a poem with its stanza breaks removed, and ask pupils to guess where they think the breaks should go and why."
+          },
+          {
+            "teacherTip": "Read a poem with enjambment aloud, pausing to show how it creates a sense of momentum or urgency."
+          }
+        ],
+        "contentGuidance": null,
+        "supervisionLevel": null,
+        "canonicalUrl": "https://example-fixture.invalid/lessons/understanding-stanza-and-structure",
+        "oakUrl": "https://example-fixture.invalid/lessons/understanding-stanza-and-structure",
+        "downloadsAvailable": true
+      },
+      "quiz": {
+        "starterQuiz": [
+          {
+            "question": "What is a stanza similar to in prose writing?",
+            "questionType": "multiple-choice",
+            "answers": [
+              {
+                "type": "text",
+                "content": "A sentence",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "A paragraph",
+                "distractor": false
+              },
+              {
+                "type": "text",
+                "content": "A chapter",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "A footnote",
+                "distractor": true
+              }
+            ]
+          },
+          {
+            "question": "What is enjambment?",
+            "questionType": "multiple-choice",
+            "answers": [
+              {
+                "type": "text",
+                "content": "A pause within a line",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "A sentence running on from one line to the next without a pause",
+                "distractor": false
+              },
+              {
+                "type": "text",
+                "content": "A rhyme at the end of a line",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "A repeated word",
+                "distractor": true
+              }
+            ]
+          },
+          {
+            "question": "What do we call a deliberate pause within a line of poetry?",
+            "questionType": "short-answer",
+            "answers": [
+              {
+                "type": "text",
+                "content": "caesura"
+              }
+            ]
+          }
+        ],
+        "exitQuiz": [
+          {
+            "question": "A sudden, very short stanza after several long stanzas is most likely to signal...",
+            "questionType": "multiple-choice",
+            "answers": [
+              {
+                "type": "text",
+                "content": "a printing error",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "an important shift or change",
+                "distractor": false
+              },
+              {
+                "type": "text",
+                "content": "the end of the poem only",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "nothing significant",
+                "distractor": true
+              }
+            ]
+          },
+          {
+            "question": "Which of these are structural features of a poem? (select all that apply)",
+            "questionType": "multiple-choice",
+            "answers": [
+              {
+                "type": "text",
+                "content": "simile",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "enjambment",
+                "distractor": false
+              },
+              {
+                "type": "text",
+                "content": "alliteration",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "caesura",
+                "distractor": false
+              }
+            ]
+          },
+          {
+            "question": "What is a group of lines forming a unit within a poem called?",
+            "questionType": "short-answer",
+            "answers": [
+              {
+                "type": "text",
+                "content": "stanza"
+              }
+            ]
+          },
+          {
+            "question": "Match each term to its definition.",
+            "questionType": "match",
+            "answers": [
+              {
+                "matchOption": {
+                  "type": "text",
+                  "content": "stanza"
+                },
+                "correctChoice": {
+                  "type": "text",
+                  "content": "a group of lines forming a unit"
+                }
+              },
+              {
+                "matchOption": {
+                  "type": "text",
+                  "content": "enjambment"
+                },
+                "correctChoice": {
+                  "type": "text",
+                  "content": "a sentence running over a line break"
+                }
+              },
+              {
+                "matchOption": {
+                  "type": "text",
+                  "content": "caesura"
+                },
+                "correctChoice": {
+                  "type": "text",
+                  "content": "a pause within a line"
+                }
+              }
+            ]
+          },
+          {
+            "question": "Order these from most flowing/fast-paced to most paused/slow: strong enjambment, no enjambment or caesura, frequent caesura.",
+            "questionType": "order",
+            "answers": [
+              {
+                "order": 1,
+                "type": "text",
+                "content": "strong enjambment"
+              },
+              {
+                "order": 2,
+                "type": "text",
+                "content": "no enjambment or caesura"
+              },
+              {
+                "order": 3,
+                "type": "text",
+                "content": "frequent caesura"
+              }
+            ]
+          }
+        ]
+      },
+      "transcript": {
+        "transcript": "In our last lesson we looked at rhyme and rhythm. Today we're looking at another key building block of poetry: structure, including stanzas.\n\nA stanza is a group of lines that form a unit within a poem — you can think of it like a paragraph in prose writing. Just as a new paragraph often signals a new idea in an essay, a new stanza in a poem often signals a shift — perhaps in time, place, mood, or idea.\n\nIt's a misconception to think stanza breaks are random. They're not — poets choose exactly where to break a stanza for a reason. For example, if a poem describes a calm, peaceful scene for two long stanzas, and then suddenly has one very short stanza, that short stanza is likely to signal an important change — perhaps a sudden event, or a shift to a darker mood.\n\nPoets also use two techniques within lines to control pace: enjambment and caesura. Enjambment is when a sentence or phrase continues from one line to the next without a pause, forcing the reader to move quickly onward to complete the sense of the sentence. This can create a feeling of momentum, or of thoughts tumbling out urgently.\n\nCaesura is the opposite in some ways — it's a deliberate pause within a single line, often marked by punctuation like a comma, dash, or full stop. A caesura slows the reader down and can create a moment of reflection, hesitation, or emphasis.\n\nIt's important not to confuse enjambment with simply 'a long sentence'. Enjambment specifically refers to a sentence continuing across a line break with no punctuation at the end of the line — it's about how the poem is laid out on the page, not just about sentence length.\n\nToday, we'll look at how structure — stanza length, enjambment and caesura — shapes the meaning and pace of a poem, using a poem we'll read together."
+      },
+      "assets": {
+        "assets": [
+          {
+            "type": "worksheet",
+            "label": "Worksheet",
+            "url": "fixture://worksheet/understanding-stanza-and-structure.pdf"
+          },
+          {
+            "type": "video",
+            "label": "Video",
+            "url": "fixture://video/understanding-stanza-and-structure"
+          }
+        ],
+        "attribution": []
+      },
+      "worksheet": {
+        "questions": [
+          {
+            "number": "1",
+            "text": "What effect might enjambment create for the reader?",
+            "type": "extended"
+          },
+          {
+            "number": "2",
+            "text": "What punctuation is often used to create a caesura?",
+            "type": "short",
+            "answer": "a comma or dash"
+          },
+          {
+            "number": "3",
+            "text": "Explain why a poet might use a very short stanza after several long ones.",
+            "type": "extended"
+          },
+          {
+            "number": "4",
+            "text": "What is a stanza?",
+            "type": "short",
+            "answer": "a group of lines forming a unit in a poem"
+          }
+        ]
+      }
+    },
+    "analysing-word-choice-in-poetry": {
+      "summary": {
+        "lessonTitle": "Analysing word choice in poetry",
+        "pupilLessonOutcome": "I can analyse a poet's word choices and explain their effect on the reader.",
+        "keyLearningPoints": [
+          {
+            "keyLearningPoint": "Poets choose individual words very deliberately for their precise meaning and connotation."
+          },
+          {
+            "keyLearningPoint": "Analysis should explain the effect of a word choice, not just identify or describe it."
+          },
+          {
+            "keyLearningPoint": "Sound devices such as alliteration and onomatopoeia can reinforce a word's meaning."
+          },
+          {
+            "keyLearningPoint": "The 'point, evidence, explain' structure helps organise clear analytical writing about language."
+          }
+        ],
+        "lessonKeywords": [
+          {
+            "keyword": "alliteration",
+            "description": "The repetition of the same consonant sound at the start of nearby words, e.g. 'the wild wind whispered'."
+          },
+          {
+            "keyword": "onomatopoeia",
+            "description": "A word that imitates the sound it describes, e.g. 'crash', 'buzz', 'hiss'."
+          },
+          {
+            "keyword": "analyse",
+            "description": "To explain in detail how and why a writer's choices create a particular effect on the reader."
+          }
+        ],
+        "misconceptionsAndCommonMistakes": [
+          {
+            "misconception": "Pupils identify a technique (e.g. 'this is alliteration') without explaining its effect.",
+            "response": "Model the difference between spotting a technique and analysing it: 'this is alliteration' is identification; explaining that the repeated sound mimics wind and makes the description feel more immersive is analysis."
+          },
+          {
+            "misconception": "Pupils think there is only one 'correct' interpretation of a word choice.",
+            "response": "Show that thoughtful analytical writing can offer more than one valid interpretation, as long as it is supported by evidence from the text."
+          }
+        ],
+        "teacherTips": [
+          {
+            "teacherTip": "Use sentence starters like 'This suggests...' or 'This creates an effect of...' to push pupils from identification into explanation."
+          },
+          {
+            "teacherTip": "Model close analysis of a single word choice in detail before asking pupils to attempt a whole line independently."
+          }
+        ],
+        "contentGuidance": null,
+        "supervisionLevel": null,
+        "canonicalUrl": "https://example-fixture.invalid/lessons/analysing-word-choice-in-poetry",
+        "oakUrl": "https://example-fixture.invalid/lessons/analysing-word-choice-in-poetry",
+        "downloadsAvailable": true
+      },
+      "quiz": {
+        "starterQuiz": [
+          {
+            "question": "What is alliteration?",
+            "questionType": "multiple-choice",
+            "answers": [
+              {
+                "type": "text",
+                "content": "A word that imitates a sound",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "The repetition of the same consonant sound at the start of nearby words",
+                "distractor": false
+              },
+              {
+                "type": "text",
+                "content": "A rhyme at the end of a line",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "A pause within a line",
+                "distractor": true
+              }
+            ]
+          },
+          {
+            "question": "What is onomatopoeia?",
+            "questionType": "multiple-choice",
+            "answers": [
+              {
+                "type": "text",
+                "content": "A comparison using 'like'",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "A word that imitates the sound it describes",
+                "distractor": false
+              },
+              {
+                "type": "text",
+                "content": "A repeated consonant sound",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "A type of rhyme scheme",
+                "distractor": true
+              }
+            ]
+          },
+          {
+            "question": "Give an example of an onomatopoeic word.",
+            "questionType": "short-answer",
+            "answers": [
+              {
+                "type": "text",
+                "content": "crash"
+              },
+              {
+                "type": "text",
+                "content": "buzz"
+              },
+              {
+                "type": "text",
+                "content": "hiss"
+              },
+              {
+                "type": "text",
+                "content": "bang"
+              },
+              {
+                "type": "text",
+                "content": "pop"
+              }
+            ]
+          }
+        ],
+        "exitQuiz": [
+          {
+            "question": "What does 'PEE' stand for in analytical writing?",
+            "questionType": "multiple-choice",
+            "answers": [
+              {
+                "type": "text",
+                "content": "Poem, extract, ending",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "Point, evidence, explain",
+                "distractor": false
+              },
+              {
+                "type": "text",
+                "content": "Point, example, evaluate",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "Prose, evidence, effect",
+                "distractor": true
+              }
+            ]
+          },
+          {
+            "question": "Which of these are examples of analysis, rather than just identification? (select all that apply)",
+            "questionType": "multiple-choice",
+            "answers": [
+              {
+                "type": "text",
+                "content": "This is alliteration.",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "The repeated 'w' sound mimics the sound of wind, making the scene feel more immersive.",
+                "distractor": false
+              },
+              {
+                "type": "text",
+                "content": "This is onomatopoeia.",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "The onomatopoeic word 'crash' makes the impact feel sudden and violent.",
+                "distractor": false
+              }
+            ]
+          },
+          {
+            "question": "What does 'connotation' mean?",
+            "questionType": "short-answer",
+            "answers": [
+              {
+                "type": "text",
+                "content": "the feeling or idea a word suggests beyond its literal meaning"
+              }
+            ]
+          },
+          {
+            "question": "Match each technique to its example.",
+            "questionType": "match",
+            "answers": [
+              {
+                "matchOption": {
+                  "type": "text",
+                  "content": "alliteration"
+                },
+                "correctChoice": {
+                  "type": "text",
+                  "content": "the wild wind whispered"
+                }
+              },
+              {
+                "matchOption": {
+                  "type": "text",
+                  "content": "onomatopoeia"
+                },
+                "correctChoice": {
+                  "type": "text",
+                  "content": "the branch snapped"
+                }
+              },
+              {
+                "matchOption": {
+                  "type": "text",
+                  "content": "metaphor"
+                },
+                "correctChoice": {
+                  "type": "text",
+                  "content": "the moon was a silver coin"
+                }
+              }
+            ]
+          },
+          {
+            "question": "Order these steps for analysing a word choice: make a point, give a quotation as evidence, explain the effect.",
+            "questionType": "order",
+            "answers": [
+              {
+                "order": 1,
+                "type": "text",
+                "content": "make a point"
+              },
+              {
+                "order": 2,
+                "type": "text",
+                "content": "give a quotation as evidence"
+              },
+              {
+                "order": 3,
+                "type": "text",
+                "content": "explain the effect"
+              }
+            ]
+          }
+        ]
+      },
+      "transcript": {
+        "transcript": "Over this unit we've explored rhyme, rhythm and structure. Today we're focusing on the smallest building block of a poem: individual word choices, and how to analyse them.\n\nPoets choose their words extremely deliberately. Every single word in a well-crafted poem has been considered for its precise meaning and its connotation — the feeling or idea it suggests beyond its literal meaning. When we analyse poetry, our job is to explain the effect of these choices on the reader, not just to spot them.\n\nLet's look at an example. Imagine a poem describes 'the wild wind whispered through the trees'. First, we might notice the alliteration — the repeated 'w' sound in 'wild wind whispered'. But simply saying 'this is alliteration' is only identification, not analysis. To analyse it properly, we need to explain the effect: the soft, repeated 'w' sound mimics the continuous, breathy sound of wind itself, making the description feel more immersive and realistic — almost as if we can hear the wind as we read.\n\nThis example also uses onomatopoeia — a word that imitates the sound it describes. 'Whispered' doesn't just tell us the wind made a sound; the word itself sounds soft and breathy, reinforcing the meaning through its very sound.\n\nA really useful structure for analytical writing is 'point, evidence, explain', sometimes shortened to PEE. First, make a clear point about the effect the poet creates. Second, give a quotation as evidence. Third, and most importantly, explain in detail how the specific words in that evidence create that effect.\n\nIt's worth remembering there isn't always only one correct interpretation. Poetry can be read in more than one valid way, as long as your interpretation is properly supported with evidence from the text. Today, you'll practise close analysis of word choices in a short poem, focusing on explaining effect, not just spotting technique."
+      },
+      "assets": {
+        "assets": [
+          {
+            "type": "worksheet",
+            "label": "Worksheet",
+            "url": "fixture://worksheet/analysing-word-choice-in-poetry.pdf"
+          },
+          {
+            "type": "video",
+            "label": "Video",
+            "url": "fixture://video/analysing-word-choice-in-poetry"
+          }
+        ],
+        "attribution": []
+      },
+      "worksheet": {
+        "questions": [
+          {
+            "number": "1",
+            "text": "Identify the alliteration in this line: 'the silent snow settled softly'.",
+            "type": "short",
+            "answer": "silent, settled, softly"
+          },
+          {
+            "number": "2",
+            "text": "Explain the effect of the onomatopoeic word 'crash' in a description of a storm.",
+            "type": "extended"
+          },
+          {
+            "number": "3",
+            "text": "Write a point, evidence, explain paragraph analysing the word 'whispered' in a description of wind.",
+            "type": "extended"
+          },
+          {
+            "number": "4",
+            "text": "What is the difference between identifying a technique and analysing it?",
+            "type": "extended"
+          }
+        ]
+      }
+    }
+  },
+  "licences": {
+    "using-the-five-senses": "ogl-compatible",
+    "creating-atmosphere-with-figurative-language": "ogl-compatible",
+    "choosing-precise-vocabulary": "ogl-compatible",
+    "exploring-rhyme-and-rhythm": "ogl-compatible",
+    "understanding-stanza-and-structure": "ogl-compatible",
+    "analysing-word-choice-in-poetry": "ogl-compatible"
+  }
+}
