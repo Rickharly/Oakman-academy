@@ -835,6 +835,8 @@ model ParentOverride {
 enum ReportPeriod {
   WEEKLY
   MONTHLY
+  /// The cumulative academic record: everything studied, for handing to a school.
+  ACADEMIC_RECORD
 }
 
 model Report {

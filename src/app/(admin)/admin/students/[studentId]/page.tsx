@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { AlertCircle, BookMarked, Clock, ArrowRight } from "lucide-react";
+import { AlertCircle, BookMarked, Clock, ArrowRight, FileText } from "lucide-react";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Card } from "@/components/ui/Card";
 import { Avatar } from "@/components/ui/Avatar";
@@ -65,7 +65,16 @@ export default async function AdminStudentOverviewPage({ params }: { params: Pro
         title={student.user.displayName}
         description={`Year ${student.yearGroup} · ${student.keyStage.toUpperCase()}`}
         actions={
-          <Avatar emoji={student.user.avatar} name={student.user.displayName} size="lg" />
+          <div className="flex items-center gap-3">
+            <Link
+              href={`/admin/students/${studentId}/record`}
+              className="flex h-11 items-center gap-1.5 rounded-full border border-line px-4 text-sm font-medium text-ink transition-colors duration-150 hover:bg-stone-100"
+            >
+              <FileText className="h-4 w-4 text-ink-muted" />
+              Academic record
+            </Link>
+            <Avatar emoji={student.user.avatar} name={student.user.displayName} size="lg" />
+          </div>
         }
       />
 

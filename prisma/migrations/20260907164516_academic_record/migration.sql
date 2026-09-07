@@ -1,0 +1,2 @@
+-- AlterEnum
+ALTER TYPE "ReportPeriod" ADD VALUE 'ACADEMIC_RECORD';

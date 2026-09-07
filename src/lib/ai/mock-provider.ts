@@ -152,6 +152,18 @@ function fakeDataFor(schemaName: string, system: string, messages: ChatMessage[]
         nextSteps: ["quote directly from the text"],
       };
     }
+    case "subjectReportNote": {
+      // Echoes real unit titles back, so a test can tell a grounded note from a generic one.
+      const body = messages.map((m) => m.content).join("\n");
+      const topics = (body.match(/^- ([^:]+):/gm) ?? []).map((t: string) => t.slice(2, -1)).slice(0, 3);
+      return {
+        note:
+          `Has worked through ${topics.join(", ") || "the material"} and can explain the steps ` +
+          "aloud. Next, applying the same reasoning to unfamiliar problems without prompting.",
+        strongest: topics.slice(0, 2),
+        needsWork: topics.slice(2, 3),
+      };
+    }
     case "worksheet":
       return {
         questions: [
