@@ -1,5 +1,5 @@
 import { formatInTimeZone } from "date-fns-tz";
-import { CalendarClock, CheckCircle2, PartyPopper, Sparkles } from "lucide-react";
+import { BookOpen, CalendarClock, CheckCircle2, PartyPopper, Sparkles } from "lucide-react";
 import { requireStudent } from "@/lib/auth/session";
 import { SCHOOL_TIMEZONE, isoWeekday, schoolDayKey } from "@/lib/dates";
 import { ensureDayPlanned, getTodayView } from "@/lib/scheduling/planner";
@@ -42,6 +42,7 @@ export default async function TodayPage({
     ).map((entry) => [entry.assignmentId, entry]),
   );
   const finishesAt = dayEndsAt(cards, schoolStartTime, breakMinutes);
+  const lessonCount = cards.filter((a) => a.kind === "LESSON").length;
 
   // Shown once, the first time a child ever opens the school. `?welcome=1` replays it so a
   // parent can walk them through it again without touching the database.
@@ -78,8 +79,8 @@ export default async function TodayPage({
       ) : (
         <>
           <p className="text-sm font-medium text-ink-muted">
-            {cards.length} lesson{cards.length === 1 ? "" : "s"} •{" "}
-            {formatMinutes(teachingMinutes(cards))} of lessons • {schoolStartTime} to {finishesAt}
+            {lessonCount} lesson{lessonCount === 1 ? "" : "s"} •{" "}
+            {formatMinutes(teachingMinutes(cards))} of work • {schoolStartTime} to {finishesAt}
           </p>
 
           <div className="space-y-4">
@@ -91,10 +92,15 @@ export default async function TodayPage({
               const isInProgress =
                 assignment.status === "IN_PROGRESS" || assignment.progress?.status === "IN_PROGRESS";
               const buttonLabel = isCompleted ? "Review" : isInProgress ? "Continue" : "Start";
-              const title = lesson?.title ?? assignment.customTitle ?? "Assignment";
-              const href = lesson
-                ? `/lessons/${lesson.id}?assignmentId=${assignment.id}&kind=${assignment.kind}`
-                : undefined;
+              const isReading = assignment.kind === "READING";
+              const title = isReading
+                ? "Reading"
+                : (lesson?.title ?? assignment.customTitle ?? "Assignment");
+              const href = isReading
+                ? `/reading?assignmentId=${assignment.id}`
+                : lesson
+                  ? `/lessons/${lesson.id}?assignmentId=${assignment.id}&kind=${assignment.kind}`
+                  : undefined;
 
               return (
                 <Card
@@ -118,6 +124,11 @@ export default async function TodayPage({
                         {assignment.kind === "REVIEW" ? (
                           <Badge tone="warning">
                             <Sparkles className="h-3 w-3" /> Quick review
+                          </Badge>
+                        ) : null}
+                        {isReading ? (
+                          <Badge tone="neutral">
+                            <BookOpen className="h-3 w-3" /> Reading & writing
                           </Badge>
                         ) : null}
                         {assignment.optional ? <Badge tone="neutral">Optional</Badge> : null}

@@ -16,6 +16,7 @@ import { prisma } from "@/lib/db";
 import { hashPassword } from "@/lib/auth/password";
 import { FixtureProvider } from "@/lib/curriculum/fixture-provider";
 import { syncMany, type SyncScope } from "@/lib/curriculum/sync";
+import { seedReadingLibrary } from "@/lib/reading/library";
 
 const SUBJECTS = ["maths", "english", "science", "history", "geography"] as const;
 
@@ -85,6 +86,11 @@ async function reconcileStudentIdentities(): Promise<void> {
 async function main() {
   const mode = process.env.SEED_MODE ?? "if-empty";
   const resetCredentials = /^(1|true|yes)$/i.test(process.env.SEED_RESET_CREDENTIALS ?? "");
+
+  // The reading library is bundled content, not learning history: upserting it every boot is
+  // how a passage added to a fixture file reaches the children without a special command.
+  const readingTexts = await seedReadingLibrary();
+  console.log(`[seed] reading library: ${readingTexts} passage(s).`);
 
   if (mode === "if-empty" && !resetCredentials) {
     const existing = await prisma.studentProfile.count();

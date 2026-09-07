@@ -132,12 +132,7 @@ export default async function AdminSettingsPage({
     const yearGroup = Number(formData.get("yearGroup"));
     const keyStage = String(formData.get("keyStage") ?? "").trim();
 
-    // Timetable. Bounded so a slip cannot produce a 30-lesson day or a zero-minute period.
-    const lessonsPerDay = Number(formData.get("lessonsPerDay"));
-    const lessonMinutes = Number(formData.get("lessonMinutes"));
-    const breakMinutes = Number(formData.get("breakMinutes"));
-    const schoolStartTime = String(formData.get("schoolStartTime") ?? "").trim();
-    const validTime = /^([01]\d|2[0-3]):[0-5]\d$/.test(schoolStartTime);
+    // A new student takes the default timetable; it is edited above once they exist.
     const avatar = String(formData.get("avatar") ?? "").trim();
 
     if (!displayName || !username || pin.length < 4 || pin.length > 6 || !Number.isFinite(yearGroup) || !keyStage) {

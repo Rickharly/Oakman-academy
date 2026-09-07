@@ -90,6 +90,7 @@ model StudentProfile {
   feedback       TeacherFeedback[]
   overrides      ParentOverride[]
   dailySummaries DailySummary[]
+  readingEntries ReadingEntry[]
   reports        Report[]
   activityLogs   ActivityLog[]
   generatedQuestions Question[] @relation("GeneratedFor")
@@ -355,6 +356,7 @@ enum AssignmentKind {
   LESSON
   REVIEW
   CUSTOM
+  READING
 }
 
 enum AssignmentSource {
@@ -386,6 +388,8 @@ model DailyAssignment {
   lesson           Lesson?          @relation(fields: [lessonId], references: [id])
   reviewItemId     String?
   reviewItem       ReviewItem?      @relation(fields: [reviewItemId], references: [id])
+  readingTextId    String?
+  readingText      ReadingText?     @relation(fields: [readingTextId], references: [id])
   customTitle      String?
   customInstructions String?
   estimatedMinutes Int              @default(45)
@@ -398,9 +402,77 @@ model DailyAssignment {
   updatedAt        DateTime         @updatedAt
 
   lessonAttempts LessonAttempt[]
+  readingEntries ReadingEntry[]
 
   @@index([studentId, date])
   @@index([studentId, lessonId])
+}
+
+// ───────────────────────────── Reading (literacy) ─────────────────────────────
+
+/// A passage in the reading library: original writing for this school, so nothing here
+/// depends on a licence and no text is reproduced from memory.
+model ReadingText {
+  id               String   @id @default(cuid())
+  slug             String   @unique
+  title            String
+  author           String   @default("Oakman Academy")
+  /// Which year group it is pitched at.
+  yearGroup        Int
+  /// Reading order within the year.
+  order            Int
+  /// "fiction" | "non-fiction" | "poetry"
+  genre            String   @default("fiction")
+  body             String
+  wordCount        Int
+  estimatedMinutes Int      @default(20)
+  /// Short questions to think about after reading.
+  prompts          Json     @default("[]")
+  /// When set, this text ends in a longer written piece rather than a few sentences.
+  essayPrompt      String?
+  /// Vocabulary worth noticing, as {word, meaning}.
+  vocabulary       Json     @default("[]")
+  createdAt        DateTime @default(now())
+
+  entries     ReadingEntry[]
+  assignments DailyAssignment[]
+
+  @@index([yearGroup, order])
+}
+
+enum ReadingEntryKind {
+  RESPONSE
+  ESSAY
+}
+
+/// What a child wrote after reading, and how the teacher responded. Append-only, like every
+/// other piece of their work.
+model ReadingEntry {
+  id            String           @id @default(cuid())
+  studentId     String
+  student       StudentProfile   @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  readingTextId String
+  readingText   ReadingText      @relation(fields: [readingTextId], references: [id])
+  assignmentId  String?
+  assignment    DailyAssignment? @relation(fields: [assignmentId], references: [id])
+  kind          ReadingEntryKind @default(RESPONSE)
+  /// The prompt they were answering, copied in so the record stands alone.
+  prompt        String
+  response      String
+  submittedAt   DateTime         @default(now())
+  /// The teacher's reply, written to the child.
+  feedback      String?
+  /// A note for the parent, never shown to the child.
+  reasoning     String?
+  /// Only set for essays, which are marked; short responses are answered, not scored.
+  score         Float?
+  maxScore      Float?
+  strengths     Json             @default("[]")
+  nextSteps     Json             @default("[]")
+  gradedAt      DateTime?
+  model         String?
+
+  @@index([studentId, submittedAt])
 }
 
 // ───────────────────────────── Learning history (append-only) ─────────────────────────────

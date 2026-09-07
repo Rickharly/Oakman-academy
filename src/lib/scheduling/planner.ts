@@ -9,6 +9,8 @@ import { addDaysKey, dateOnlyKey, isoWeekday, schoolDayEnd, todayDateOnly, toDat
 
 const REVIEW_MINUTES = 15;
 const MAX_REVIEWS_PER_DAY = 2;
+/** The short reading slot that closes the day. Deliberately not a full period. */
+const READING_MINUTES = 20;
 
 export interface TodayView {
   dateKey: string;
@@ -25,7 +27,7 @@ export interface TodayView {
 }
 
 type Slot = {
-  kind: "REVIEW" | "LESSON";
+  kind: "REVIEW" | "LESSON" | "READING";
   subjectId?: string;
   lessonId?: string;
   reviewItemId?: string;
@@ -232,6 +234,17 @@ export async function planWeek(studentId: string, weekStart: string, opts?: { re
       }
       if (!added) break;
     }
+
+    // ── Reading closes the day. ──
+    // A short slot after the periods: read something, write a few sentences about it. The
+    // passage is chosen when they open it, not now, so a day planned in advance still gives
+    // them the next thing they have not read.
+    const hasReading =
+      slots.some((s) => s.kind === "READING") ||
+      existing.some((a) => a.kind === "READING" && a.status !== "MOVED" && dateOnlyKey(a.date) === dayKey);
+    if (!hasReading && (await prisma.readingText.count({ where: { yearGroup: student.yearGroup } })) > 0) {
+      slots.push({ kind: "READING", estimatedMinutes: READING_MINUTES });
+    }
   }
 
   const created: DailyAssignment[] = [];
@@ -263,6 +276,20 @@ export async function planWeek(studentId: string, weekStart: string, opts?: { re
             },
           }),
         ]);
+        created.push(row);
+      } else if (slot.kind === "READING") {
+        const row = await prisma.dailyAssignment.create({
+          data: {
+            studentId,
+            date: dayDate,
+            order: order++,
+            kind: "READING",
+            source: "AUTO",
+            status: "PLANNED",
+            customTitle: "Reading",
+            estimatedMinutes: slot.estimatedMinutes,
+          },
+        });
         created.push(row);
       } else {
         const row = await prisma.dailyAssignment.create({

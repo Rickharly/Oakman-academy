@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { AlertCircle, Clock, ArrowRight } from "lucide-react";
+import { AlertCircle, BookMarked, Clock, ArrowRight } from "lucide-react";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Card } from "@/components/ui/Card";
 import { Avatar } from "@/components/ui/Avatar";
@@ -37,7 +37,8 @@ export default async function AdminStudentOverviewPage({ params }: { params: Pro
   const { student } = await requireParentOfStudent(studentId);
 
   const dateKey = schoolDayKey();
-  const [overview, todayView, weekStrip, subjects, weakTopics, summaries, activity] = await Promise.all([
+  const [overview, todayView, weekStrip, subjects, weakTopics, summaries, activity, readingEntries] =
+    await Promise.all([
     getStudentOverview(studentId),
     getTodayView(studentId, dateKey),
     getWeekStrip(studentId, dateKey),
@@ -45,6 +46,12 @@ export default async function AdminStudentOverviewPage({ params }: { params: Pro
     getWeakTopics(studentId, 5),
     prisma.dailySummary.findMany({ where: { studentId }, orderBy: { date: "desc" }, take: 5 }),
     prisma.activityLog.findMany({ where: { studentId }, orderBy: { createdAt: "desc" }, take: 12 }),
+    prisma.readingEntry.findMany({
+      where: { studentId },
+      include: { readingText: { select: { title: true, genre: true } } },
+      orderBy: { submittedAt: "desc" },
+      take: 8,
+    }),
   ]);
 
   const todaySummary = summaries.find((s) => s.date.toISOString().slice(0, 10) === dateKey) ?? null;
@@ -213,6 +220,45 @@ export default async function AdminStudentOverviewPage({ params }: { params: Pro
           )}
         </Card>
       </div>
+
+      <Card padding="lg" className="space-y-4">
+        <h2 className="flex items-center gap-2 text-base font-semibold text-ink">
+          <BookMarked className="h-4 w-4 text-ink-muted" /> Reading &amp; writing
+        </h2>
+        {readingEntries.length === 0 ? (
+          <EmptyState title="Nothing written yet" description="Reading responses will appear here." />
+        ) : (
+          <ul className="divide-y divide-line">
+            {readingEntries.map((entry) => (
+              <li key={entry.id} className="space-y-2 py-4 first:pt-0 last:pb-0">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="text-sm font-medium text-ink">{entry.readingText.title}</span>
+                  {entry.kind === "ESSAY" ? <Badge tone="warning">Essay</Badge> : null}
+                  {entry.score != null && entry.maxScore != null ? (
+                    <Badge tone="neutral">
+                      {entry.score} / {entry.maxScore}
+                    </Badge>
+                  ) : null}
+                  <span className="ml-auto shrink-0 text-xs text-ink-muted">
+                    {entry.submittedAt.toLocaleString("en-GB")}
+                  </span>
+                </div>
+                <p className="text-xs font-medium uppercase tracking-wide text-ink-muted">{entry.prompt}</p>
+                <p className="whitespace-pre-wrap text-sm text-ink">{entry.response}</p>
+                {entry.feedback ? (
+                  <p className="rounded-2xl bg-stone-50 p-3 text-sm text-ink-muted">
+                    <span className="font-medium text-ink">Teacher: </span>
+                    {entry.feedback}
+                  </p>
+                ) : null}
+                {entry.reasoning ? (
+                  <p className="text-xs text-ink-faint">Marker&apos;s note: {entry.reasoning}</p>
+                ) : null}
+              </li>
+            ))}
+          </ul>
+        )}
+      </Card>
 
       <Card padding="lg" className="space-y-4">
         <h2 className="flex items-center gap-2 text-base font-semibold text-ink">

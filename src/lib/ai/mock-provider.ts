@@ -127,6 +127,31 @@ function fakeDataFor(schemaName: string, system: string, messages: ChatMessage[]
           },
         ],
       };
+    case "readingResponse": {
+      // Echoes a few of the child's own words back, so a test can prove their writing
+      // actually reached the teacher.
+      const written = (messages[messages.length - 1]?.content ?? "").split('"""')[3]?.trim() ?? "";
+      const opening = written.split(/\s+/).slice(0, 6).join(" ");
+      return {
+        feedback: `I liked where you said "${opening}…". What made you think that? Look again at the part just before it.`,
+        reasoning: "Short reading-journal response; engaged with the text and offered an opinion.",
+        strengths: ["gave an opinion about the text"],
+        nextSteps: ["point to the words that gave you the idea"],
+      };
+    }
+    case "readingEssay": {
+      const written = (messages[messages.length - 1]?.content ?? "").split('"""')[3]?.trim() ?? "";
+      const words = written.split(/\s+/).filter(Boolean).length;
+      // Longer, more developed pieces score higher — enough for a test to tell them apart.
+      const score = Math.max(1, Math.min(8, Math.round(words / 20)));
+      return {
+        score,
+        feedback: "You make a clear point and back it up. Next time, use a short quotation to prove it.",
+        reasoning: `Essay of about ${words} words; argument present, evidence use developing.`,
+        strengths: ["clear point", "own voice"],
+        nextSteps: ["quote directly from the text"],
+      };
+    }
     case "worksheet":
       return {
         questions: [
