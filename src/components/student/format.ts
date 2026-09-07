@@ -43,3 +43,21 @@ export function greetingForHour(hour: number): string {
 export function firstName(displayName: string): string {
   return displayName.trim().split(/\s+/)[0] ?? displayName;
 }
+
+/** `LessonStatus` (SCREAMING_SNAKE) → the kebab-case token `Badge` expects. */
+export function lessonStatusToBadge(
+  status: "NOT_STARTED" | "IN_PROGRESS" | "COMPLETED" | "NEEDS_REVIEW" | "MASTERED"
+): "not-started" | "in-progress" | "completed" | "needs-review" | "mastered" {
+  switch (status) {
+    case "NOT_STARTED":
+      return "not-started";
+    case "IN_PROGRESS":
+      return "in-progress";
+    case "COMPLETED":
+      return "completed";
+    case "NEEDS_REVIEW":
+      return "needs-review";
+    case "MASTERED":
+      return "mastered";
+  }
+}
