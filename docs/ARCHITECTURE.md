@@ -242,6 +242,38 @@ generatePractice(...)        3 short AI_GENERATED questions for a misconception
 - Entries are append-only like the rest of the learning history; the parent sees every one on
   the student overview.
 
+## 8b. Engagement: how the day was actually worked
+
+`src/lib/engagement/service.ts`:
+
+- `SchoolDay` anchors the day to the moment the first lesson starts. Lateness is recorded once,
+  on the day. Every later period is then due a break's length after the previous one ended
+  (`expectedStart`), so a late start shifts the day rather than making every period late.
+- `LessonAttempt.activeSeconds / idleSeconds / awaySeconds` split the period. The browser sends
+  the split every 30s; the server clamps each slice to 600s and only writes to the sending
+  child's own attempt.
+- Idle = no pointer, key, scroll or touch event for `IDLE_AFTER_SECONDS` (120). This is a weak
+  proxy and is treated as one: it is reported next to the work, never instead of it.
+- `FocusEvent` records a gap the child explained — "I need a moment" → toilet, drink, called
+  away, something else. Flagged time is excluded from the focus ratio rather than counted
+  against them. One open event at a time; an event left open is capped at two hours.
+- Nothing here is shown to the child. A child watching a focus score learns to game it.
+
+## 8c. The academic record (for a receiving school)
+
+`src/lib/records/academic-record.ts` builds the cumulative record and
+`/admin/students/[id]/record` renders it for print.
+
+It is **not** a transcript, and does not imitate one: no province issues transcripts for
+home-educated children, and placement is decided by the receiving principal, often after their
+own assessment. The record is therefore built as evidence — coverage against the English
+National Curriculum (via the Oak programme), every assessment with its real date and score,
+attendance and instructional hours from `SchoolDay`/`LessonAttempt`, and verbatim work samples.
+Subject notes come from the AI teacher, grounded in the units actually covered, and the
+provenance paragraph says so on the face of the document. Subjects with nothing finished are
+omitted. `saveAcademicRecord` stores the issued document (`Report.period = ACADEMIC_RECORD`) so
+the exact page handed over can be reproduced.
+
 ## 9. Oak integration plan
 
 Source of truth: `vendor/oak/openapi.json` (Oak OpenAPI 0.7.0). Types in `src/lib/oak/openapi.d.ts`
