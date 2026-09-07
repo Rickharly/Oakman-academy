@@ -4,6 +4,7 @@
  * for the exact exported signatures.
  */
 import { prisma } from "@/lib/db";
+import { recordAttemptPunctuality } from "@/lib/engagement/service";
 import { Prisma } from "@/generated/prisma/client";
 import type {
   ActivityAttempt,
@@ -193,6 +194,10 @@ export async function startOrResumeAttempt(
   await prisma.activityLog.create({
     data: { studentId, kind: "lesson_started", data: { lessonId, attemptId: attempt.id, attemptNumber: attempt.attemptNumber } },
   });
+
+  // Anchors the school day on the first lesson and records how punctually this period began.
+  // Never fatal: a child must be able to start a lesson even if the bookkeeping fails.
+  await recordAttemptPunctuality(attempt).catch(() => undefined);
 
   return attempt;
 }

@@ -89,6 +89,11 @@ async function main() {
 
   // The reading library is bundled content, not learning history: upserting it every boot is
   // how a passage added to a fixture file reaches the children without a special command.
+  if (mode === "never") {
+    console.log("[seed] SEED_MODE=never — nothing to do.");
+    return;
+  }
+
   const readingTexts = await seedReadingLibrary();
   console.log(`[seed] reading library: ${readingTexts} passage(s).`);
 
