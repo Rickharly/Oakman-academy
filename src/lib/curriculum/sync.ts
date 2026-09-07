@@ -108,7 +108,7 @@ async function downloadAsset(
           ? "mp4"
           : "bin";
     await fs.mkdir(dir, { recursive: true });
-    const filePath = path.join(dir, `${asset.type}.${ext}`);
+    const filePath = path.join(/* turbopackIgnore: true */ dir, `${asset.type}.${ext}`);
     await fs.writeFile(filePath, Buffer.from(await res.arrayBuffer()));
     return filePath;
   } catch (err) {

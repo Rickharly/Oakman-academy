@@ -1,19 +1,45 @@
 import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "@/generated/prisma/client";
 
-const globalForPrisma = globalThis as unknown as { prisma?: PrismaClient };
+/**
+ * The Prisma client, created lazily on first use.
+ *
+ * Construction is deferred deliberately: `next build` imports every route's module graph to
+ * collect its configuration, and a build machine has no database. Connecting at import time
+ * makes the build fail wherever `DATABASE_URL` is absent (Railway injects it at runtime, not
+ * during the build). Deferring means a missing URL is reported when a request actually needs
+ * the database, which is the only moment it matters.
+ */
+const globalForPrisma = globalThis as unknown as { prismaClient?: PrismaClient };
 
-function createClient() {
+function createClient(): PrismaClient {
   const connectionString = process.env.DATABASE_URL;
   if (!connectionString) {
-    throw new Error("DATABASE_URL is not set");
+    throw new Error(
+      "DATABASE_URL is not set. Add the Postgres connection string to the environment " +
+        "(on Railway, add the PostgreSQL plugin and it is injected automatically).",
+    );
   }
-  const adapter = new PrismaPg({ connectionString });
-  return new PrismaClient({ adapter });
+  return new PrismaClient({ adapter: new PrismaPg({ connectionString }) });
 }
 
-export const prisma: PrismaClient = globalForPrisma.prisma ?? createClient();
+function getClient(): PrismaClient {
+  const existing = globalForPrisma.prismaClient;
+  if (existing) return existing;
 
-if (process.env.NODE_ENV !== "production") {
-  globalForPrisma.prisma = prisma;
+  // Cached on globalThis so hot reloads in development reuse one connection pool.
+  const client = createClient();
+  globalForPrisma.prismaClient = client;
+  return client;
 }
+
+export const prisma: PrismaClient = new Proxy({} as PrismaClient, {
+  get(_target, property) {
+    const client = getClient();
+    const value = Reflect.get(client, property) as unknown;
+    return typeof value === "function" ? value.bind(client) : value;
+  },
+  has(_target, property) {
+    return Reflect.has(getClient(), property);
+  },
+});
