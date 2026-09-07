@@ -12,6 +12,7 @@ import { QuestionRenderer } from "@/components/student/questions/QuestionRendere
 import type { QuestionResult, StudentQuestionLite } from "@/components/student/questions/types";
 import { TeacherPanel } from "@/components/student/TeacherPanel";
 import { subjectTheme } from "@/components/student/subjectTheme";
+import { SubjectArt } from "@/components/student/SubjectArt";
 import { formatMinutes } from "@/components/student/format";
 import { cn } from "@/lib/cn";
 
@@ -661,6 +662,7 @@ export function LessonPlayer(props: LessonPlayerProps) {
   return (
     <div className="space-y-6">
       <div className="space-y-4">
+        <SubjectArt subjectSlug={subjectSlug} className="h-20 sm:h-24" />
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="min-w-0 space-y-1">
             <div className="flex flex-wrap items-center gap-2">

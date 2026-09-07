@@ -6,6 +6,7 @@ import { PageHeader } from "@/components/ui/PageHeader";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { ProgressRing } from "@/components/ui/ProgressRing";
 import { subjectTheme } from "@/components/student/subjectTheme";
+import { SubjectGlyph } from "@/components/student/SubjectArt";
 
 export default async function SubjectsPage() {
   const user = await requireStudent();
@@ -44,12 +45,17 @@ export default async function SubjectsPage() {
               <Link
                 key={s.subject.id}
                 href={`/subjects/${s.subject.slug}`}
-                className="card card-hover flex items-start justify-between gap-4 p-6"
+                className="card card-hover flex items-start justify-between gap-4 overflow-hidden p-6"
               >
                 <div className="min-w-0 space-y-3">
-                  <span className={`text-xs font-semibold uppercase tracking-wide ${theme.text}`}>
-                    {s.subject.title}
-                  </span>
+                  <div className="flex items-center gap-3">
+                    <span className={`flex h-10 w-16 shrink-0 items-center justify-center rounded-xl ${theme.soft}`}>
+                      <SubjectGlyph subjectSlug={s.subject.slug} className="h-7 w-14" />
+                    </span>
+                    <span className={`text-xs font-semibold uppercase tracking-wide ${theme.text}`}>
+                      {s.subject.title}
+                    </span>
+                  </div>
                   <div>
                     <p className="text-2xl font-semibold text-ink">{s.completionPct}%</p>
                     <p className="text-sm text-ink-muted">

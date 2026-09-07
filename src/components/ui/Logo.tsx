@@ -85,6 +85,34 @@ export function LogoMark({ size = 32, className, title = "Oakman Academy" }: Log
   );
 }
 
+/**
+ * The full lockup: crest above a serif wordmark with a ruled "ACADEMY", as on the crest
+ * artwork. Used where the school introduces itself — the login screens.
+ */
+export function LogoLockup({ size = 96, className }: LogoProps) {
+  return (
+    <div className={`flex flex-col items-center ${className ?? ""}`}>
+      <LogoMark size={size} />
+      <p
+        className="mt-4 font-serif tracking-[0.06em] text-brand-navy"
+        style={{ fontSize: size * 0.34, lineHeight: 1 }}
+      >
+        OAKMAN
+      </p>
+      <div className="mt-2 flex w-full items-center justify-center gap-3">
+        <span className="h-px flex-1 max-w-14 bg-brand-gold/60" />
+        <span
+          className="font-serif uppercase tracking-[0.3em] text-brand-gold"
+          style={{ fontSize: size * 0.13, lineHeight: 1 }}
+        >
+          Academy
+        </span>
+        <span className="h-px flex-1 max-w-14 bg-brand-gold/60" />
+      </div>
+    </div>
+  );
+}
+
 /** The mark with the wordmark beside it, for headers and the login card. */
 export function Logo({ size = 32, className }: LogoProps) {
   return (

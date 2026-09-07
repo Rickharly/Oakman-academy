@@ -30,6 +30,22 @@ function nextId() {
   return `msg-${idCounter}`;
 }
 
+/** Three softly pulsing dots, shown while the teacher composes a reply. */
+function TypingDots() {
+  return (
+    <span className="flex items-center gap-1 py-1" role="status" aria-label="Your teacher is thinking">
+      <span className="sr-only">Your teacher is thinking…</span>
+      {[0, 1, 2].map((i) => (
+        <span
+          key={i}
+          className="h-1.5 w-1.5 rounded-full bg-ink-faint animate-typing-dot"
+          style={{ animationDelay: `${i * 160}ms` }}
+        />
+      ))}
+    </span>
+  );
+}
+
 export function TeacherPanel({ lessonAttemptId, questionId, stage, className }: TeacherPanelProps) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
@@ -48,8 +64,15 @@ export function TeacherPanel({ lessonAttemptId, questionId, stage, className }: 
 
     setError(null);
     setInput("");
-    setMessages((prev) => [...prev, { id: nextId(), role: "user", content: message }]);
     const assistantId = nextId();
+    // The teacher's bubble appears straight away, before the request is even sent: the model
+    // can take a few seconds to produce its first word, and a child staring at an unchanged
+    // screen has no way to tell whether their question was heard.
+    setMessages((prev) => [
+      ...prev,
+      { id: nextId(), role: "user", content: message },
+      { id: assistantId, role: "assistant", content: "" },
+    ]);
     setSending(true);
 
     try {
@@ -73,14 +96,13 @@ export function TeacherPanel({ lessonAttemptId, questionId, stage, className }: 
           // ignore — keep default message
         }
         setError(detail);
+        setMessages((prev) => prev.filter((m) => m.id !== assistantId));
         setSending(false);
         return;
       }
 
       const nextConversationId = res.headers.get("X-Conversation-Id");
       if (nextConversationId) setConversationId(nextConversationId);
-
-      setMessages((prev) => [...prev, { id: assistantId, role: "assistant", content: "" }]);
 
       const reader = res.body.getReader();
       const decoder = new TextDecoder();
@@ -95,6 +117,7 @@ export function TeacherPanel({ lessonAttemptId, questionId, stage, className }: 
       }
     } catch {
       setError("Couldn't reach your teacher right now. Please try again.");
+      setMessages((prev) => prev.filter((m) => m.id === assistantId ? m.content.length > 0 : true));
     } finally {
       setSending(false);
     }
@@ -150,7 +173,11 @@ export function TeacherPanel({ lessonAttemptId, questionId, stage, className }: 
                   : "bg-stone-100 text-ink",
               )}
             >
-              {m.content || (m.role === "assistant" && sending ? "…" : "")}
+              {m.content ? (
+                m.content
+              ) : m.role === "assistant" ? (
+                <TypingDots />
+              ) : null}
             </div>
           ))
         )}
