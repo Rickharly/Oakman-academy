@@ -16,7 +16,15 @@ when a key is configured, and from a bundled sample curriculum otherwise.
 2. **Add Postgres**: *+ New* → *Database* → *PostgreSQL*. Railway injects `DATABASE_URL`
    into the service automatically. If it does not, add a variable
    `DATABASE_URL=${{Postgres.DATABASE_URL}}` on the web service.
-3. **Set variables** on the web service:
+3. **Set variables** on the web service. Railway does **not** share the database plugin's
+   variables with other services automatically, so `DATABASE_URL` has to be referenced
+   explicitly — this is the single most common reason a deploy crashloops:
+
+   ```
+   DATABASE_URL = ${{Postgres.DATABASE_URL}}
+   ```
+
+   (replace `Postgres` with the exact name of your database service). Then the rest:
 
    | Variable | Value |
    |---|---|

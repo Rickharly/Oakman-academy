@@ -29,5 +29,9 @@ export function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|api/auth|login|student-login|favicon.ico|.*\\..*).*)"],
+  matcher: [
+    // `api/health` is excluded so the platform health check gets a plain 200 rather than
+    // a redirect to a login page.
+    "/((?!_next/static|_next/image|api/auth|api/health|login|student-login|favicon.ico|.*\\..*).*)",
+  ],
 };

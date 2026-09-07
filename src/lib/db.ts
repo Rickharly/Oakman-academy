@@ -1,5 +1,6 @@
 import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "@/generated/prisma/client";
+import { resolveDatabaseUrl, MISSING_DATABASE_URL_MESSAGE } from "@/lib/database-url";
 
 /**
  * The Prisma client, created lazily on first use.
@@ -13,12 +14,9 @@ import { PrismaClient } from "@/generated/prisma/client";
 const globalForPrisma = globalThis as unknown as { prismaClient?: PrismaClient };
 
 function createClient(): PrismaClient {
-  const connectionString = process.env.DATABASE_URL;
+  const connectionString = resolveDatabaseUrl();
   if (!connectionString) {
-    throw new Error(
-      "DATABASE_URL is not set. Add the Postgres connection string to the environment " +
-        "(on Railway, add the PostgreSQL plugin and it is injected automatically).",
-    );
+    throw new Error(MISSING_DATABASE_URL_MESSAGE);
   }
   return new PrismaClient({ adapter: new PrismaPg({ connectionString }) });
 }
