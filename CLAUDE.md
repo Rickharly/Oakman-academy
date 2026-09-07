@@ -1,4 +1,4 @@
-# Family School — engineering conventions
+# Oakman Academy — engineering conventions
 
 Read `docs/ARCHITECTURE.md` first; `prisma/schema.prisma` is the data contract.
 

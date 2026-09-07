@@ -1,13 +1,17 @@
 import type { ReactNode } from "react";
+import { LogoMark } from "@/components/ui/Logo";
 
 export default function AuthLayout({ children }: { children: ReactNode }) {
   return (
-    <div className="flex min-h-screen w-full items-center justify-center bg-stone-50 px-4 py-12">
+    <div className="flex min-h-screen w-full items-center justify-center bg-surface px-4 py-12">
       <div className="w-full max-w-md">
-        <p className="mb-8 text-center text-sm font-medium uppercase tracking-wide text-stone-400">
-          Family School
-        </p>
-        <div className="rounded-2xl border border-stone-200 bg-white p-8 shadow-sm">{children}</div>
+        <div className="mb-8 flex flex-col items-center gap-3">
+          <LogoMark size={72} />
+          <div className="text-center leading-none">
+            <p className="text-xl font-semibold tracking-tight text-brand-navy">Oakman Academy</p>
+          </div>
+        </div>
+        <div className="rounded-2xl border border-line bg-surface-raised p-8">{children}</div>
       </div>
     </div>
   );

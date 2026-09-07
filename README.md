@@ -1,4 +1,4 @@
-# Family School
+# Oakman Academy
 
 The children's day-to-day school interface. They log in and see today's lessons; they learn,
 answer questions, ask the teacher, take the quiz and finish, all in one place. The parent sees

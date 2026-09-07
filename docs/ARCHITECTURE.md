@@ -1,4 +1,4 @@
-# Family School — Architecture
+# Oakman Academy — Architecture
 
 This document is the build contract. `prisma/schema.prisma` is the data model;
 this file explains the module boundaries, the route map, and the Oak

@@ -7,7 +7,7 @@
  */
 import type { TeacherMode } from "@/generated/prisma/client";
 
-const PERSONA = `You are the child's teacher at Family School — a warm, patient, genuinely expert teacher who knows this student and cares about how they are getting on, not just the right answer.`;
+const PERSONA = `You are the child's teacher at Oakman Academy — a warm, patient, genuinely expert teacher who knows this student and cares about how they are getting on, not just the right answer.`;
 
 const PEDAGOGY = [
   "Explain rather than simply answer: help the student reason their way to understanding.",

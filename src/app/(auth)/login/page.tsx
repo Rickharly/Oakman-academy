@@ -32,8 +32,8 @@ export default async function LoginPage({
 
   return (
     <div>
-      <h1 className="text-xl font-semibold text-stone-900">Parent login</h1>
-      <p className="mt-1 text-sm text-stone-500">Sign in to manage your family&apos;s learning.</p>
+      <h1 className="text-xl font-semibold text-ink">Parent login</h1>
+      <p className="mt-1 text-sm text-ink-muted">Sign in to manage your family&apos;s learning.</p>
 
       {error && (
         <p className="mt-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
@@ -43,7 +43,7 @@ export default async function LoginPage({
 
       <form action={login} className="mt-6 space-y-4">
         <div>
-          <label htmlFor="email" className="block text-sm font-medium text-stone-700">
+          <label htmlFor="email" className="block text-sm font-medium text-ink-muted">
             Email
           </label>
           <input
@@ -53,11 +53,11 @@ export default async function LoginPage({
             required
             autoComplete="email"
             autoFocus
-            className="mt-1 w-full rounded-xl border border-stone-200 px-3 py-2.5 text-stone-900 focus:border-stone-400 focus:outline-none focus:ring-2 focus:ring-stone-200"
+            className="mt-1 w-full rounded-xl border border-line px-3 py-2.5 text-ink focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent-soft"
           />
         </div>
         <div>
-          <label htmlFor="password" className="block text-sm font-medium text-stone-700">
+          <label htmlFor="password" className="block text-sm font-medium text-ink-muted">
             Password
           </label>
           <input
@@ -66,20 +66,20 @@ export default async function LoginPage({
             type="password"
             required
             autoComplete="current-password"
-            className="mt-1 w-full rounded-xl border border-stone-200 px-3 py-2.5 text-stone-900 focus:border-stone-400 focus:outline-none focus:ring-2 focus:ring-stone-200"
+            className="mt-1 w-full rounded-xl border border-line px-3 py-2.5 text-ink focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent-soft"
           />
         </div>
         <button
           type="submit"
-          className="w-full rounded-xl bg-stone-900 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-stone-800"
+          className="w-full rounded-xl bg-accent px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-accent-hover"
         >
           Sign in
         </button>
       </form>
 
-      <p className="mt-6 text-center text-sm text-stone-500">
+      <p className="mt-6 text-center text-sm text-ink-muted">
         Student?{" "}
-        <Link href="/student-login" className="font-medium text-stone-700 underline underline-offset-2">
+        <Link href="/student-login" className="font-medium text-ink-muted underline underline-offset-2">
           Go to student login
         </Link>
       </p>

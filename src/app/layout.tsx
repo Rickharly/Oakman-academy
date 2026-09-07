@@ -2,7 +2,7 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: { default: "Family School", template: "%s · Family School" },
+  title: { default: "Oakman Academy", template: "%s · Oakman Academy" },
   description: "Our school, every day.",
 };
 

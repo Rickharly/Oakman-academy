@@ -17,6 +17,7 @@ import {
 import { Avatar } from "@/components/ui/Avatar";
 import { Sheet } from "@/components/ui/Sheet";
 import { cn } from "@/lib/cn";
+import { LogoMark } from "@/components/ui/Logo";
 
 export type AdminNavProps = {
   displayName: string;
@@ -96,8 +97,12 @@ export function AdminNav({ displayName, avatar }: AdminNavProps) {
       {/* Sidebar (lg and up) */}
       <aside className="hidden lg:flex lg:w-64 lg:shrink-0 lg:flex-col lg:justify-between lg:border-r lg:border-line lg:bg-surface-raised lg:px-4 lg:py-6">
         <div className="space-y-6">
-          <Link href="/admin" className="block px-2 text-base font-semibold tracking-tight text-ink">
-            Family School
+          <Link
+            href="/admin"
+            className="flex items-center gap-2.5 px-2 text-base font-semibold tracking-tight text-brand-navy"
+          >
+            <LogoMark size={30} />
+            Oakman Academy
           </Link>
           <NavLinks pathname={pathname} />
         </div>
@@ -106,8 +111,9 @@ export function AdminNav({ displayName, avatar }: AdminNavProps) {
 
       {/* Top bar (below lg) */}
       <header className="lg:hidden sticky top-0 z-40 flex h-14 items-center justify-between border-b border-line bg-surface/90 px-4 backdrop-blur">
-        <Link href="/admin" className="text-base font-semibold tracking-tight text-ink">
-          Family School
+        <Link href="/admin" className="flex items-center gap-2 text-base font-semibold tracking-tight text-brand-navy">
+          <LogoMark size={26} />
+          Oakman Academy
         </Link>
         <button
           type="button"

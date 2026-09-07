@@ -1,4 +1,4 @@
-# Family School — Product & Technical Specification (source)
+# Oakman Academy — Product & Technical Specification (source)
 
 The original product specification, kept as the reference for product decisions.
 See ARCHITECTURE.md for how it maps onto the codebase.

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Home, BookOpen, TrendingUp, MessageCircle, LogOut, type LucideIcon } from "lucide-react";
 import { Avatar } from "@/components/ui/Avatar";
+import { LogoMark } from "@/components/ui/Logo";
 import { cn } from "@/lib/cn";
 
 export type StudentNavProps = {
@@ -38,8 +39,9 @@ export function StudentNav({ displayName, avatar }: StudentNavProps) {
       {/* Top bar (md and up) */}
       <header className="hidden md:block sticky top-0 z-40 border-b border-line bg-surface/90 backdrop-blur">
         <div className="mx-auto flex h-16 w-full max-w-5xl items-center justify-between px-6">
-          <Link href="/today" className="text-base font-semibold tracking-tight text-ink">
-            Family School
+          <Link href="/today" className="flex items-center gap-2.5 text-base font-semibold tracking-tight text-brand-navy">
+            <LogoMark size={28} />
+            Oakman Academy
           </Link>
 
           <nav className="flex items-center gap-1">
@@ -105,8 +107,9 @@ export function StudentNav({ displayName, avatar }: StudentNavProps) {
       {/* Mobile top bar: brand + account menu only (nav lives in the bottom tab bar) */}
       <header className="md:hidden sticky top-0 z-40 border-b border-line bg-surface/90 backdrop-blur">
         <div className="flex h-14 items-center justify-between px-4">
-          <Link href="/today" className="text-base font-semibold tracking-tight text-ink">
-            Family School
+          <Link href="/today" className="flex items-center gap-2.5 text-base font-semibold tracking-tight text-brand-navy">
+            <LogoMark size={28} />
+            Oakman Academy
           </Link>
           <div className="relative">
             <button

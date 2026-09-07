@@ -71,11 +71,11 @@ export function StudentLoginClient({ avatars }: { avatars: Avatar[] }) {
   if (!selected) {
     return (
       <div>
-        <h1 className="text-center text-xl font-semibold text-stone-900">Who&apos;s learning today?</h1>
-        <p className="mt-1 text-center text-sm text-stone-500">Tap your avatar to sign in.</p>
+        <h1 className="text-center text-xl font-semibold text-ink">Who&apos;s learning today?</h1>
+        <p className="mt-1 text-center text-sm text-ink-muted">Tap your avatar to sign in.</p>
 
         {avatars.length === 0 ? (
-          <p className="mt-8 text-center text-sm text-stone-500">
+          <p className="mt-8 text-center text-sm text-ink-muted">
             No student accounts yet. Ask a parent to add one.
           </p>
         ) : (
@@ -85,7 +85,7 @@ export function StudentLoginClient({ avatars }: { avatars: Avatar[] }) {
                 key={a.username}
                 type="button"
                 onClick={() => selectAvatar(a)}
-                className="flex min-h-24 flex-col items-center justify-center gap-2 rounded-2xl border border-stone-200 bg-stone-50 p-4 transition-colors hover:border-stone-300 hover:bg-white active:scale-[0.98]"
+                className="flex min-h-24 flex-col items-center justify-center gap-2 rounded-2xl border border-line bg-surface p-4 transition-colors hover:border-line-strong hover:bg-white active:scale-[0.98]"
               >
                 <span
                   className="flex h-16 w-16 items-center justify-center rounded-full bg-white text-3xl shadow-sm"
@@ -93,15 +93,15 @@ export function StudentLoginClient({ avatars }: { avatars: Avatar[] }) {
                 >
                   {a.avatar ?? "🙂"}
                 </span>
-                <span className="text-sm font-medium text-stone-800">{a.displayName}</span>
+                <span className="text-sm font-medium text-ink">{a.displayName}</span>
               </button>
             ))}
           </div>
         )}
 
-        <p className="mt-8 text-center text-sm text-stone-500">
+        <p className="mt-8 text-center text-sm text-ink-muted">
           Parent?{" "}
-          <Link href="/login" className="font-medium text-stone-700 underline underline-offset-2">
+          <Link href="/login" className="font-medium text-ink-muted underline underline-offset-2">
             Parent login
           </Link>
         </p>
@@ -111,19 +111,19 @@ export function StudentLoginClient({ avatars }: { avatars: Avatar[] }) {
 
   return (
     <div>
-      <button type="button" onClick={reset} className="text-sm font-medium text-stone-500 hover:text-stone-700">
+      <button type="button" onClick={reset} className="text-sm font-medium text-ink-muted hover:text-ink-muted">
         ← Back
       </button>
 
       <div className="mt-4 flex flex-col items-center">
         <span
-          className="flex h-16 w-16 items-center justify-center rounded-full bg-stone-50 text-3xl shadow-sm"
+          className="flex h-16 w-16 items-center justify-center rounded-full bg-surface text-3xl shadow-sm"
           aria-hidden
         >
           {selected.avatar ?? "🙂"}
         </span>
-        <h1 className="mt-3 text-lg font-semibold text-stone-900">{selected.displayName}</h1>
-        <p className="mt-1 text-sm text-stone-500">Enter your PIN</p>
+        <h1 className="mt-3 text-lg font-semibold text-ink">{selected.displayName}</h1>
+        <p className="mt-1 text-sm text-ink-muted">Enter your PIN</p>
       </div>
 
       <div className="mt-6 flex justify-center gap-3" aria-live="polite" aria-label="PIN entered">
@@ -131,7 +131,7 @@ export function StudentLoginClient({ avatars }: { avatars: Avatar[] }) {
           <span
             key={i}
             className={`h-3.5 w-3.5 rounded-full border border-stone-300 ${
-              i < pin.length ? "bg-stone-800" : "bg-transparent"
+              i < pin.length ? "bg-accent" : "bg-transparent"
             }`}
           />
         ))}
@@ -151,7 +151,7 @@ export function StudentLoginClient({ avatars }: { avatars: Avatar[] }) {
             inputMode="numeric"
             onClick={() => pressDigit(d)}
             disabled={submitting}
-            className="h-16 rounded-2xl border border-stone-200 bg-stone-50 text-2xl font-medium text-stone-800 transition-colors hover:bg-white active:scale-[0.98] disabled:opacity-50"
+            className="h-16 rounded-2xl border border-line bg-surface text-2xl font-medium text-ink transition-colors hover:bg-white active:scale-[0.98] disabled:opacity-50"
           >
             {d}
           </button>
@@ -160,7 +160,7 @@ export function StudentLoginClient({ avatars }: { avatars: Avatar[] }) {
           type="button"
           onClick={backspace}
           disabled={submitting}
-          className="h-16 rounded-2xl border border-stone-200 bg-stone-50 text-sm font-medium text-stone-600 transition-colors hover:bg-white active:scale-[0.98] disabled:opacity-50"
+          className="h-16 rounded-2xl border border-line bg-surface text-sm font-medium text-ink-muted transition-colors hover:bg-white active:scale-[0.98] disabled:opacity-50"
         >
           Delete
         </button>
@@ -169,7 +169,7 @@ export function StudentLoginClient({ avatars }: { avatars: Avatar[] }) {
           inputMode="numeric"
           onClick={() => pressDigit("0")}
           disabled={submitting}
-          className="h-16 rounded-2xl border border-stone-200 bg-stone-50 text-2xl font-medium text-stone-800 transition-colors hover:bg-white active:scale-[0.98] disabled:opacity-50"
+          className="h-16 rounded-2xl border border-line bg-surface text-2xl font-medium text-ink transition-colors hover:bg-white active:scale-[0.98] disabled:opacity-50"
         >
           0
         </button>
@@ -177,7 +177,7 @@ export function StudentLoginClient({ avatars }: { avatars: Avatar[] }) {
           type="button"
           onClick={confirm}
           disabled={submitting || pin.length < MIN_PIN_LENGTH}
-          className="h-16 rounded-2xl bg-stone-900 text-sm font-medium text-white transition-colors hover:bg-stone-800 active:scale-[0.98] disabled:opacity-50"
+          className="h-16 rounded-2xl bg-accent text-sm font-medium text-white transition-colors hover:bg-accent-hover active:scale-[0.98] disabled:opacity-50"
         >
           Enter
         </button>
