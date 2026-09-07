@@ -10,9 +10,15 @@ import { ProgressBar } from "@/components/ui/ProgressBar";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { subjectTheme } from "@/components/student/subjectTheme";
 import { firstName, formatDateWords, formatMinutes, greetingForHour } from "@/components/student/format";
+import { WelcomeOverlay } from "@/components/student/WelcomeOverlay";
 
-export default async function TodayPage() {
+export default async function TodayPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ welcome?: string }>;
+}) {
   const user = await requireStudent();
+  const { welcome } = await searchParams;
   const profileId = user.studentProfile.id;
   const dateKey = schoolDayKey();
 
@@ -25,8 +31,21 @@ export default async function TodayPage() {
   const view = await getTodayView(profileId, dateKey);
   const cards = view.assignments.filter((a) => a.status !== "MOVED");
 
+  // Shown once, the first time a child ever opens the school. `?welcome=1` replays it so a
+  // parent can walk them through it again without touching the database.
+  const preferences = (user.studentProfile.preferences ?? {}) as Record<string, unknown>;
+  const preview = welcome === "1";
+  const showWelcome = preview || !preferences.welcomeSeenAt;
+
   return (
     <div className="space-y-8">
+      {showWelcome ? (
+        <WelcomeOverlay
+          firstName={firstName(user.displayName)}
+          yearGroup={user.studentProfile.yearGroup}
+          persist={!preview}
+        />
+      ) : null}
       <div className="space-y-1">
         <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight text-ink">{greeting}</h1>
         <p className="text-sm sm:text-base text-ink-muted">{formatDateWords(dateKey)}</p>
