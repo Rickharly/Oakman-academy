@@ -56,7 +56,7 @@ SEED_RESET_CREDENTIALS = true
 ```
 
 Redeploy, log in, then **delete that variable** so it doesn't reset your password again. It also
-resets the students' PINs to Eva `1234` and Mikhail `5678`. The deploy log prints the address the
+resets the students' PINs to Eva `1234` and Mikhael `5678`. The deploy log prints the address the
 parent account ended up on.
 
 ### First things to do after deploying
@@ -115,7 +115,7 @@ pnpm dev                      # http://localhost:3000
 ```
 
 Seeded accounts (change these immediately in production): the parent email and password from
-your `.env`, and the students `eva` (PIN `1234`) and `mikhail` (PIN `5678`).
+your `.env`, and the students `eva` (PIN `1234`) and `mikhael` (PIN `5678`).
 
 ## Commands
 

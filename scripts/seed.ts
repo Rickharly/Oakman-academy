@@ -28,10 +28,59 @@ const SCHEDULE_RULES: { subject: string; weeklyFrequency: number; priority: numb
   { subject: "geography", weeklyFrequency: 2, priority: 1 },
 ];
 
-const STUDENTS = [
+/**
+ * `previousUsernames` lets an account be renamed rather than duplicated: the seed looks the
+ * student up under the old name too, so a spelling correction reaches an account that already
+ * exists instead of quietly creating a second child alongside it.
+ */
+const STUDENTS: {
+  username: string;
+  displayName: string;
+  avatar: string;
+  pin: string;
+  yearGroup: number;
+  keyStage: string;
+  previousUsernames?: string[];
+}[] = [
   { username: "eva", displayName: "Eva", avatar: "🦊", pin: "1234", yearGroup: 7, keyStage: "ks3" },
-  { username: "mikhail", displayName: "Mikhail", avatar: "🐻", pin: "5678", yearGroup: 5, keyStage: "ks2" },
+  {
+    username: "mikhael",
+    displayName: "Mikhael",
+    avatar: "🐻",
+    pin: "5678",
+    yearGroup: 5,
+    keyStage: "ks2",
+    previousUsernames: ["mikhail"],
+  },
 ];
+
+/**
+ * Brings existing student accounts in line with the roster above — their username, how their
+ * name is displayed, and their emoji if they have not been given a photo. Never touches
+ * passwords, enrolments or any learning history.
+ */
+async function reconcileStudentIdentities(): Promise<void> {
+  for (const spec of STUDENTS) {
+    const user =
+      (await prisma.user.findUnique({ where: { username: spec.username } })) ??
+      (await prisma.user.findFirst({ where: { username: { in: spec.previousUsernames ?? [] } } }));
+    if (!user) continue;
+
+    const keepsPhoto = Boolean(user.avatar?.startsWith("data:"));
+    const changed = user.username !== spec.username || user.displayName !== spec.displayName;
+    if (!changed) continue;
+
+    await prisma.user.update({
+      where: { id: user.id },
+      data: {
+        username: spec.username,
+        displayName: spec.displayName,
+        ...(keepsPhoto ? {} : { avatar: spec.avatar }),
+      },
+    });
+    console.log(`[seed] renamed ${user.displayName} (@${user.username}) → ${spec.displayName} (@${spec.username})`);
+  }
+}
 
 async function main() {
   const mode = process.env.SEED_MODE ?? "if-empty";
@@ -40,7 +89,11 @@ async function main() {
   if (mode === "if-empty" && !resetCredentials) {
     const existing = await prisma.studentProfile.count();
     if (existing > 0) {
-      console.log(`[seed] ${existing} student profile(s) already exist — nothing to do.`);
+      // The expensive part (importing the curriculum) is skipped, but a child's name is
+      // cheap to reconcile and worth doing every deploy: a correction to how their name is
+      // spelled should reach them without anyone having to remember a flag.
+      await reconcileStudentIdentities();
+      console.log(`[seed] ${existing} student profile(s) already exist — curriculum import skipped.`);
       return;
     }
   }
@@ -110,18 +163,25 @@ async function main() {
 
   // ---- students, enrolments, schedules ----
   for (const spec of STUDENTS) {
-    const existingUser = await prisma.user.findUnique({
-      where: { username: spec.username },
-      include: { studentProfile: true },
-    });
+    const existingUser =
+      (await prisma.user.findUnique({
+        where: { username: spec.username },
+        include: { studentProfile: true },
+      })) ??
+      (await prisma.user.findFirst({
+        where: { username: { in: spec.previousUsernames ?? [] } },
+        include: { studentProfile: true },
+      }));
 
     const user = existingUser
       ? await prisma.user.update({
           where: { id: existingUser.id },
           data: {
+            username: spec.username,
             displayName: spec.displayName,
-            avatar: spec.avatar,
             role: "STUDENT",
+            // An uploaded photo is never replaced by the default emoji.
+            ...(existingUser.avatar && existingUser.avatar.startsWith("data:") ? {} : { avatar: spec.avatar }),
             ...(resetCredentials ? { passwordHash: await hashPassword(spec.pin) } : {}),
           },
         })

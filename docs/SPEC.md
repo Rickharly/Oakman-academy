@@ -26,7 +26,7 @@ but maintain our own copies of what is needed to operate the school.
 
 ## 3. User roles
 
-**Student** — each child has a completely separate account (Eva, Year 7; Mikhail, Year 5). A child
+**Student** — each child has a completely separate account (Eva, Year 7; Mikhael, Year 5). A child
 cannot access the other child's data.
 
 **Parent / Admin** — one primary admin account. Can see every student, today's work, every
@@ -166,4 +166,4 @@ Eva can: log in → see today's work → start a Year 7 Oak lesson → consume t
 worksheet questions in our UI → ask the AI teacher without explaining context → take the quiz →
 receive feedback → finish the lesson. The parent can log into Admin and see what she studied,
 every answer, what was correct, what AI said, her score, what she struggled with, whether she
-completed the lesson, and how that changed her progress. Mikhail does the same independently.
+completed the lesson, and how that changed her progress. Mikhael does the same independently.
