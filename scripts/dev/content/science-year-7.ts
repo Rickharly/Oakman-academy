@@ -70,8 +70,8 @@ export const scienceYear7: SubjectYearSpec = {
           worksheet: [
             { text: "Name two cell parts found in both animal cells and plant cells.", type: "short", answer: "nucleus and cytoplasm (or nucleus and cell membrane, or cytoplasm and cell membrane)" },
             { text: "Which cell part is the site of photosynthesis?", type: "short", answer: "chloroplast" },
-            { text: "Draw and label a plant cell, showing at least five labelled parts.", type: "extended" },
-            { text: "Explain why a plant cell needs a cell wall but an animal cell does not.", type: "extended" },
+            { text: "Draw and label a plant cell, showing at least five labelled parts.", type: "extended", answer: "A good answer shows a cell outline with at least five correctly labelled parts from: cell wall, cell membrane, cytoplasm, nucleus, permanent vacuole, chloroplast." },
+            { text: "Explain why a plant cell needs a cell wall but an animal cell does not.", type: "extended", answer: "A good answer explains that the cell wall gives a plant cell a rigid, fixed shape and support, which plants need since they don't have a skeleton, whereas animal cells don't need this rigid support in the same way." },
           ],
         },
         {
@@ -115,8 +115,8 @@ export const scienceYear7: SubjectYearSpec = {
           worksheet: [
             { text: "Name one adaptation of a red blood cell and explain how it helps the cell's function.", type: "short", answer: "Its biconcave shape gives a larger surface area for oxygen to move in and out (or it has no nucleus, giving more space to carry oxygen)." },
             { text: "Name the structure a sperm cell uses to swim.", type: "short", answer: "flagellum (tail)" },
-            { text: "Explain why a root hair cell has a long, thin extension.", type: "extended" },
-            { text: "Choose one specialised cell from this lesson and describe, in full sentences, how its structure suits its function.", type: "extended" },
+            { text: "Explain why a root hair cell has a long, thin extension.", type: "extended", answer: "A good answer explains that the long, thin extension increases the cell's surface area, giving it more contact with the soil so it can absorb water and minerals more quickly." },
+            { text: "Choose one specialised cell from this lesson and describe, in full sentences, how its structure suits its function.", type: "extended", answer: "A good answer names one cell (red blood cell, sperm cell or root hair cell), describes a specific structural feature, and explicitly links that feature to how it helps the cell carry out its job, e.g. the red blood cell's biconcave shape and lack of nucleus give it more space to carry oxygen." },
           ],
         },
         {
@@ -160,8 +160,8 @@ export const scienceYear7: SubjectYearSpec = {
           worksheet: [
             { text: "Define diffusion in your own words.", type: "short", answer: "The net movement of particles from an area of higher concentration to an area of lower concentration." },
             { text: "A perfume bottle is opened in the corner of a room. After ten minutes people across the whole room can smell it. What process explains this?", type: "short", answer: "diffusion" },
-            { text: "Explain why carbon dioxide diffuses out of a respiring cell, using the words 'concentration' and 'diffusion'.", type: "extended" },
-            { text: "Explain why diffusion does not require the cell to use energy.", type: "extended" },
+            { text: "Explain why carbon dioxide diffuses out of a respiring cell, using the words 'concentration' and 'diffusion'.", type: "extended", answer: "A good answer explains that respiration produces carbon dioxide as waste, making its concentration higher inside the cell than outside, so it diffuses (moves) from the higher concentration inside to the lower concentration outside." },
+            { text: "Explain why diffusion does not require the cell to use energy.", type: "extended", answer: "A good answer explains that diffusion happens because particles are always moving randomly on their own, so the net movement from high to low concentration occurs naturally without the cell needing to actively power the movement." },
           ],
         },
       ],
@@ -226,8 +226,8 @@ export const scienceYear7: SubjectYearSpec = {
           worksheet: [
             { text: "Name two examples of contact forces.", type: "short", answer: "friction and air resistance (or normal contact force)" },
             { text: "What device is used to measure the size of a force?", type: "short", answer: "a newton meter" },
-            { text: "A book rests on a table. Explain why the book does not fall, even though gravity is still acting on it.", type: "extended" },
-            { text: "Explain why magnetism is classed as a non-contact force, using an example.", type: "extended" },
+            { text: "A book rests on a table. Explain why the book does not fall, even though gravity is still acting on it.", type: "extended", answer: "A good answer explains that gravity pulls the book down, but the table pushes back up with an equal and opposite normal contact force, so the forces are balanced and the book stays still." },
+            { text: "Explain why magnetism is classed as a non-contact force, using an example.", type: "extended", answer: "A good answer explains that magnetism can act between two objects that are not touching, e.g. a magnet pulling a paperclip towards it before they touch, which is what makes it a non-contact force." },
           ],
         },
         {
@@ -271,8 +271,8 @@ export const scienceYear7: SubjectYearSpec = {
           worksheet: [
             { text: "Two forces of 450N and 450N act on an object in opposite directions. Are the forces balanced or unbalanced? Explain your answer.", type: "short", answer: "Balanced, because the two forces are equal in size and opposite in direction." },
             { text: "A resultant force acts on a stationary trolley. What will happen to the trolley?", type: "short", answer: "It will start to move (accelerate) in the direction of the resultant force." },
-            { text: "Explain why a book resting on a table is not moving, even though gravity is still acting on it.", type: "extended" },
-            { text: "A cyclist pedals with a force of 250N forwards while air resistance and friction together push back with 250N. Describe what happens to the cyclist's speed and explain why.", type: "extended" },
+            { text: "Explain why a book resting on a table is not moving, even though gravity is still acting on it.", type: "extended", answer: "A good answer explains that the table's normal contact force pushes up on the book with the same size force as gravity pulling down, so the forces are balanced and there is no change in motion." },
+            { text: "A cyclist pedals with a force of 250N forwards while air resistance and friction together push back with 250N. Describe what happens to the cyclist's speed and explain why.", type: "extended", answer: "A good answer states the cyclist's speed stays constant (does not change) because the forces are balanced (250N forward and 250N backward cancel out, giving a resultant force of 0N)." },
           ],
         },
         {
@@ -316,8 +316,8 @@ export const scienceYear7: SubjectYearSpec = {
           worksheet: [
             { text: "A walker covers 60 metres in 30 seconds. Calculate her speed in m/s.", type: "numeric", answer: "2" },
             { text: "A car travels 300 metres in 15 seconds. Calculate its speed in m/s.", type: "numeric", answer: "20" },
-            { text: "A runner completes a 400 metre race in 80 seconds. Explain how you would calculate her average speed, and give the answer.", type: "extended" },
-            { text: "Explain, using an everyday example, why a journey with lots of stops might have a low average speed even if the vehicle sometimes goes very fast.", type: "extended" },
+            { text: "A runner completes a 400 metre race in 80 seconds. Explain how you would calculate her average speed, and give the answer.", type: "extended", answer: "A good answer explains dividing total distance by total time (400 ÷ 80) and gives the correct answer of 5 m/s." },
+            { text: "Explain, using an everyday example, why a journey with lots of stops might have a low average speed even if the vehicle sometimes goes very fast.", type: "extended", answer: "A good answer gives an example (e.g. a bus stopping often in traffic) and explains that average speed uses the total distance divided by total time for the whole journey, so time spent stopped or slow pulls the average down even if the vehicle is fast at other points." },
           ],
         },
       ],

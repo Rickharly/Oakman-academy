@@ -1,0 +1,1923 @@
+{
+  "subject": {
+    "slug": "history",
+    "title": "History"
+  },
+  "programme": {
+    "sequenceSlug": "history-secondary",
+    "yearGroup": 7,
+    "keyStage": "ks3",
+    "phase": "secondary",
+    "title": "History — Year 7"
+  },
+  "units": [
+    {
+      "unitSlug": "the-norman-conquest",
+      "unitTitle": "The Norman Conquest",
+      "unitOrder": 1,
+      "description": "Pupils learn who had a claim to the English throne in 1066, why William of Normandy won the Battle of Hastings, and how the Normans took control of England afterwards.",
+      "whyThisWhyNow": "1066 is a hinge point in English history: it changes who rules the country, how land is owned, and even the language people speak. Starting Year 7 history here gives pupils a clear, well-evidenced story before they move on to the wider medieval period.",
+      "priorKnowledgeRequirements": [
+        "Pupils know that England has had monarchs (kings and queens) for a very long time.",
+        "Pupils understand that a kingdom needs a ruler, and that rulers can be challenged or replaced.",
+        "Pupils can place events on a simple timeline and understand that events happened in a particular order."
+      ],
+      "nationalCurriculumContent": [
+        "The development of Church, state and society in Medieval Britain 1066–1509.",
+        "The Norman Conquest, including the Battle of Hastings and Norman control of England.",
+        "Understand historical concepts such as continuity, change, cause and consequence.",
+        "Use evidence to construct historically valid accounts, including using sources such as the Bayeux Tapestry."
+      ],
+      "threads": [],
+      "categories": [],
+      "unitLessons": [
+        {
+          "lessonSlug": "norman-conquest-england-in-1066",
+          "lessonTitle": "England in 1066: three men, one throne",
+          "lessonOrder": 1,
+          "state": "published"
+        },
+        {
+          "lessonSlug": "norman-conquest-battle-of-hastings",
+          "lessonTitle": "The Battle of Hastings",
+          "lessonOrder": 2,
+          "state": "published"
+        },
+        {
+          "lessonSlug": "norman-conquest-norman-control-of-england",
+          "lessonTitle": "How the Normans took control of England",
+          "lessonOrder": 3,
+          "state": "published"
+        }
+      ]
+    },
+    {
+      "unitSlug": "medieval-life",
+      "unitTitle": "Medieval life",
+      "unitOrder": 2,
+      "description": "Pupils learn how the feudal system organised medieval society, the powerful role of the medieval Church in everyday life, and the causes and devastating impact of the Black Death.",
+      "whyThisWhyNow": "Having studied how the Normans took control of England, pupils now examine what life was actually like under that system — how society was structured, what people believed, and how a single event, the Black Death, changed medieval life forever.",
+      "priorKnowledgeRequirements": [
+        "Pupils know that William of Normandy took control of England after 1066 and gave land to Norman lords.",
+        "Pupils understand that medieval society had kings, nobles and ordinary people with very different amounts of power.",
+        "Pupils know that diseases can spread from person to person, especially where people live closely together."
+      ],
+      "nationalCurriculumContent": [
+        "The development of Church, state and society in Medieval Britain 1066–1509.",
+        "The role of the feudal system in structuring medieval society and landholding.",
+        "The power of the Church and its impact on medieval people's daily lives.",
+        "The Black Death and its social and economic impact on medieval Britain."
+      ],
+      "threads": [],
+      "categories": [],
+      "unitLessons": [
+        {
+          "lessonSlug": "medieval-life-the-feudal-system",
+          "lessonTitle": "The feudal system",
+          "lessonOrder": 1,
+          "state": "published"
+        },
+        {
+          "lessonSlug": "medieval-life-the-medieval-church",
+          "lessonTitle": "The medieval Church",
+          "lessonOrder": 2,
+          "state": "published"
+        },
+        {
+          "lessonSlug": "medieval-life-the-black-death",
+          "lessonTitle": "The Black Death",
+          "lessonOrder": 3,
+          "state": "published"
+        }
+      ]
+    }
+  ],
+  "lessons": {
+    "norman-conquest-england-in-1066": {
+      "summary": {
+        "lessonTitle": "England in 1066: three men, one throne",
+        "pupilLessonOutcome": "I can explain why three different men claimed the English throne in 1066.",
+        "keyLearningPoints": [
+          {
+            "keyLearningPoint": "King Edward the Confessor died in January 1066 without a son to inherit the throne."
+          },
+          {
+            "keyLearningPoint": "Harold Godwinson, the most powerful noble in England, was crowned king almost immediately after Edward's death."
+          },
+          {
+            "keyLearningPoint": "William, Duke of Normandy, claimed that Edward had promised him the throne and that Harold had sworn an oath to support his claim."
+          },
+          {
+            "keyLearningPoint": "Harald Hardrada, King of Norway, also claimed the throne and invaded northern England, believing an earlier Viking king's family had a right to it."
+          }
+        ],
+        "lessonKeywords": [
+          {
+            "keyword": "throne",
+            "description": "The position and power of being king or queen."
+          },
+          {
+            "keyword": "claim",
+            "description": "A statement that a person believes they have the right to something, such as a throne."
+          },
+          {
+            "keyword": "noble",
+            "description": "A person from a powerful, high-ranking family in medieval society, often owning large amounts of land."
+          }
+        ],
+        "misconceptionsAndCommonMistakes": [
+          {
+            "misconception": "Pupils think William of Normandy simply invaded England for no reason, out of nowhere.",
+            "response": "Explain that William believed he had a genuine claim to the throne — he said Edward had promised it to him, and that Harold had sworn to support him — so from William's point of view he was reclaiming what he saw as rightfully his, not attacking without cause."
+          },
+          {
+            "misconception": "Pupils think there were only two rivals for the throne in 1066 (Harold and William).",
+            "response": "Remind pupils there were three claimants: Harold Godwinson, William of Normandy, and Harald Hardrada of Norway, and that Harold actually had to fight two separate invasions in the same year."
+          }
+        ],
+        "teacherTips": [
+          {
+            "teacherTip": "Draw a simple diagram with Edward the Confessor in the centre and three arrows pointing to Harold, William and Hardrada, each labelled with their claim, so pupils can see the competing claims at a glance."
+          },
+          {
+            "teacherTip": "Stress that historians cannot be certain exactly what was promised or sworn, since our main sources (like the Bayeux Tapestry) were made by the winning side — this is a good early example of how sources can be biased."
+          }
+        ],
+        "contentGuidance": null,
+        "supervisionLevel": null,
+        "canonicalUrl": "https://example-fixture.invalid/lessons/norman-conquest-england-in-1066",
+        "oakUrl": "https://example-fixture.invalid/lessons/norman-conquest-england-in-1066",
+        "downloadsAvailable": true
+      },
+      "quiz": {
+        "starterQuiz": [
+          {
+            "question": "What do we call the position and power of being king or queen?",
+            "questionType": "multiple-choice",
+            "answers": [
+              {
+                "type": "text",
+                "content": "The parliament",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "The throne",
+                "distractor": false
+              },
+              {
+                "type": "text",
+                "content": "The empire",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "The council",
+                "distractor": true
+              }
+            ]
+          },
+          {
+            "question": "In medieval times, who would usually become king after a ruler died?",
+            "questionType": "multiple-choice",
+            "answers": [
+              {
+                "type": "text",
+                "content": "A randomly chosen noble",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "The ruler's eldest son",
+                "distractor": false
+              },
+              {
+                "type": "text",
+                "content": "The most popular citizen",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "The ruler's closest neighbour",
+                "distractor": true
+              }
+            ]
+          },
+          {
+            "question": "What do we call a powerful, high-ranking person in medieval society, often owning lots of land?",
+            "questionType": "short-answer",
+            "answers": [
+              {
+                "type": "text",
+                "content": "a noble"
+              },
+              {
+                "type": "text",
+                "content": "noble"
+              }
+            ]
+          }
+        ],
+        "exitQuiz": [
+          {
+            "question": "Who was crowned King of England almost immediately after Edward the Confessor died?",
+            "questionType": "multiple-choice",
+            "answers": [
+              {
+                "type": "text",
+                "content": "William of Normandy",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "Harold Godwinson",
+                "distractor": false
+              },
+              {
+                "type": "text",
+                "content": "Harald Hardrada",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "Edward's son",
+                "distractor": true
+              }
+            ]
+          },
+          {
+            "question": "Which TWO men, besides Harold, claimed the English throne in 1066? (select all that apply)",
+            "questionType": "multiple-choice",
+            "answers": [
+              {
+                "type": "text",
+                "content": "The Pope",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "William, Duke of Normandy",
+                "distractor": false
+              },
+              {
+                "type": "text",
+                "content": "The King of France",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "Harald Hardrada, King of Norway",
+                "distractor": false
+              }
+            ]
+          },
+          {
+            "question": "What did William of Normandy claim Harold had sworn to do?",
+            "questionType": "short-answer",
+            "answers": [
+              {
+                "type": "text",
+                "content": "support William's claim to the throne"
+              },
+              {
+                "type": "text",
+                "content": "help William become king"
+              }
+            ]
+          },
+          {
+            "question": "Match each man to his claim to the throne.",
+            "questionType": "match",
+            "answers": [
+              {
+                "matchOption": {
+                  "type": "text",
+                  "content": "Harold Godwinson"
+                },
+                "correctChoice": {
+                  "type": "text",
+                  "content": "Chosen by the Witan and crowned in London"
+                }
+              },
+              {
+                "matchOption": {
+                  "type": "text",
+                  "content": "William of Normandy"
+                },
+                "correctChoice": {
+                  "type": "text",
+                  "content": "Said Edward had promised him the throne"
+                }
+              },
+              {
+                "matchOption": {
+                  "type": "text",
+                  "content": "Harald Hardrada"
+                },
+                "correctChoice": {
+                  "type": "text",
+                  "content": "Based his claim on an earlier Viking king's agreement"
+                }
+              }
+            ]
+          },
+          {
+            "question": "Order these events: Edward the Confessor dies, the Witan chooses Harold as king, William begins preparing an invasion fleet, Harald Hardrada sails for England.",
+            "questionType": "order",
+            "answers": [
+              {
+                "order": 1,
+                "type": "text",
+                "content": "Edward the Confessor dies"
+              },
+              {
+                "order": 2,
+                "type": "text",
+                "content": "the Witan chooses Harold as king"
+              },
+              {
+                "order": 3,
+                "type": "text",
+                "content": "William begins preparing an invasion fleet"
+              },
+              {
+                "order": 4,
+                "type": "text",
+                "content": "Harald Hardrada sails for England"
+              }
+            ]
+          }
+        ]
+      },
+      "transcript": {
+        "transcript": "Welcome to Year 7 history. We're beginning with one of the most famous years in English history: 1066. By the end of this lesson you'll understand why three different men all believed they should be king of England, and why that mattered so much.\n\nOur story starts with King Edward the Confessor, who had ruled England for over twenty years. In January 1066, Edward died without a son to inherit the throne. In medieval England, this was a serious problem, because usually a king's eldest son would simply become the next king. With no obvious heir, several powerful men believed they had a right to rule instead.\n\nThe first claimant was Harold Godwinson. Harold was the most powerful noble in England, head of a very wealthy and influential family, and he was in London when Edward died. The Witan, a council of the most important nobles and churchmen, chose Harold as king, and he was crowned almost immediately, the very next day.\n\nBut Harold's crowning did not settle things, because two other men also believed the throne should be theirs. The second claimant was William, Duke of Normandy, a region in northern France. William claimed that years earlier, Edward the Confessor had promised him the throne. William also claimed that Harold himself, during a visit to Normandy, had sworn a solemn oath on holy relics to support William's claim to be king. When Harold instead took the crown for himself, William saw this as a broken promise, and began preparing an invasion fleet to take England by force.\n\nThe third claimant was Harald Hardrada, the King of Norway, a fearsome and experienced warrior. Hardrada based his claim on an old agreement made by an earlier Viking king of England, and he too gathered an army and sailed for England.\n\nA common mistake is to think William simply invaded for no reason at all. From his own point of view, he genuinely believed the throne had been promised to him and that Harold had broken an oath — that belief is exactly what drove him to fight for it. So by the autumn of 1066, Harold was king, but he faced two separate invading armies, from two different directions, both convinced the crown belonged to them instead. Next lesson, we'll find out what happened when these rival claims collided in battle."
+      },
+      "assets": {
+        "assets": [
+          {
+            "type": "worksheet",
+            "label": "Worksheet",
+            "url": "fixture://worksheet/norman-conquest-england-in-1066.pdf"
+          },
+          {
+            "type": "video",
+            "label": "Video",
+            "url": "fixture://video/norman-conquest-england-in-1066"
+          }
+        ],
+        "attribution": []
+      },
+      "worksheet": {
+        "questions": [
+          {
+            "number": "1",
+            "text": "Name the three men who claimed the English throne in 1066.",
+            "type": "short",
+            "answer": "Harold Godwinson, William of Normandy, and Harald Hardrada"
+          },
+          {
+            "number": "2",
+            "text": "Who chose Harold Godwinson as king?",
+            "type": "short",
+            "answer": "The Witan"
+          },
+          {
+            "number": "3",
+            "text": "Explain why William of Normandy believed he had a right to the English throne.",
+            "type": "extended",
+            "answer": "A good answer explains that William claimed Edward the Confessor had promised him the throne, and that Harold had sworn an oath to support William's claim, so William believed Harold's crowning had broken that promise."
+          },
+          {
+            "number": "4",
+            "text": "Why was it a problem that Edward the Confessor died without a son?",
+            "type": "extended",
+            "answer": "A good answer explains that in medieval England the throne usually passed to the king's eldest son, so with no obvious heir, several powerful men could argue they had a valid claim to become king instead."
+          }
+        ]
+      }
+    },
+    "norman-conquest-battle-of-hastings": {
+      "summary": {
+        "lessonTitle": "The Battle of Hastings",
+        "pupilLessonOutcome": "I can describe the key events of the Battle of Hastings and explain why William won.",
+        "keyLearningPoints": [
+          {
+            "keyLearningPoint": "Harold's army defeated Harald Hardrada's Viking invasion at the Battle of Stamford Bridge in the north, then marched south to face William."
+          },
+          {
+            "keyLearningPoint": "The Battle of Hastings took place on 14 October 1066, near the town of Hastings on the south coast of England."
+          },
+          {
+            "keyLearningPoint": "Harold's tired army formed a defensive shield wall on top of a hill, which William's forces struggled to break for most of the day."
+          },
+          {
+            "keyLearningPoint": "William's forces used a tactic of pretending to retreat, which drew some of Harold's soldiers out of position, weakening the shield wall; Harold was killed and the Normans won."
+          }
+        ],
+        "lessonKeywords": [
+          {
+            "keyword": "shield wall",
+            "description": "A defensive formation where soldiers stand close together holding their shields to form a solid barrier."
+          },
+          {
+            "keyword": "cavalry",
+            "description": "Soldiers who fight on horseback."
+          },
+          {
+            "keyword": "tactic",
+            "description": "A planned method or action used to achieve success in a battle."
+          }
+        ],
+        "misconceptionsAndCommonMistakes": [
+          {
+            "misconception": "Pupils think Harold's army was fresh and simply weaker or worse trained than William's.",
+            "response": "Point out that Harold's army had just fought and won a huge battle at Stamford Bridge in the north days earlier, then marched roughly 250 miles south in under three weeks — exhaustion, not lack of skill, was a major factor in their defeat."
+          },
+          {
+            "misconception": "Pupils think the pretend retreat was a sign the Normans were losing or panicking.",
+            "response": "Clarify that the retreats were a deliberate tactic to lure defenders away from the shield wall; some may have been genuine early on, but the Normans used the effect deliberately later in the battle to break the English formation."
+          }
+        ],
+        "teacherTips": [
+          {
+            "teacherTip": "Use a simple map showing Stamford Bridge in the north and Hastings in the south, with the approximate distance, so pupils grasp just how far and fast Harold's army had to march."
+          },
+          {
+            "teacherTip": "Reference the Bayeux Tapestry as a source pupils can look at, but remind them it was made for the Norman side, so it presents events from William's point of view."
+          }
+        ],
+        "contentGuidance": null,
+        "supervisionLevel": null,
+        "canonicalUrl": "https://example-fixture.invalid/lessons/norman-conquest-battle-of-hastings",
+        "oakUrl": "https://example-fixture.invalid/lessons/norman-conquest-battle-of-hastings",
+        "downloadsAvailable": true
+      },
+      "quiz": {
+        "starterQuiz": [
+          {
+            "question": "Who were the three claimants to the English throne in 1066?",
+            "questionType": "multiple-choice",
+            "answers": [
+              {
+                "type": "text",
+                "content": "Edward the Confessor, Harold, and William",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "Harold Godwinson, William of Normandy, and Harald Hardrada",
+                "distractor": false
+              },
+              {
+                "type": "text",
+                "content": "William, the Pope, and the King of France",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "Harold, his brother, and William",
+                "distractor": true
+              }
+            ]
+          },
+          {
+            "question": "Why did William believe he had a right to the throne?",
+            "questionType": "multiple-choice",
+            "answers": [
+              {
+                "type": "text",
+                "content": "He was Harold's brother",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "He said Edward had promised it to him and Harold had sworn an oath to support him",
+                "distractor": false
+              },
+              {
+                "type": "text",
+                "content": "He had already been crowned once before",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "He was chosen by the Witan",
+                "distractor": true
+              }
+            ]
+          },
+          {
+            "question": "Who was crowned king of England shortly after Edward the Confessor died?",
+            "questionType": "short-answer",
+            "answers": [
+              {
+                "type": "text",
+                "content": "Harold Godwinson"
+              },
+              {
+                "type": "text",
+                "content": "Harold"
+              }
+            ]
+          }
+        ],
+        "exitQuiz": [
+          {
+            "question": "Where did Harold's army fight and defeat Harald Hardrada's Viking force?",
+            "questionType": "multiple-choice",
+            "answers": [
+              {
+                "type": "text",
+                "content": "The Battle of Hastings",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "The Battle of Stamford Bridge",
+                "distractor": false
+              },
+              {
+                "type": "text",
+                "content": "The Battle of Normandy",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "The Battle of London",
+                "distractor": true
+              }
+            ]
+          },
+          {
+            "question": "Which factors contributed to William's victory at Hastings? (select all that apply)",
+            "questionType": "multiple-choice",
+            "answers": [
+              {
+                "type": "text",
+                "content": "Harold's army had no soldiers left",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "Harold's army was exhausted from marching and an earlier battle",
+                "distractor": false
+              },
+              {
+                "type": "text",
+                "content": "William's army greatly outnumbered Harold's from the very start",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "Some English soldiers broke the shield wall to chase a retreat",
+                "distractor": false
+              }
+            ]
+          },
+          {
+            "question": "What defensive formation did Harold's soldiers use at Hastings?",
+            "questionType": "short-answer",
+            "answers": [
+              {
+                "type": "text",
+                "content": "a shield wall"
+              },
+              {
+                "type": "text",
+                "content": "shield wall"
+              }
+            ]
+          },
+          {
+            "question": "Match each event to where it happened.",
+            "questionType": "match",
+            "answers": [
+              {
+                "matchOption": {
+                  "type": "text",
+                  "content": "Harold defeats Harald Hardrada"
+                },
+                "correctChoice": {
+                  "type": "text",
+                  "content": "Stamford Bridge, near York"
+                }
+              },
+              {
+                "matchOption": {
+                  "type": "text",
+                  "content": "Harold is killed and William wins"
+                },
+                "correctChoice": {
+                  "type": "text",
+                  "content": "Hastings, on the south coast"
+                }
+              },
+              {
+                "matchOption": {
+                  "type": "text",
+                  "content": "William's fleet lands in England"
+                },
+                "correctChoice": {
+                  "type": "text",
+                  "content": "The south coast of England"
+                }
+              }
+            ]
+          },
+          {
+            "question": "Order these events of 1066: Harold defeats Harald Hardrada at Stamford Bridge, Harold marches his army south, the two armies meet at Hastings, Harold is killed and the shield wall collapses.",
+            "questionType": "order",
+            "answers": [
+              {
+                "order": 1,
+                "type": "text",
+                "content": "Harold defeats Harald Hardrada at Stamford Bridge"
+              },
+              {
+                "order": 2,
+                "type": "text",
+                "content": "Harold marches his army south"
+              },
+              {
+                "order": 3,
+                "type": "text",
+                "content": "the two armies meet at Hastings"
+              },
+              {
+                "order": 4,
+                "type": "text",
+                "content": "Harold is killed and the shield wall collapses"
+              }
+            ]
+          }
+        ]
+      },
+      "transcript": {
+        "transcript": "Last lesson we met the three men who claimed the English throne in 1066. Today we find out what happened when their claims collided in battle.\n\nHarold Godwinson faced his first challenge in the north of England, at the Battle of Stamford Bridge, near York. Here, his army fought Harald Hardrada's invading Viking force and won a hard-fought, decisive victory. It was a huge relief for Harold — but there was no time to celebrate. News arrived that William of Normandy had landed on the south coast of England with his own invasion force. Harold had to march his army roughly two hundred and fifty miles south, in under three weeks, to meet this second threat.\n\nThe two armies met near the town of Hastings on 14th October 1066. Harold's soldiers, exhausted from their long march and the earlier battle, took up a strong defensive position on top of a hill. They formed what's called a shield wall: soldiers standing shoulder to shoulder, holding their shields together to create a solid, hard-to-break barrier, with William's Norman cavalry and archers attacking from below.\n\nFor most of the day, the shield wall held firm. William's cavalry charged uphill again and again, but the English line did not break. At some point during the battle, though, part of the Norman army appeared to retreat. Some of Harold's soldiers, perhaps believing the battle was already won, broke formation and chased after them down the hill. This turned out to be a costly mistake: once they left the shield wall, they were isolated and cut down by the Norman cavalry. Whether this retreat started by accident or design, William's forces used the effect deliberately, drawing more defenders away and steadily weakening the wall.\n\nAs the day wore on, the shield wall grew thinner and harder to hold. Late in the battle, Harold himself was killed, and without their king, the remaining English resistance collapsed. William had won.\n\nA common mistake is assuming Harold's army lost simply because it was weaker. In fact it had just won a major battle days earlier and marched an enormous distance at speed — exhaustion played a real part in the result, alongside William's tactics. Next lesson we'll look at what William did to take full control of England after this victory."
+      },
+      "assets": {
+        "assets": [
+          {
+            "type": "worksheet",
+            "label": "Worksheet",
+            "url": "fixture://worksheet/norman-conquest-battle-of-hastings.pdf"
+          },
+          {
+            "type": "video",
+            "label": "Video",
+            "url": "fixture://video/norman-conquest-battle-of-hastings"
+          }
+        ],
+        "attribution": []
+      },
+      "worksheet": {
+        "questions": [
+          {
+            "number": "1",
+            "text": "On what date was the Battle of Hastings fought?",
+            "type": "short",
+            "answer": "14 October 1066"
+          },
+          {
+            "number": "2",
+            "text": "What is a shield wall?",
+            "type": "short",
+            "answer": "A defensive formation where soldiers stand close together holding their shields to form a solid barrier."
+          },
+          {
+            "number": "3",
+            "text": "Explain two reasons why William won the Battle of Hastings.",
+            "type": "extended",
+            "answer": "A good answer gives two of: Harold's army was exhausted from marching south after Stamford Bridge, the Norman tactic of a pretend retreat drew defenders out of the shield wall, or Harold was killed, causing English resistance to collapse."
+          },
+          {
+            "number": "4",
+            "text": "Why might Harold's army have been at a disadvantage even before the battle began?",
+            "type": "extended",
+            "answer": "A good answer explains that Harold's army had just fought and won the Battle of Stamford Bridge in the north, then had to march about 250 miles south in under three weeks, leaving them tired before facing William."
+          }
+        ]
+      }
+    },
+    "norman-conquest-norman-control-of-england": {
+      "summary": {
+        "lessonTitle": "How the Normans took control of England",
+        "pupilLessonOutcome": "I can explain how William secured control of England after the Battle of Hastings.",
+        "keyLearningPoints": [
+          {
+            "keyLearningPoint": "William was crowned King of England on Christmas Day 1066, but conquering the whole country took several more years."
+          },
+          {
+            "keyLearningPoint": "William built hundreds of castles, such as motte and bailey castles, across England to control the local population and defend against rebellions."
+          },
+          {
+            "keyLearningPoint": "William replaced almost all English nobles who had owned land with Norman lords loyal to him, a process known as the 'feudal' redistribution of land."
+          },
+          {
+            "keyLearningPoint": "William commissioned the Domesday Book in 1086, a huge survey recording who owned every piece of land in England, so he could work out how much tax was owed."
+          }
+        ],
+        "lessonKeywords": [
+          {
+            "keyword": "motte and bailey castle",
+            "description": "An early type of Norman castle built quickly from earth and timber, with a mound (motte) topped by a tower and an enclosed courtyard (bailey) beside it."
+          },
+          {
+            "keyword": "feudal system",
+            "description": "A system of medieval society where land was held in exchange for loyalty and service, from the king down to the lowest peasant."
+          },
+          {
+            "keyword": "Domesday Book",
+            "description": "A huge survey completed in 1086 recording the ownership and value of land across England, made for William so he could calculate taxes."
+          }
+        ],
+        "misconceptionsAndCommonMistakes": [
+          {
+            "misconception": "Pupils think William controlled all of England immediately after winning at Hastings.",
+            "response": "Explain that winning the battle and being crowned was only the beginning — pockets of English resistance and rebellion continued for years afterwards, which is exactly why William needed to build so many castles across the country."
+          },
+          {
+            "misconception": "Pupils think castles were built mainly to look impressive or as a home for the king.",
+            "response": "Emphasise the practical military purpose: castles let a small number of Norman soldiers control a much larger local population, provide a safe base, and respond quickly to any local uprising."
+          }
+        ],
+        "teacherTips": [
+          {
+            "teacherTip": "Use a labelled diagram of a motte and bailey castle so pupils can see the mound, the tower, the ditch and the bailey rather than just imagining it from a description."
+          },
+          {
+            "teacherTip": "Discuss why the Domesday Book is such a valuable historical source — because it gives an extraordinarily detailed, dated snapshot of English society less than twenty years after the conquest."
+          }
+        ],
+        "contentGuidance": null,
+        "supervisionLevel": null,
+        "canonicalUrl": "https://example-fixture.invalid/lessons/norman-conquest-norman-control-of-england",
+        "oakUrl": "https://example-fixture.invalid/lessons/norman-conquest-norman-control-of-england",
+        "downloadsAvailable": true
+      },
+      "quiz": {
+        "starterQuiz": [
+          {
+            "question": "Who won the Battle of Hastings in 1066?",
+            "questionType": "multiple-choice",
+            "answers": [
+              {
+                "type": "text",
+                "content": "Harold Godwinson",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "William of Normandy",
+                "distractor": false
+              },
+              {
+                "type": "text",
+                "content": "Harald Hardrada",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "Edward the Confessor",
+                "distractor": true
+              }
+            ]
+          },
+          {
+            "question": "What happened to Harold during the Battle of Hastings?",
+            "questionType": "multiple-choice",
+            "answers": [
+              {
+                "type": "text",
+                "content": "He escaped to Norway",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "He was killed",
+                "distractor": false
+              },
+              {
+                "type": "text",
+                "content": "He surrendered peacefully",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "He became William's advisor",
+                "distractor": true
+              }
+            ]
+          },
+          {
+            "question": "What formation did Harold's soldiers use to defend themselves at Hastings?",
+            "questionType": "short-answer",
+            "answers": [
+              {
+                "type": "text",
+                "content": "a shield wall"
+              },
+              {
+                "type": "text",
+                "content": "shield wall"
+              }
+            ]
+          }
+        ],
+        "exitQuiz": [
+          {
+            "question": "When was William crowned King of England?",
+            "questionType": "multiple-choice",
+            "answers": [
+              {
+                "type": "text",
+                "content": "The day of the Battle of Hastings",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "Christmas Day 1066",
+                "distractor": false
+              },
+              {
+                "type": "text",
+                "content": "New Year 1067",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "Christmas 1067",
+                "distractor": true
+              }
+            ]
+          },
+          {
+            "question": "Why did William build so many castles across England? (select all that apply)",
+            "questionType": "multiple-choice",
+            "answers": [
+              {
+                "type": "text",
+                "content": "To use up spare building materials",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "To control the local population",
+                "distractor": false
+              },
+              {
+                "type": "text",
+                "content": "Because English nobles asked him to",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "To provide a base to respond to rebellions",
+                "distractor": false
+              }
+            ]
+          },
+          {
+            "question": "What was the huge land survey William ordered in 1086 called?",
+            "questionType": "short-answer",
+            "answers": [
+              {
+                "type": "text",
+                "content": "the Domesday Book"
+              },
+              {
+                "type": "text",
+                "content": "Domesday Book"
+              }
+            ]
+          },
+          {
+            "question": "Match each term to its correct description.",
+            "questionType": "match",
+            "answers": [
+              {
+                "matchOption": {
+                  "type": "text",
+                  "content": "Motte and bailey castle"
+                },
+                "correctChoice": {
+                  "type": "text",
+                  "content": "A mound with a tower, next to an enclosed courtyard"
+                }
+              },
+              {
+                "matchOption": {
+                  "type": "text",
+                  "content": "Domesday Book"
+                },
+                "correctChoice": {
+                  "type": "text",
+                  "content": "A survey recording land ownership across England"
+                }
+              },
+              {
+                "matchOption": {
+                  "type": "text",
+                  "content": "Feudal system"
+                },
+                "correctChoice": {
+                  "type": "text",
+                  "content": "Land held in exchange for loyalty and service"
+                }
+              }
+            ]
+          },
+          {
+            "question": "Order these events: William is crowned king, castles are built across England, English nobles are replaced with Norman lords, the Domesday Book survey is completed.",
+            "questionType": "order",
+            "answers": [
+              {
+                "order": 1,
+                "type": "text",
+                "content": "William is crowned king"
+              },
+              {
+                "order": 2,
+                "type": "text",
+                "content": "castles are built across England"
+              },
+              {
+                "order": 3,
+                "type": "text",
+                "content": "English nobles are replaced with Norman lords"
+              },
+              {
+                "order": 4,
+                "type": "text",
+                "content": "the Domesday Book survey is completed"
+              }
+            ]
+          }
+        ]
+      },
+      "transcript": {
+        "transcript": "In our last lesson, William won the Battle of Hastings and Harold was killed. Today we look at what William did next to actually take control of the whole country, because winning one battle did not mean the conquest was finished.\n\nWilliam was crowned King of England on Christmas Day 1066, in Westminster Abbey. But being crowned did not mean the English people simply accepted Norman rule. Rebellions broke out in different parts of the country over the next few years, and William had to work hard, and sometimes brutally, to put them down and keep control.\n\nOne of William's most important strategies was building castles, hundreds of them, right across England. Many of these were a type called motte and bailey castles. They had a mound of earth, called a motte, with a wooden tower on top, and beside it an enclosed courtyard called a bailey, protected by a fence and a ditch. These castles could be built quickly, often within weeks. They gave Norman lords a safe, defendable base from which a small number of soldiers could control the much larger population around them, and quickly respond to trouble.\n\nWilliam also completely reshaped who owned land in England. Almost all of the English nobles who had owned land before 1066 were removed, and their land was given instead to Norman lords who had supported William and would remain loyal to him. In return for their land, these lords owed William military service and loyalty — the beginnings of what we call the feudal system, which we'll explore in detail in our next unit.\n\nFinally, in 1086, twenty years after the conquest, William ordered an enormous survey of England, now known as the Domesday Book. Royal officials travelled the country recording exactly who owned each piece of land, how much it was worth, and what animals and resources it had. This let William work out precisely how much tax each area owed him. It's an extraordinary historical source today, because it gives historians an incredibly detailed picture of English society at that time.\n\nA common mistake is thinking William controlled everything the moment he was crowned. In reality, securing the country took him roughly twenty years of castles, new landowners and careful record-keeping. Next unit, we'll look at everyday medieval life under this new Norman system."
+      },
+      "assets": {
+        "assets": [
+          {
+            "type": "worksheet",
+            "label": "Worksheet",
+            "url": "fixture://worksheet/norman-conquest-norman-control-of-england.pdf"
+          },
+          {
+            "type": "video",
+            "label": "Video",
+            "url": "fixture://video/norman-conquest-norman-control-of-england"
+          }
+        ],
+        "attribution": []
+      },
+      "worksheet": {
+        "questions": [
+          {
+            "number": "1",
+            "text": "What is a motte and bailey castle?",
+            "type": "short",
+            "answer": "An early Norman castle with a mound (motte) topped by a tower and an enclosed courtyard (bailey) beside it."
+          },
+          {
+            "number": "2",
+            "text": "In what year was the Domesday Book completed?",
+            "type": "short",
+            "answer": "1086"
+          },
+          {
+            "number": "3",
+            "text": "Explain why William needed to build castles even after winning the Battle of Hastings.",
+            "type": "extended",
+            "answer": "A good answer explains that winning one battle did not mean the whole country accepted Norman rule, so castles gave Norman lords a safe base to control the local population and respond quickly to rebellions."
+          },
+          {
+            "number": "4",
+            "text": "Why is the Domesday Book useful to historians studying Norman England?",
+            "type": "extended",
+            "answer": "A good answer explains that it gives an extraordinarily detailed, dated record of land ownership and value across England in 1086, letting historians build an accurate picture of society soon after the conquest."
+          }
+        ]
+      }
+    },
+    "medieval-life-the-feudal-system": {
+      "summary": {
+        "lessonTitle": "The feudal system",
+        "pupilLessonOutcome": "I can describe the feudal system and explain the obligations between each level of medieval society.",
+        "keyLearningPoints": [
+          {
+            "keyLearningPoint": "The feudal system was a way of organising medieval society and land ownership, with the king at the top."
+          },
+          {
+            "keyLearningPoint": "The king granted large areas of land to barons in exchange for loyalty and soldiers when needed."
+          },
+          {
+            "keyLearningPoint": "Barons granted smaller areas of land to knights, who provided military service to their baron in return."
+          },
+          {
+            "keyLearningPoint": "Peasants worked the land at the bottom of the system, giving crops, labour or rent to their lord in exchange for protection and the right to farm."
+          }
+        ],
+        "lessonKeywords": [
+          {
+            "keyword": "baron",
+            "description": "A powerful noble who was granted large areas of land directly by the king in exchange for loyalty and soldiers."
+          },
+          {
+            "keyword": "knight",
+            "description": "A soldier who fought on horseback for a baron in exchange for a smaller area of land."
+          },
+          {
+            "keyword": "peasant",
+            "description": "A person, usually a farmer, who worked the land at the bottom of the feudal system in exchange for protection and the right to farm."
+          }
+        ],
+        "misconceptionsAndCommonMistakes": [
+          {
+            "misconception": "Pupils think peasants owned the land they farmed.",
+            "response": "Clarify that peasants did not own their land; it belonged to their lord, and peasants worked it in exchange for protection and the right to grow food and keep a portion for themselves."
+          },
+          {
+            "misconception": "Pupils think the feudal system was a one-way system where only obligations flowed upward, with nothing given back.",
+            "response": "Point out that the feudal system worked both ways: each level below gave loyalty, labour or military service upward, but each level above owed protection and, often, land or resources downward in return."
+          }
+        ],
+        "teacherTips": [
+          {
+            "teacherTip": "Draw the feudal system as a pyramid or a simple diagram with arrows going both up (loyalty, service) and down (land, protection), so the two-way relationship is clear."
+          },
+          {
+            "teacherTip": "Use the phrase 'land in exchange for loyalty and service' repeatedly at every level, since this single idea explains the whole structure."
+          }
+        ],
+        "contentGuidance": null,
+        "supervisionLevel": null,
+        "canonicalUrl": "https://example-fixture.invalid/lessons/medieval-life-the-feudal-system",
+        "oakUrl": "https://example-fixture.invalid/lessons/medieval-life-the-feudal-system",
+        "downloadsAvailable": true
+      },
+      "quiz": {
+        "starterQuiz": [
+          {
+            "question": "Who became King of England after the Battle of Hastings?",
+            "questionType": "multiple-choice",
+            "answers": [
+              {
+                "type": "text",
+                "content": "Harold Godwinson",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "William of Normandy",
+                "distractor": false
+              },
+              {
+                "type": "text",
+                "content": "Harald Hardrada",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "Edward the Confessor",
+                "distractor": true
+              }
+            ]
+          },
+          {
+            "question": "What did William give to Norman lords who supported him?",
+            "questionType": "multiple-choice",
+            "answers": [
+              {
+                "type": "text",
+                "content": "Gold coins only",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "Land",
+                "distractor": false
+              },
+              {
+                "type": "text",
+                "content": "Ships",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "Titles with no land",
+                "distractor": true
+              }
+            ]
+          },
+          {
+            "question": "What did most English nobles lose after the Norman Conquest?",
+            "questionType": "short-answer",
+            "answers": [
+              {
+                "type": "text",
+                "content": "their land"
+              },
+              {
+                "type": "text",
+                "content": "land"
+              }
+            ]
+          }
+        ],
+        "exitQuiz": [
+          {
+            "question": "Who was at the very top of the feudal system?",
+            "questionType": "multiple-choice",
+            "answers": [
+              {
+                "type": "text",
+                "content": "The barons",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "The king",
+                "distractor": false
+              },
+              {
+                "type": "text",
+                "content": "The knights",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "The peasants",
+                "distractor": true
+              }
+            ]
+          },
+          {
+            "question": "Which of these did a knight typically give to his baron in exchange for land? (select all that apply)",
+            "questionType": "multiple-choice",
+            "answers": [
+              {
+                "type": "text",
+                "content": "Rent paid in gold only",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "Military service",
+                "distractor": false
+              },
+              {
+                "type": "text",
+                "content": "Nothing at all",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "Loyalty",
+                "distractor": false
+              }
+            ]
+          },
+          {
+            "question": "What word describes a person who worked the land at the bottom of the feudal system?",
+            "questionType": "short-answer",
+            "answers": [
+              {
+                "type": "text",
+                "content": "a peasant"
+              },
+              {
+                "type": "text",
+                "content": "peasant"
+              }
+            ]
+          },
+          {
+            "question": "Match each level of the feudal system to what it gave and received.",
+            "questionType": "match",
+            "answers": [
+              {
+                "matchOption": {
+                  "type": "text",
+                  "content": "King"
+                },
+                "correctChoice": {
+                  "type": "text",
+                  "content": "Granted land to barons in exchange for loyalty and soldiers"
+                }
+              },
+              {
+                "matchOption": {
+                  "type": "text",
+                  "content": "Knight"
+                },
+                "correctChoice": {
+                  "type": "text",
+                  "content": "Fought for his baron in exchange for land"
+                }
+              },
+              {
+                "matchOption": {
+                  "type": "text",
+                  "content": "Peasant"
+                },
+                "correctChoice": {
+                  "type": "text",
+                  "content": "Farmed the land in exchange for protection"
+                }
+              }
+            ]
+          },
+          {
+            "question": "Order these levels of the feudal system from highest to lowest: king, baron, knight, peasant.",
+            "questionType": "order",
+            "answers": [
+              {
+                "order": 1,
+                "type": "text",
+                "content": "king"
+              },
+              {
+                "order": 2,
+                "type": "text",
+                "content": "baron"
+              },
+              {
+                "order": 3,
+                "type": "text",
+                "content": "knight"
+              },
+              {
+                "order": 4,
+                "type": "text",
+                "content": "peasant"
+              }
+            ]
+          }
+        ]
+      },
+      "transcript": {
+        "transcript": "Welcome to our new unit on medieval life. Last unit we saw William take control of England after 1066 by giving land to loyal Norman lords. Today we look properly at the system this created, known as the feudal system, which shaped how medieval society was organised for centuries.\n\nAt the very top of the feudal system was the king. In theory, the king owned all the land in the country. Rather than manage every single piece of it himself, the king granted large areas of land to his most powerful and trusted followers, called barons. In exchange for this land, each baron swore loyalty to the king and promised to provide soldiers to fight for him whenever needed.\n\nBarons, in turn, did not farm all of their own land either. They granted smaller portions of it to knights, who were skilled soldiers, usually fighting on horseback. In exchange for their own smaller piece of land, each knight promised to fight for his baron whenever called upon, and to protect the baron's other lands.\n\nAt the bottom of the system were peasants, the ordinary people who actually farmed the land, day in and day out. Peasants did not own the land they worked; it belonged to whichever lord — knight, baron, or occasionally the king directly — controlled that area. In exchange for being allowed to farm strips of land and keep some of what they grew, peasants owed their lord things like crops, labour on the lord's own fields, or rent, and in return the lord was expected to offer them protection.\n\nNotice the pattern running through every level: land is given in exchange for loyalty and service, and each level above owes something back in return, usually protection. This is really important — the feudal system was not simply a chain where obligations only flowed one way, upward, with nothing given back down. Every relationship in the system went both ways.\n\nA common mistake is assuming peasants owned their farmland, like a modern-day farmer might. They didn't; the land always belonged to a lord above them. Next lesson, we'll look at another enormously powerful force in medieval life: the Church."
+      },
+      "assets": {
+        "assets": [
+          {
+            "type": "worksheet",
+            "label": "Worksheet",
+            "url": "fixture://worksheet/medieval-life-the-feudal-system.pdf"
+          },
+          {
+            "type": "video",
+            "label": "Video",
+            "url": "fixture://video/medieval-life-the-feudal-system"
+          }
+        ],
+        "attribution": []
+      },
+      "worksheet": {
+        "questions": [
+          {
+            "number": "1",
+            "text": "Who granted land directly to barons?",
+            "type": "short",
+            "answer": "the king"
+          },
+          {
+            "number": "2",
+            "text": "What did peasants receive in exchange for working the land?",
+            "type": "short",
+            "answer": "protection and the right to farm (and keep some of what they grew)"
+          },
+          {
+            "number": "3",
+            "text": "Explain why the feudal system can be described as a two-way relationship, not a one-way one.",
+            "type": "extended",
+            "answer": "A good answer explains that each level gave loyalty, land or service upward (e.g. knights fighting for barons) while each level above gave land or protection back down in return, so obligations flowed both ways."
+          },
+          {
+            "number": "4",
+            "text": "Describe the obligations of a knight within the feudal system.",
+            "type": "extended",
+            "answer": "A good answer explains that a knight received land from a baron, and in exchange promised military service and loyalty, fighting for the baron whenever called upon."
+          }
+        ]
+      }
+    },
+    "medieval-life-the-medieval-church": {
+      "summary": {
+        "lessonTitle": "The medieval Church",
+        "pupilLessonOutcome": "I can explain the power and influence of the Church in medieval people's daily lives.",
+        "keyLearningPoints": [
+          {
+            "keyLearningPoint": "Almost everyone in medieval England was a Christian, and the Church was involved in nearly every part of daily life."
+          },
+          {
+            "keyLearningPoint": "The Church taught that living a good life and following its rules was necessary to avoid punishment and reach heaven after death."
+          },
+          {
+            "keyLearningPoint": "The Church owned huge amounts of land and collected a tax called a tithe, roughly a tenth of what people produced, from ordinary people."
+          },
+          {
+            "keyLearningPoint": "Monasteries were important centres of learning, medical care and charity, as monks and nuns copied books, treated the sick and helped the poor."
+          }
+        ],
+        "lessonKeywords": [
+          {
+            "keyword": "tithe",
+            "description": "A tax of roughly one tenth of a person's produce or income, paid to the Church."
+          },
+          {
+            "keyword": "monastery",
+            "description": "A building where monks (or nuns, in a convent) lived, worked, prayed and often provided education or medical care."
+          },
+          {
+            "keyword": "pilgrimage",
+            "description": "A journey to a holy or religious place, often made as an act of faith or to seek forgiveness."
+          }
+        ],
+        "misconceptionsAndCommonMistakes": [
+          {
+            "misconception": "Pupils think religion in medieval England was a private, personal matter, similar to how many people experience it today.",
+            "response": "Explain that in medieval England the Church touched almost every part of public and daily life — the calendar, taxes, education, healthcare and the law were all shaped by the Church — so it was far more central and unavoidable than a private belief."
+          },
+          {
+            "misconception": "Pupils think monasteries were only religious buildings, cut off from ordinary medieval life.",
+            "response": "Point out that monasteries also acted like hospitals, schools and libraries for the wider community — monks and nuns cared for the sick, copied and preserved books, and gave charity to the poor."
+          }
+        ],
+        "teacherTips": [
+          {
+            "teacherTip": "Ask pupils to imagine a medieval village and list every part of daily life the Church might touch (birth, marriage, death, taxes, holidays, education) to reveal just how far-reaching its influence was."
+          },
+          {
+            "teacherTip": "Introduce the idea of heaven and hell carefully and factually, as beliefs medieval people genuinely held, rather than judging those beliefs — this helps pupils understand medieval decisions and behaviour on their own terms."
+          }
+        ],
+        "contentGuidance": null,
+        "supervisionLevel": null,
+        "canonicalUrl": "https://example-fixture.invalid/lessons/medieval-life-the-medieval-church",
+        "oakUrl": "https://example-fixture.invalid/lessons/medieval-life-the-medieval-church",
+        "downloadsAvailable": true
+      },
+      "quiz": {
+        "starterQuiz": [
+          {
+            "question": "Who was at the top of the feudal system in medieval England?",
+            "questionType": "multiple-choice",
+            "answers": [
+              {
+                "type": "text",
+                "content": "The Pope",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "The king",
+                "distractor": false
+              },
+              {
+                "type": "text",
+                "content": "The barons",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "The knights",
+                "distractor": true
+              }
+            ]
+          },
+          {
+            "question": "What did peasants owe to the lord who controlled their land?",
+            "questionType": "multiple-choice",
+            "answers": [
+              {
+                "type": "text",
+                "content": "Nothing at all",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "Crops, labour or rent",
+                "distractor": false
+              },
+              {
+                "type": "text",
+                "content": "Only military service",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "Gold coins only",
+                "distractor": true
+              }
+            ]
+          },
+          {
+            "question": "What do we call a soldier who fought on horseback for a baron?",
+            "questionType": "short-answer",
+            "answers": [
+              {
+                "type": "text",
+                "content": "a knight"
+              },
+              {
+                "type": "text",
+                "content": "knight"
+              }
+            ]
+          }
+        ],
+        "exitQuiz": [
+          {
+            "question": "What was a tithe?",
+            "questionType": "multiple-choice",
+            "answers": [
+              {
+                "type": "text",
+                "content": "A type of monastery",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "A tax of roughly a tenth of what a person produced, paid to the Church",
+                "distractor": false
+              },
+              {
+                "type": "text",
+                "content": "A journey to a holy site",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "A payment made only by knights",
+                "distractor": true
+              }
+            ]
+          },
+          {
+            "question": "Which of these were roles monasteries often played in medieval communities? (select all that apply)",
+            "questionType": "multiple-choice",
+            "answers": [
+              {
+                "type": "text",
+                "content": "Collecting taxes for the king only",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "Caring for the sick",
+                "distractor": false
+              },
+              {
+                "type": "text",
+                "content": "Training knights for battle",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "Copying and preserving books",
+                "distractor": false
+              }
+            ]
+          },
+          {
+            "question": "What word describes a journey to a holy or religious place?",
+            "questionType": "short-answer",
+            "answers": [
+              {
+                "type": "text",
+                "content": "a pilgrimage"
+              },
+              {
+                "type": "text",
+                "content": "pilgrimage"
+              }
+            ]
+          },
+          {
+            "question": "Match each term to its correct description.",
+            "questionType": "match",
+            "answers": [
+              {
+                "matchOption": {
+                  "type": "text",
+                  "content": "Tithe"
+                },
+                "correctChoice": {
+                  "type": "text",
+                  "content": "A tax of about a tenth of what people produced"
+                }
+              },
+              {
+                "matchOption": {
+                  "type": "text",
+                  "content": "Monastery"
+                },
+                "correctChoice": {
+                  "type": "text",
+                  "content": "Home to monks who cared for the sick and copied books"
+                }
+              },
+              {
+                "matchOption": {
+                  "type": "text",
+                  "content": "Pilgrimage"
+                },
+                "correctChoice": {
+                  "type": "text",
+                  "content": "A journey to a holy site as an act of faith"
+                }
+              }
+            ]
+          },
+          {
+            "question": "Order these statements to build an explanation of the Church's wealth: the Church owned huge amounts of land, people paid a tithe of about a tenth of their produce, this tithe went to the local church, the Church became one of the richest landowners in England.",
+            "questionType": "order",
+            "answers": [
+              {
+                "order": 1,
+                "type": "text",
+                "content": "the Church owned huge amounts of land"
+              },
+              {
+                "order": 2,
+                "type": "text",
+                "content": "people paid a tithe of about a tenth of their produce"
+              },
+              {
+                "order": 3,
+                "type": "text",
+                "content": "this tithe went to the local church"
+              },
+              {
+                "order": 4,
+                "type": "text",
+                "content": "the Church became one of the richest landowners in England"
+              }
+            ]
+          }
+        ]
+      },
+      "transcript": {
+        "transcript": "Last lesson we looked at the feudal system and how land and loyalty connected every level of medieval society. Today we look at another force just as powerful in people's daily lives: the Church.\n\nIn medieval England, almost everyone was a Christian, and the Church was involved in nearly every part of life, not just Sunday worship. Village life was often organised around the Church calendar, with festivals and holy days marking the passing of the year. Important moments in a person's life — being born, getting married, and dying — usually all involved the local Church.\n\nOne reason the Church had such power was belief. The Church taught that living a good, faithful life, following its rules and receiving its rituals, was necessary to avoid punishment after death and to reach heaven. Because medieval people generally believed this deeply, the Church's teachings and instructions carried enormous weight in how people behaved and made decisions in daily life — this wasn't a private, personal matter kept separate from public life, the way religion often is for many people today; it shaped public rules, laws and expectations too.\n\nThe Church was also extremely wealthy. It owned huge amounts of land across England, and ordinary people were expected to pay a tax called a tithe — roughly one tenth of everything they produced, whether crops, animals, or other goods — to their local church. This made the Church, as an institution, one of the richest landowners in the whole country.\n\nMonasteries, where monks lived, and convents, where nuns lived, were especially important centres of activity beyond prayer. Monks and nuns copied books by hand, preserving knowledge at a time when very few people could read or write. Many monasteries cared for the sick, acting rather like a hospital, and gave food and charity to the poorest in the community. Some people even went on pilgrimages, long journeys to important religious sites, as an act of faith or to seek forgiveness.\n\nA common mistake is imagining medieval religion as similar to a private personal belief today. In reality, it was deeply woven into public life — the tithe you paid, the calendar you followed, the care you received when sick, were all connected to the Church. Next lesson, we'll see how a devastating disease tested medieval society, the Church included, like nothing before it."
+      },
+      "assets": {
+        "assets": [
+          {
+            "type": "worksheet",
+            "label": "Worksheet",
+            "url": "fixture://worksheet/medieval-life-the-medieval-church.pdf"
+          },
+          {
+            "type": "video",
+            "label": "Video",
+            "url": "fixture://video/medieval-life-the-medieval-church"
+          }
+        ],
+        "attribution": []
+      },
+      "worksheet": {
+        "questions": [
+          {
+            "number": "1",
+            "text": "What was a tithe, and roughly how much did people pay?",
+            "type": "short",
+            "answer": "A tax of about one tenth of what a person produced, paid to the Church."
+          },
+          {
+            "number": "2",
+            "text": "Name one service a monastery might provide to its local community.",
+            "type": "short",
+            "answer": "Caring for the sick (or copying books, or giving charity to the poor)."
+          },
+          {
+            "number": "3",
+            "text": "Explain why the Church had such a powerful influence over medieval people's daily lives.",
+            "type": "extended",
+            "answer": "A good answer explains that almost everyone was Christian and believed following the Church's teachings was necessary to reach heaven, and that the Church was involved in daily life through taxes (tithes), the calendar, education and care for the sick."
+          },
+          {
+            "number": "4",
+            "text": "Describe the role monks and nuns played beyond prayer and worship.",
+            "type": "extended",
+            "answer": "A good answer describes at least two roles, e.g. copying and preserving books, caring for the sick like a hospital, and giving charity or food to the poor."
+          }
+        ]
+      }
+    },
+    "medieval-life-the-black-death": {
+      "summary": {
+        "lessonTitle": "The Black Death",
+        "pupilLessonOutcome": "I can explain how the Black Death spread and describe its impact on medieval England.",
+        "keyLearningPoints": [
+          {
+            "keyLearningPoint": "The Black Death was a devastating disease that reached England in 1348, believed to have been spread mainly by fleas living on black rats."
+          },
+          {
+            "keyLearningPoint": "The disease spread quickly along trade routes and through crowded towns, and killed roughly a third of England's population within a few years."
+          },
+          {
+            "keyLearningPoint": "Medieval doctors did not understand germs and had no effective treatment; some believed it was a punishment from God or caused by 'bad air'."
+          },
+          {
+            "keyLearningPoint": "The huge loss of workers meant surviving peasants could demand higher wages and more freedom, which gradually weakened the feudal system."
+          }
+        ],
+        "lessonKeywords": [
+          {
+            "keyword": "plague",
+            "description": "A serious, fast-spreading disease; the Black Death was the most devastating plague outbreak in medieval Europe."
+          },
+          {
+            "keyword": "trade route",
+            "description": "A path regularly used by merchants to travel and transport goods between places, along which the Black Death also spread."
+          },
+          {
+            "keyword": "population",
+            "description": "The total number of people living in a particular place."
+          }
+        ],
+        "misconceptionsAndCommonMistakes": [
+          {
+            "misconception": "Pupils think medieval doctors understood germs but simply lacked modern medicine to treat the disease.",
+            "response": "Explain that the idea of germs was not understood at all in medieval England — doctors had no concept of tiny living organisms causing disease, which is why explanations at the time focused on things like 'bad air' or divine punishment instead."
+          },
+          {
+            "misconception": "Pupils think the Black Death only affected the poor, and that wealthy or powerful people were unaffected.",
+            "response": "Clarify that the Black Death did not distinguish by wealth or status — people from all levels of medieval society could catch and die from it, though overcrowded, less sanitary living conditions could increase the risk of exposure."
+          }
+        ],
+        "teacherTips": [
+          {
+            "teacherTip": "Handle mortality figures factually and with care — use precise language like 'roughly a third of the population died' rather than dwelling on graphic description, keeping the focus on causes, spread and consequences."
+          },
+          {
+            "teacherTip": "Draw out the surprising long-term consequence for peasants — fewer workers meant more bargaining power — as a clear example of how a single event can reshape an entire social system."
+          }
+        ],
+        "contentGuidance": null,
+        "supervisionLevel": null,
+        "canonicalUrl": "https://example-fixture.invalid/lessons/medieval-life-the-black-death",
+        "oakUrl": "https://example-fixture.invalid/lessons/medieval-life-the-black-death",
+        "downloadsAvailable": true
+      },
+      "quiz": {
+        "starterQuiz": [
+          {
+            "question": "What was a tithe used to pay?",
+            "questionType": "multiple-choice",
+            "answers": [
+              {
+                "type": "text",
+                "content": "The king's army",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "The Church",
+                "distractor": false
+              },
+              {
+                "type": "text",
+                "content": "A baron's castle",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "A knight's horse",
+                "distractor": true
+              }
+            ]
+          },
+          {
+            "question": "What did medieval monasteries often provide to their local community?",
+            "questionType": "multiple-choice",
+            "answers": [
+              {
+                "type": "text",
+                "content": "Weapons for knights",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "Care for the sick and charity for the poor",
+                "distractor": false
+              },
+              {
+                "type": "text",
+                "content": "Farming machinery",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "Trade ships",
+                "distractor": true
+              }
+            ]
+          },
+          {
+            "question": "What do we call the total number of people living in a place?",
+            "questionType": "short-answer",
+            "answers": [
+              {
+                "type": "text",
+                "content": "population"
+              }
+            ]
+          }
+        ],
+        "exitQuiz": [
+          {
+            "question": "What is believed to have spread the Black Death between people?",
+            "questionType": "multiple-choice",
+            "answers": [
+              {
+                "type": "text",
+                "content": "Contaminated water only",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "Fleas living on black rats",
+                "distractor": false
+              },
+              {
+                "type": "text",
+                "content": "Mosquitoes",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "Cold weather",
+                "distractor": true
+              }
+            ]
+          },
+          {
+            "question": "Which of these were beliefs medieval people held about the cause of the Black Death? (select all that apply)",
+            "questionType": "multiple-choice",
+            "answers": [
+              {
+                "type": "text",
+                "content": "It was caused by tiny germs",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "It was a punishment from God",
+                "distractor": false
+              },
+              {
+                "type": "text",
+                "content": "It only affected animals",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "It was caused by 'bad air'",
+                "distractor": false
+              }
+            ]
+          },
+          {
+            "question": "Roughly what fraction of England's population is thought to have died from the Black Death?",
+            "questionType": "short-answer",
+            "answers": [
+              {
+                "type": "text",
+                "content": "a third"
+              },
+              {
+                "type": "text",
+                "content": "one third"
+              },
+              {
+                "type": "text",
+                "content": "1/3"
+              }
+            ]
+          },
+          {
+            "question": "Match each term to its correct description.",
+            "questionType": "match",
+            "answers": [
+              {
+                "matchOption": {
+                  "type": "text",
+                  "content": "Trade route"
+                },
+                "correctChoice": {
+                  "type": "text",
+                  "content": "A path used by merchants to travel and transport goods"
+                }
+              },
+              {
+                "matchOption": {
+                  "type": "text",
+                  "content": "Plague"
+                },
+                "correctChoice": {
+                  "type": "text",
+                  "content": "A serious, fast-spreading disease"
+                }
+              },
+              {
+                "matchOption": {
+                  "type": "text",
+                  "content": "Population"
+                },
+                "correctChoice": {
+                  "type": "text",
+                  "content": "The total number of people living in a place"
+                }
+              }
+            ]
+          },
+          {
+            "question": "Order these events: the Black Death arrives in England in 1348, the disease spreads rapidly through towns, roughly a third of the population dies, surviving peasants gain more bargaining power over wages.",
+            "questionType": "order",
+            "answers": [
+              {
+                "order": 1,
+                "type": "text",
+                "content": "the Black Death arrives in England in 1348"
+              },
+              {
+                "order": 2,
+                "type": "text",
+                "content": "the disease spreads rapidly through towns"
+              },
+              {
+                "order": 3,
+                "type": "text",
+                "content": "roughly a third of the population dies"
+              },
+              {
+                "order": 4,
+                "type": "text",
+                "content": "surviving peasants gain more bargaining power over wages"
+              }
+            ]
+          }
+        ]
+      },
+      "transcript": {
+        "transcript": "In our last two lessons we looked at the feudal system and the power of the Church. Today we study an event that shook both of those systems to their foundations: the Black Death.\n\nThe Black Death was a devastating disease that arrived in England in 1348, most likely brought by ships travelling along international trade routes. Historians believe it was spread mainly by fleas living on black rats, common on ships and in towns; when an infected flea bit a person, the disease could pass to them. From there, it spread rapidly from person to person, especially in crowded towns.\n\nThe impact was enormous. Within just a few years, the Black Death is thought to have killed roughly a third of England's population. Whole villages lost large numbers of people, and no level of society was completely safe — wealth did not protect someone from catching it, though cramped, less sanitary conditions increased the risk of exposure.\n\nMedieval doctors had no understanding of germs, the tiny organisms we now know cause diseases like this. Without that knowledge, they had no effective treatment. Some believed the disease was a punishment sent by God for people's sins. Others believed it was caused by 'bad air', called miasma, and tried remedies like burning sweet-smelling herbs to purify the air around them. None of these approaches could actually stop the disease spreading.\n\nThe Black Death's consequences reached far beyond the immediate tragedy. With so many peasants dead, there were far fewer workers left to farm the land, giving survivors bargaining power they had rarely had before. Lords, desperate for workers, had to offer higher wages and better conditions, and some peasants moved to new villages seeking better pay, something much harder before. Over time, this helped weaken the rigid feudal system we studied earlier, as the old assumption that peasants had no choice but to accept their lord's terms began to break down.\n\nA common mistake is to think medieval doctors understood germs but simply lacked modern medicine — they didn't understand germs at all, which is exactly why their explanations focused on bad air or punishment instead. This brings us to the end of our medieval life unit; you should now be able to describe how the feudal system, the Church, and finally this devastating disease all shaped life in medieval England."
+      },
+      "assets": {
+        "assets": [
+          {
+            "type": "worksheet",
+            "label": "Worksheet",
+            "url": "fixture://worksheet/medieval-life-the-black-death.pdf"
+          },
+          {
+            "type": "video",
+            "label": "Video",
+            "url": "fixture://video/medieval-life-the-black-death"
+          }
+        ],
+        "attribution": []
+      },
+      "worksheet": {
+        "questions": [
+          {
+            "number": "1",
+            "text": "In what year did the Black Death arrive in England?",
+            "type": "short",
+            "answer": "1348"
+          },
+          {
+            "number": "2",
+            "text": "What did medieval doctors believe might cause the Black Death, since they did not understand germs?",
+            "type": "short",
+            "answer": "Bad air (miasma) or punishment from God."
+          },
+          {
+            "number": "3",
+            "text": "Explain why the Black Death gave surviving peasants more bargaining power.",
+            "type": "extended",
+            "answer": "A good answer explains that so many peasants died that there were far fewer workers left to farm the land, so lords had to offer higher wages and better conditions to attract the workers who remained."
+          },
+          {
+            "number": "4",
+            "text": "Explain why medieval doctors were unable to effectively treat the Black Death.",
+            "type": "extended",
+            "answer": "A good answer explains that medieval doctors had no understanding of germs, so their explanations (like bad air or punishment from God) and remedies could not actually treat or stop the real cause of the disease."
+          }
+        ]
+      }
+    }
+  },
+  "licences": {
+    "norman-conquest-england-in-1066": "ogl-compatible",
+    "norman-conquest-battle-of-hastings": "ogl-compatible",
+    "norman-conquest-norman-control-of-england": "ogl-compatible",
+    "medieval-life-the-feudal-system": "ogl-compatible",
+    "medieval-life-the-medieval-church": "ogl-compatible",
+    "medieval-life-the-black-death": "ogl-compatible"
+  }
+}

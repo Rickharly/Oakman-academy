@@ -69,7 +69,7 @@ export const mathsYear5: SubjectYearSpec = {
             { text: "Which is bigger, 3/7 or 6/7?", type: "short", answer: "6/7" },
             { text: "Order these fractions from largest to smallest: 2/5, 4/5, 1/5.", type: "short", answer: "4/5, 2/5, 1/5" },
             { text: "Write < or > to make this true: 5/12 ___ 9/12.", type: "short", answer: "<" },
-            { text: "Explain, in your own words, why we only need to look at the numerator when comparing fractions that have the same denominator.", type: "extended" },
+            { text: "Explain, in your own words, why we only need to look at the numerator when comparing fractions that have the same denominator.", type: "extended", answer: "A good answer says that when the denominator is the same, the parts are already the same size, so the numerator alone tells us how many of those equal parts we have, and therefore which fraction is bigger." },
           ],
         },
         {
@@ -113,7 +113,7 @@ export const mathsYear5: SubjectYearSpec = {
             { text: "Work out 3/7 + 2/7.", type: "short", answer: "5/7" },
             { text: "Work out 6/8 - 3/8.", type: "short", answer: "3/8" },
             { text: "Work out 4/5 + 3/5, and write your answer as a mixed number.", type: "short", answer: "1 2/5" },
-            { text: "Explain why the denominator does not change when we add two fractions with the same denominator.", type: "extended" },
+            { text: "Explain why the denominator does not change when we add two fractions with the same denominator.", type: "extended", answer: "A good answer explains that the denominator shows the size of the parts, and adding fractions only combines how many parts we have (the numerators) without changing how big each part is, so the denominator stays the same." },
           ],
         },
         {
@@ -157,7 +157,7 @@ export const mathsYear5: SubjectYearSpec = {
             { text: "Find 1/3 of 27.", type: "numeric", answer: "9" },
             { text: "Find 3/8 of 16.", type: "numeric", answer: "6" },
             { text: "Find 2/5 of 30.", type: "numeric", answer: "12" },
-            { text: "A class of 28 pupils has 3/4 of them bringing a packed lunch. Explain how you would work out how many pupils that is, then give the answer.", type: "extended" },
+            { text: "A class of 28 pupils has 3/4 of them bringing a packed lunch. Explain how you would work out how many pupils that is, then give the answer.", type: "extended", answer: "A good answer divides 28 by the denominator 4 to get 7, then multiplies 7 by the numerator 3, giving 21 pupils." },
           ],
         },
       ],
@@ -221,7 +221,7 @@ export const mathsYear5: SubjectYearSpec = {
             { text: "What is the value of the 6 in 0.263?", type: "short", answer: "six thousandths" },
             { text: "Write the decimal that has 5 in the tenths column, 0 in the hundredths column and 2 in the thousandths column.", type: "short", answer: "0.502" },
             { text: "Order these decimals from largest to smallest: 0.7, 0.68, 0.702.", type: "short", answer: "0.702, 0.7, 0.68" },
-            { text: "Explain why 0.5 and 0.50 have exactly the same value.", type: "extended" },
+            { text: "Explain why 0.5 and 0.50 have exactly the same value.", type: "extended", answer: "A good answer explains that the extra zero is in the hundredths column but adds nothing there, so 0.50 still means five tenths and no hundredths, the same value as 0.5; trailing zeros after the decimal point don't change a number's value." },
           ],
         },
         {
@@ -265,7 +265,7 @@ export const mathsYear5: SubjectYearSpec = {
             { text: "Write 9/10 as a decimal.", type: "short", answer: "0.9" },
             { text: "Write 3/4 as a decimal.", type: "short", answer: "0.75" },
             { text: "Write 8/100 as a decimal.", type: "short", answer: "0.08" },
-            { text: "Explain how you would convert 1/5 into a decimal, showing your working.", type: "extended" },
+            { text: "Explain how you would convert 1/5 into a decimal, showing your working.", type: "extended", answer: "A good answer finds an equivalent fraction with a denominator of 10 by multiplying top and bottom by 2, giving 2/10, and then writes this as the decimal 0.2." },
           ],
         },
         {
@@ -309,7 +309,7 @@ export const mathsYear5: SubjectYearSpec = {
             { text: "Find 10% of 90.", type: "numeric", answer: "9" },
             { text: "Find 50% of 64.", type: "numeric", answer: "32" },
             { text: "Find 25% of 200.", type: "numeric", answer: "50" },
-            { text: "A jacket costs £40 and is reduced by 25% in a sale. Explain how you would work out the new price, and give your answer.", type: "extended" },
+            { text: "A jacket costs £40 and is reduced by 25% in a sale. Explain how you would work out the new price, and give your answer.", type: "extended", answer: "A good answer recognises 25% is one quarter, finds a quarter of £40 (£10), and subtracts it from £40 to get a new price of £30." },
           ],
         },
       ],
