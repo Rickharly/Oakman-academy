@@ -6,8 +6,10 @@
  * and passwords are only reset when the account is created (so a password changed in the app
  * is not clobbered by the next deploy).
  *
- *   SEED_MODE=if-empty   (default) skip entirely when students already exist
- *   SEED_MODE=always     re-run the upserts and re-sync the curriculum
+ *   SEED_MODE=if-empty          (default) skip entirely when students already exist
+ *   SEED_MODE=always            re-run the upserts and re-sync the curriculum
+ *   SEED_RESET_CREDENTIALS=true reset the parent's email/password and the students' PINs to
+ *                               the configured values, for when you are locked out
  */
 import "dotenv/config";
 import { prisma } from "@/lib/db";
@@ -33,8 +35,9 @@ const STUDENTS = [
 
 async function main() {
   const mode = process.env.SEED_MODE ?? "if-empty";
+  const resetCredentials = /^(1|true|yes)$/i.test(process.env.SEED_RESET_CREDENTIALS ?? "");
 
-  if (mode === "if-empty") {
+  if (mode === "if-empty" && !resetCredentials) {
     const existing = await prisma.studentProfile.count();
     if (existing > 0) {
       console.log(`[seed] ${existing} student profile(s) already exist — nothing to do.`);
@@ -46,18 +49,43 @@ async function main() {
   const parentEmail = (process.env.SEED_PARENT_EMAIL ?? "parent@example.com").trim().toLowerCase();
   const parentPassword = process.env.SEED_PARENT_PASSWORD ?? "change-me-now";
 
-  const existingParent = await prisma.user.findUnique({ where: { email: parentEmail } });
-  const parent = existingParent
-    ? await prisma.user.update({ where: { id: existingParent.id }, data: { role: "PARENT" } })
-    : await prisma.user.create({
-        data: {
-          role: "PARENT",
-          email: parentEmail,
-          displayName: "Parent",
-          passwordHash: await hashPassword(parentPassword),
-        },
-      });
-  console.log(`[seed] parent ${parentEmail} ${existingParent ? "(existing)" : "created"}`);
+  // An account already created on an earlier boot keeps its password: a password changed in
+  // the app must not be silently reverted by the next deploy. SEED_RESET_CREDENTIALS is the
+  // deliberate way back in when the configured values and the stored ones have diverged.
+  const byEmail = await prisma.user.findUnique({ where: { email: parentEmail } });
+  const anyParent = byEmail ?? (await prisma.user.findFirst({ where: { role: "PARENT" }, orderBy: { createdAt: "asc" } }));
+
+  let parent;
+  if (!anyParent) {
+    parent = await prisma.user.create({
+      data: {
+        role: "PARENT",
+        email: parentEmail,
+        displayName: "Parent",
+        passwordHash: await hashPassword(parentPassword),
+      },
+    });
+    console.log(`[seed] parent ${parentEmail} created`);
+  } else if (resetCredentials) {
+    // Also adopts the existing account when SEED_PARENT_EMAIL has since changed, so a
+    // reset never leaves an orphaned parent behind under the old address.
+    parent = await prisma.user.update({
+      where: { id: anyParent.id },
+      data: { role: "PARENT", email: parentEmail, passwordHash: await hashPassword(parentPassword) },
+    });
+    console.log(
+      `[seed] parent credentials reset to ${parentEmail}` +
+        (anyParent.email !== parentEmail ? ` (was ${anyParent.email})` : ""),
+    );
+  } else {
+    parent = await prisma.user.update({ where: { id: anyParent.id }, data: { role: "PARENT" } });
+    console.log(
+      `[seed] parent ${anyParent.email} already exists — password left unchanged` +
+        (anyParent.email !== parentEmail
+          ? `. It does NOT match SEED_PARENT_EMAIL (${parentEmail}); set SEED_RESET_CREDENTIALS=true to move it.`
+          : ". Set SEED_RESET_CREDENTIALS=true to reset it."),
+    );
+  }
 
   // ---- curriculum (always from the bundled fixture provider; Oak is synced separately) ----
   const provider = new FixtureProvider();
@@ -90,7 +118,12 @@ async function main() {
     const user = existingUser
       ? await prisma.user.update({
           where: { id: existingUser.id },
-          data: { displayName: spec.displayName, avatar: spec.avatar, role: "STUDENT" },
+          data: {
+            displayName: spec.displayName,
+            avatar: spec.avatar,
+            role: "STUDENT",
+            ...(resetCredentials ? { passwordHash: await hashPassword(spec.pin) } : {}),
+          },
         })
       : await prisma.user.create({
           data: {
@@ -153,16 +186,14 @@ async function main() {
 
     console.log(
       `[seed] ${spec.displayName} (year ${spec.yearGroup}) — ${programmes.length} subject(s)` +
-        `${existingUser ? "" : `, PIN ${spec.pin}`}`,
+        `${!existingUser || resetCredentials ? `, PIN ${spec.pin}` : ""}`,
     );
   }
 
   const lessons = await prisma.lesson.count();
   const questions = await prisma.question.count();
   console.log(`[seed] ready: ${lessons} lessons, ${questions} questions.`);
-  if (!existingParent) {
-    console.log(`[seed] Log in at /login as ${parentEmail}. Change every password and PIN now.`);
-  }
+  console.log(`[seed] Log in at /login as ${parent.email}. Change every password and PIN now.`);
 }
 
 main()

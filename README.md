@@ -43,6 +43,22 @@ when a key is configured, and from a bundled sample curriculum otherwise.
 5. **Generate a domain** under *Settings → Networking*, open it, and log in with the parent
    email and password you set.
 
+### Locked out? (wrong email or password at `/login`)
+
+An account created on an earlier deploy keeps the credentials it was created with — a password
+you change in the app is never reverted by the next deploy. So if the first boot ran before your
+variables were set, the parent still exists under the old address and password.
+
+To move it to the configured values, set on the web service:
+
+```
+SEED_RESET_CREDENTIALS = true
+```
+
+Redeploy, log in, then **delete that variable** so it doesn't reset your password again. It also
+resets the students' PINs to Eva `1234` and Mikhail `5678`. The deploy log prints the address the
+parent account ended up on.
+
 ### First things to do after deploying
 
 - Log in as the parent, open **Settings**, change both children's PINs.
@@ -75,7 +91,7 @@ pnpm dev                      # http://localhost:3000
 ```
 
 Seeded accounts (change these immediately in production): the parent email and password from
-your `.env`, and the two students with the usernames and PINs printed by the seed.
+your `.env`, and the students `eva` (PIN `1234`) and `mikhail` (PIN `5678`).
 
 ## Commands
 
