@@ -44,7 +44,7 @@ export default async function AdminStudentsPage() {
           return (
             <Card key={s.id} padding="lg" className="space-y-5">
               <div className="flex items-center gap-3">
-                <Avatar emoji={s.avatar ?? "🙂"} size="lg" />
+                <Avatar emoji={s.avatar} name={s.displayName} size="lg" />
                 <div>
                   <p className="text-lg font-semibold text-ink">{s.displayName}</p>
                   <p className="text-sm text-ink-muted">

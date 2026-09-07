@@ -78,7 +78,7 @@ export default async function AdminSchedulePage({
                   : "border-line text-ink-muted hover:border-line-strong"
               )}
             >
-              <Avatar emoji={s.avatar ?? "🙂"} size="sm" />
+              <Avatar emoji={s.avatar} name={s.displayName} size="sm" />
               {s.displayName}
             </Link>
           ))}

@@ -67,7 +67,7 @@ export default async function AdminOverviewPage() {
             <Card key={s.id} padding="lg" className="space-y-5">
               <div className="flex items-center justify-between gap-3">
                 <div className="flex items-center gap-3">
-                  <Avatar emoji={s.avatar ?? "🙂"} size="lg" />
+                  <Avatar emoji={s.avatar} name={s.displayName} size="lg" />
                   <div>
                     <p className="text-lg font-semibold text-ink">{s.displayName}</p>
                     <p className="text-sm text-ink-muted">Year {profile.yearGroup}</p>
@@ -108,7 +108,7 @@ export default async function AdminOverviewPage() {
                 className="flex items-center justify-between gap-4 px-5 py-4 transition-colors hover:bg-stone-50"
               >
                 <div className="flex min-w-0 items-center gap-3">
-                  <Avatar emoji={item.student.user.avatar ?? "🙂"} size="sm" />
+                  <Avatar emoji={item.student.user.avatar} name={item.student.user.displayName} size="sm" />
                   <div className="min-w-0">
                     <p className="truncate text-sm font-medium text-ink">{item.lesson.title}</p>
                     <p className="truncate text-xs text-ink-muted">

@@ -72,7 +72,7 @@ export function StudentNav({ displayName, avatar }: StudentNavProps) {
               aria-expanded={menuOpen}
               aria-haspopup="menu"
             >
-              <Avatar emoji={avatar ?? "🙂"} size="sm" />
+              <Avatar emoji={avatar} name={displayName} size="sm" />
               <span className="text-sm font-medium text-ink">{displayName}</span>
             </button>
 
@@ -119,7 +119,7 @@ export function StudentNav({ displayName, avatar }: StudentNavProps) {
               aria-expanded={menuOpen}
               aria-haspopup="menu"
             >
-              <Avatar emoji={avatar ?? "🙂"} size="sm" />
+              <Avatar emoji={avatar} name={displayName} size="sm" />
             </button>
 
             {menuOpen ? (

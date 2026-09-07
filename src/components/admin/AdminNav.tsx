@@ -72,7 +72,7 @@ function NavLinks({ pathname, onNavigate }: { pathname: string; onNavigate?: () 
 function AccountRow({ displayName, avatar }: AdminNavProps) {
   return (
     <div className="flex items-center gap-3 rounded-xl border border-line px-3 py-2.5">
-      <Avatar emoji={avatar ?? "🙂"} size="sm" />
+      <Avatar emoji={avatar} name={displayName} size="sm" />
       <span className="flex-1 truncate text-sm font-medium text-ink">{displayName}</span>
       <form action="/logout" method="post">
         <button

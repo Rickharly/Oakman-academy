@@ -2,7 +2,8 @@ import { redirect } from "next/navigation";
 import { Settings as SettingsIcon } from "lucide-react";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Card } from "@/components/ui/Card";
-import { Avatar } from "@/components/ui/Avatar";
+import { Avatar, isPhotoAvatar } from "@/components/ui/Avatar";
+import { PhotoUpload } from "@/components/admin/PhotoUpload";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
 import { requireParent, requireParentOfStudent } from "@/lib/auth/session";
@@ -63,7 +64,8 @@ export default async function AdminSettingsPage({
     await prisma.$transaction([
       prisma.user.update({
         where: { id: student.userId },
-        data: { ...(displayName ? { displayName } : {}), avatar: avatar || null },
+        // An empty emoji field leaves an uploaded photo alone; the photo has its own control.
+        data: { ...(displayName ? { displayName } : {}), ...(avatar ? { avatar } : {}) },
       }),
       prisma.studentProfile.update({
         where: { id: student.id },
@@ -160,10 +162,12 @@ export default async function AdminSettingsPage({
               return (
                 <div key={s.id} className="space-y-4 rounded-2xl border border-line p-4">
                   <div className="flex items-center gap-3">
-                    <Avatar emoji={s.avatar ?? "🙂"} size="md" />
+                    <Avatar emoji={s.avatar} name={s.displayName} size="md" />
                     <p className="font-medium text-ink">{s.displayName}</p>
                     <span className="text-xs text-ink-faint">@{s.username}</span>
                   </div>
+
+                  <PhotoUpload studentId={profile.id} name={s.displayName} avatar={s.avatar} />
 
                   <form action={updateStudent} className="grid gap-3 sm:grid-cols-4 sm:items-end">
                     <input type="hidden" name="studentId" value={profile.id} />
@@ -172,8 +176,15 @@ export default async function AdminSettingsPage({
                       <Input name="displayName" defaultValue={s.displayName} />
                     </div>
                     <div>
-                      <label className={fieldClass()}>Avatar emoji</label>
-                      <Input name="avatar" defaultValue={s.avatar ?? ""} maxLength={4} />
+                      <label className={fieldClass()}>
+                        {isPhotoAvatar(s.avatar) ? "Emoji (unused while a photo is set)" : "Avatar emoji"}
+                      </label>
+                      <Input
+                        name="avatar"
+                        defaultValue={isPhotoAvatar(s.avatar) ? "" : (s.avatar ?? "")}
+                        maxLength={4}
+                        placeholder="🦊"
+                      />
                     </div>
                     <div>
                       <label className={fieldClass()}>Year group</label>

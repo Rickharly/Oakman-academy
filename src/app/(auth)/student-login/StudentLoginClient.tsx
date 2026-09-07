@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { Avatar as AvatarImage } from "@/components/ui/Avatar";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
@@ -87,12 +88,7 @@ export function StudentLoginClient({ avatars }: { avatars: Avatar[] }) {
                 onClick={() => selectAvatar(a)}
                 className="flex min-h-24 flex-col items-center justify-center gap-2 rounded-2xl border border-line bg-surface p-4 transition-colors hover:border-line-strong hover:bg-white active:scale-[0.98]"
               >
-                <span
-                  className="flex h-16 w-16 items-center justify-center rounded-full bg-white text-3xl shadow-sm"
-                  aria-hidden
-                >
-                  {a.avatar ?? "🙂"}
-                </span>
+                <AvatarImage emoji={a.avatar} name={a.displayName} size="lg" className="h-16 w-16 bg-white text-3xl" />
                 <span className="text-sm font-medium text-ink">{a.displayName}</span>
               </button>
             ))}
@@ -116,12 +112,7 @@ export function StudentLoginClient({ avatars }: { avatars: Avatar[] }) {
       </button>
 
       <div className="mt-4 flex flex-col items-center">
-        <span
-          className="flex h-16 w-16 items-center justify-center rounded-full bg-surface text-3xl shadow-sm"
-          aria-hidden
-        >
-          {selected.avatar ?? "🙂"}
-        </span>
+        <AvatarImage emoji={selected.avatar} name={selected.displayName} size="lg" className="h-16 w-16 text-3xl" />
         <h1 className="mt-3 text-lg font-semibold text-ink">{selected.displayName}</h1>
         <p className="mt-1 text-sm text-ink-muted">Enter your PIN</p>
       </div>

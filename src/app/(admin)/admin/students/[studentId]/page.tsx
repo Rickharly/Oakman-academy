@@ -55,7 +55,7 @@ export default async function AdminStudentOverviewPage({ params }: { params: Pro
         title={student.user.displayName}
         description={`Year ${student.yearGroup} · ${student.keyStage.toUpperCase()}`}
         actions={
-          <Avatar emoji={student.user.avatar ?? "🙂"} size="lg" />
+          <Avatar emoji={student.user.avatar} name={student.user.displayName} size="lg" />
         }
       />
 

@@ -62,6 +62,9 @@ parent account ended up on.
 ### First things to do after deploying
 
 - Log in as the parent, open **Settings**, change both children's PINs.
+- Still in **Settings**, add a photo for each child ("Add photo"). It is cropped square and
+  shrunk in the browser, then stored in the database — so it survives redeploys, unlike a file
+  written to the container. Without a photo they keep an emoji.
 - Open **Schedule**, check the weekly subject frequencies and daily minutes for each child.
 - Do one lesson yourself as a student, then open it in **Admin** to see the full record.
 
