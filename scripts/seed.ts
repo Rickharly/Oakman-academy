@@ -1,0 +1,173 @@
+/**
+ * Seeds a usable school: the parent account, the two student accounts, the bundled curriculum,
+ * enrolments and the weekly schedule.
+ *
+ * Idempotent — safe to run on every deploy. Existing accounts are updated, never duplicated,
+ * and passwords are only reset when the account is created (so a password changed in the app
+ * is not clobbered by the next deploy).
+ *
+ *   SEED_MODE=if-empty   (default) skip entirely when students already exist
+ *   SEED_MODE=always     re-run the upserts and re-sync the curriculum
+ */
+import "dotenv/config";
+import { prisma } from "@/lib/db";
+import { hashPassword } from "@/lib/auth/password";
+import { FixtureProvider } from "@/lib/curriculum/fixture-provider";
+import { syncMany, type SyncScope } from "@/lib/curriculum/sync";
+
+const SUBJECTS = ["maths", "english", "science", "history", "geography"] as const;
+
+/** Weekly lesson frequency per subject (spec §29), with maths and English scheduled first. */
+const SCHEDULE_RULES: { subject: string; weeklyFrequency: number; priority: number }[] = [
+  { subject: "maths", weeklyFrequency: 5, priority: 3 },
+  { subject: "english", weeklyFrequency: 5, priority: 2 },
+  { subject: "science", weeklyFrequency: 3, priority: 1 },
+  { subject: "history", weeklyFrequency: 2, priority: 1 },
+  { subject: "geography", weeklyFrequency: 2, priority: 1 },
+];
+
+const STUDENTS = [
+  { username: "eva", displayName: "Eva", avatar: "🦊", pin: "1234", yearGroup: 7, keyStage: "ks3" },
+  { username: "mikhail", displayName: "Mikhail", avatar: "🐻", pin: "5678", yearGroup: 5, keyStage: "ks2" },
+];
+
+async function main() {
+  const mode = process.env.SEED_MODE ?? "if-empty";
+
+  if (mode === "if-empty") {
+    const existing = await prisma.studentProfile.count();
+    if (existing > 0) {
+      console.log(`[seed] ${existing} student profile(s) already exist — nothing to do.`);
+      return;
+    }
+  }
+
+  // ---- parent ----
+  const parentEmail = (process.env.SEED_PARENT_EMAIL ?? "parent@example.com").trim().toLowerCase();
+  const parentPassword = process.env.SEED_PARENT_PASSWORD ?? "change-me-now";
+
+  const existingParent = await prisma.user.findUnique({ where: { email: parentEmail } });
+  const parent = existingParent
+    ? await prisma.user.update({ where: { id: existingParent.id }, data: { role: "PARENT" } })
+    : await prisma.user.create({
+        data: {
+          role: "PARENT",
+          email: parentEmail,
+          displayName: "Parent",
+          passwordHash: await hashPassword(parentPassword),
+        },
+      });
+  console.log(`[seed] parent ${parentEmail} ${existingParent ? "(existing)" : "created"}`);
+
+  // ---- curriculum (always from the bundled fixture provider; Oak is synced separately) ----
+  const provider = new FixtureProvider();
+  const available = await provider.getSubjects();
+  const availableSlugs = new Set(available.map((s) => s.slug));
+
+  const scopes: SyncScope[] = [];
+  for (const student of STUDENTS) {
+    for (const subject of SUBJECTS) {
+      if (!availableSlugs.has(subject)) continue;
+      const programmes = await provider.getProgrammes(subject).catch(() => []);
+      if (!programmes.some((p) => p.yearGroup === student.yearGroup)) continue;
+      scopes.push({ subjectSlug: subject, yearGroup: student.yearGroup });
+    }
+  }
+
+  console.log(`[seed] importing ${scopes.length} programme(s) from the bundled curriculum…`);
+  const { programmeIds, failures } = await syncMany(scopes, { provider, log: (l) => console.log(`  ${l}`) });
+  for (const f of failures) {
+    console.warn(`[seed] ${f.scope.subjectSlug} year ${f.scope.yearGroup} failed: ${f.error}`);
+  }
+
+  // ---- students, enrolments, schedules ----
+  for (const spec of STUDENTS) {
+    const existingUser = await prisma.user.findUnique({
+      where: { username: spec.username },
+      include: { studentProfile: true },
+    });
+
+    const user = existingUser
+      ? await prisma.user.update({
+          where: { id: existingUser.id },
+          data: { displayName: spec.displayName, avatar: spec.avatar, role: "STUDENT" },
+        })
+      : await prisma.user.create({
+          data: {
+            role: "STUDENT",
+            username: spec.username,
+            displayName: spec.displayName,
+            avatar: spec.avatar,
+            passwordHash: await hashPassword(spec.pin),
+          },
+        });
+
+    const profile = existingUser?.studentProfile
+      ? await prisma.studentProfile.update({
+          where: { id: existingUser.studentProfile.id },
+          data: { yearGroup: spec.yearGroup, keyStage: spec.keyStage },
+        })
+      : await prisma.studentProfile.create({
+          data: {
+            userId: user.id,
+            yearGroup: spec.yearGroup,
+            keyStage: spec.keyStage,
+            dailyTargetMinutes: 180,
+            maxDailyMinutes: 210,
+          },
+        });
+
+    await prisma.parentStudentLink.upsert({
+      where: { parentId_studentId: { parentId: parent.id, studentId: user.id } },
+      create: { parentId: parent.id, studentId: user.id },
+      update: {},
+    });
+
+    // Enrol in every programme for this student's year group.
+    const programmes = await prisma.programme.findMany({
+      where: { id: { in: programmeIds }, yearGroup: spec.yearGroup },
+      include: { subject: true },
+    });
+
+    for (const programme of programmes) {
+      await prisma.studentEnrolment.upsert({
+        where: { studentId_programmeId: { studentId: profile.id, programmeId: programme.id } },
+        create: { studentId: profile.id, programmeId: programme.id },
+        update: { active: true },
+      });
+
+      const rule = SCHEDULE_RULES.find((r) => r.subject === programme.subject.slug);
+      if (!rule) continue;
+
+      await prisma.studentSchedule.upsert({
+        where: { studentId_subjectId: { studentId: profile.id, subjectId: programme.subjectId } },
+        create: {
+          studentId: profile.id,
+          subjectId: programme.subjectId,
+          weeklyFrequency: rule.weeklyFrequency,
+          priority: rule.priority,
+        },
+        update: { weeklyFrequency: rule.weeklyFrequency, priority: rule.priority, active: true },
+      });
+    }
+
+    console.log(
+      `[seed] ${spec.displayName} (year ${spec.yearGroup}) — ${programmes.length} subject(s)` +
+        `${existingUser ? "" : `, PIN ${spec.pin}`}`,
+    );
+  }
+
+  const lessons = await prisma.lesson.count();
+  const questions = await prisma.question.count();
+  console.log(`[seed] ready: ${lessons} lessons, ${questions} questions.`);
+  if (!existingParent) {
+    console.log(`[seed] Log in at /login as ${parentEmail}. Change every password and PIN now.`);
+  }
+}
+
+main()
+  .catch((err) => {
+    console.error("[seed] failed:", err);
+    process.exitCode = 1;
+  })
+  .finally(() => prisma.$disconnect());
