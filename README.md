@@ -74,9 +74,30 @@ OAK_API_KEY=...            # set on the Railway service
 CURRICULUM_PROVIDER=oak
 ```
 
-then run the sync from the **Admin → Curriculum** page (*Sync now*), or locally with
-`pnpm oak:sync --all-for-year 7 && pnpm oak:sync --all-for-year 5`.
-Existing learning history is untouched: curriculum and student data are separate.
+then run:
+
+```
+pnpm oak:sync --switch
+```
+
+That imports every subject for each child's year group and then moves them onto it — new
+enrolments, and their weekly schedule repointed at the Oak subjects. Without `--switch` the
+curriculum is imported but the children keep studying the bundled lessons, because their
+enrolments still point there.
+
+Useful variants:
+
+| Command | What it does |
+|---|---|
+| `pnpm oak:sync` | import only, leave the children where they are |
+| `pnpm oak:sync --year 7` | just one year group |
+| `pnpm oak:sync --subject maths --year 7` | one subject |
+| `pnpm oak:sync --assets` | also download worksheets and slide decks |
+| `pnpm oak:sync --switch-only` | move the children over without re-importing |
+
+Existing learning history is untouched: curriculum and student data are separate, the old
+enrolments are archived rather than deleted, and every lesson already completed keeps its
+answers, marks and mastery in Admin.
 
 ## Running locally
 
