@@ -1,0 +1,5 @@
+-- AlterTable
+ALTER TABLE "StudentProfile" ADD COLUMN     "breakMinutes" INTEGER NOT NULL DEFAULT 10,
+ADD COLUMN     "lessonMinutes" INTEGER NOT NULL DEFAULT 45,
+ADD COLUMN     "lessonsPerDay" INTEGER NOT NULL DEFAULT 5,
+ADD COLUMN     "schoolStartTime" TEXT NOT NULL DEFAULT '09:00';

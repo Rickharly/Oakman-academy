@@ -13,6 +13,8 @@ import type { QuestionResult, StudentQuestionLite } from "@/components/student/q
 import { TeacherPanel } from "@/components/student/TeacherPanel";
 import { subjectTheme } from "@/components/student/subjectTheme";
 import { SubjectArt } from "@/components/student/SubjectArt";
+import { LessonTimer } from "@/components/student/LessonTimer";
+import { BreakTimer } from "@/components/student/BreakTimer";
 import { formatMinutes } from "@/components/student/format";
 import { cn } from "@/lib/cn";
 
@@ -69,6 +71,12 @@ export type LessonPlayerProps = {
   feedbackSummary: string | null;
   masteryScore: number | null;
   nextLessonId: string | null;
+  /** Length of a period, in minutes, from the student's timetable. */
+  lessonMinutes: number;
+  /** Length of the break between periods, in minutes. */
+  breakMinutes: number;
+  /** Seconds already spent in this lesson. */
+  elapsedSeconds: number;
 };
 
 type FinalAttempt = {
@@ -149,7 +157,19 @@ function scorePct(score: { score: number | null; maxScore: number | null } | und
 // ───────────────────────────── component ─────────────────────────────
 
 export function LessonPlayer(props: LessonPlayerProps) {
-  const { attemptId, lesson, subjectTitle, subjectSlug, unitTitle, questionsByStage, worksheetFallback, nextLessonId } =
+  const {
+    attemptId,
+    lesson,
+    subjectTitle,
+    subjectSlug,
+    unitTitle,
+    questionsByStage,
+    worksheetFallback,
+    nextLessonId,
+    lessonMinutes,
+    breakMinutes,
+    elapsedSeconds,
+  } =
     props;
 
   const [currentStage, setCurrentStage] = useState<LessonStage>(props.currentStage);
@@ -647,11 +667,18 @@ export function LessonPlayer(props: LessonPlayerProps) {
         {attempt?.masteryScore != null ? (
           <p className="text-sm text-ink-muted">Mastery {Math.round(attempt.masteryScore * 100)}%</p>
         ) : null}
-        <div className="flex flex-wrap justify-center gap-3 pt-2">
-          <Button href="/today" variant="secondary">
-            Back to Today
-          </Button>
-          {nextLessonId ? <Button href={`/lessons/${nextLessonId}`}>Next lesson</Button> : null}
+        <div className="pt-2">
+          <BreakTimer
+            minutes={breakMinutes}
+            storageKey={attemptId}
+            nextHref={nextLessonId ? `/lessons/${nextLessonId}` : "/today"}
+            nextLabel={nextLessonId ? "Start the next lesson" : "Back to Today"}
+          />
+          <div className="pt-3">
+            <Button href="/today" variant="ghost">
+              Back to Today
+            </Button>
+          </div>
         </div>
       </Card>
     );
@@ -671,11 +698,17 @@ export function LessonPlayer(props: LessonPlayerProps) {
               <span className="truncate text-xs text-ink-faint">{unitTitle}</span>
             </div>
             <h1 className="text-xl font-semibold tracking-tight text-ink sm:text-2xl">{lesson.title}</h1>
-            <p className="text-xs text-ink-faint">{formatMinutes(lesson.estimatedMinutes)}</p>
+            {/* The period length, not the content's own estimate: the timetable is what the day runs to. */}
+            <p className="text-xs text-ink-faint">{formatMinutes(lessonMinutes)}</p>
           </div>
-          <p className="shrink-0 text-sm font-medium text-ink-muted">
-            {viewStage === "COMPLETE" ? "Complete" : `Step ${Math.min(stageIndex(viewStage) + 1, 5)} of 5`}
-          </p>
+          <div className="flex shrink-0 items-center gap-3">
+            {viewStage !== "COMPLETE" ? (
+              <LessonTimer attemptId={attemptId} minutes={lessonMinutes} initialSeconds={elapsedSeconds} />
+            ) : null}
+            <p className="text-sm font-medium text-ink-muted">
+              {viewStage === "COMPLETE" ? "Complete" : `Step ${Math.min(stageIndex(viewStage) + 1, 5)} of 5`}
+            </p>
+          </div>
         </div>
 
         {viewStage !== "COMPLETE" ? (

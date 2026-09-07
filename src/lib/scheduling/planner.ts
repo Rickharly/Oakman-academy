@@ -8,6 +8,7 @@ import type { DailyAssignment, Lesson, Programme, ReviewItem, StudentLessonProgr
 import { addDaysKey, dateOnlyKey, isoWeekday, schoolDayEnd, todayDateOnly, toDateOnly, weekStartKey } from "@/lib/dates";
 
 const REVIEW_MINUTES = 15;
+const MAX_REVIEWS_PER_DAY = 2;
 
 export interface TodayView {
   dateKey: string;
@@ -37,9 +38,6 @@ function sumSlots(slots: Slot[] | undefined): number {
   return (slots ?? []).reduce((sum, s) => sum + s.estimatedMinutes, 0);
 }
 
-function nextWeekdayKey(dayKey: string): string {
-  return isoWeekday(dayKey) === 5 ? addDaysKey(dayKey, 3) : addDaysKey(dayKey, 1);
-}
 
 async function getIncompleteLessonSequence(studentId: string, programmeId: string): Promise<Lesson[]> {
   const units = await prisma.unit.findMany({
@@ -105,6 +103,10 @@ export async function planWeek(studentId: string, weekStart: string, opts?: { re
     for (const item of pendingReviews) {
       if (scheduledReviewIds.has(item.id)) continue;
       if (item.dueAt.getTime() > dayTime) continue;
+      // At most two quick reviews a day: they sit alongside the timetable, and a backlog
+      // must not turn a school day into an hour of revisiting old work.
+      const reviewsToday = daySlots.get(dayKey)!.filter((s) => s.kind === "REVIEW").length;
+      if (reviewsToday >= MAX_REVIEWS_PER_DAY) break;
       scheduledReviewIds.add(item.id);
       daySlots.get(dayKey)!.push({ kind: "REVIEW", reviewItemId: item.id, estimatedMinutes: REVIEW_MINUTES });
     }
@@ -170,48 +172,74 @@ export async function planWeek(studentId: string, weekStart: string, opts?: { re
       const lesson = candidateLessons.find((l) => !used.has(l.id));
       if (!lesson) break; // no incomplete lesson left in sequence — no assignment
       used.add(lesson.id);
-      daySlots.get(dayKey)!.push({ kind: "LESSON", subjectId, lessonId: lesson.id, estimatedMinutes: lesson.estimatedMinutes });
+      daySlots.get(dayKey)!.push({
+        kind: "LESSON",
+        subjectId,
+        lessonId: lesson.id,
+        // A period is a fixed length, whatever the lesson content estimates.
+        estimatedMinutes: student.lessonMinutes,
+      });
     }
     usedLessonIdsBySubject.set(subjectId, used);
   }
 
-  // ── Day budget: mark trailing lessons optional over maxDailyMinutes; move the last one if still way over. ──
-  const maxDailyMinutes = student.maxDailyMinutes;
+  // ── Fill every day to a full timetable. ──
+  // Weekly frequencies decide which subject is favoured; the timetable decides how many
+  // periods there are. A day is only short when a subject has genuinely run out of lessons.
+  const lessonsPerDay = Math.max(1, student.lessonsPerDay);
+  const rotation = schedules
+    .map((sch) => sch.subjectId)
+    .filter((subjectId) => programmeIdBySubjectId.has(subjectId));
+
+  for (const dayKey of dayKeys) {
+    const slots = daySlots.get(dayKey)!;
+    const existingLessonCount = existing.filter(
+      (a) => a.kind === "LESSON" && a.status !== "MOVED" && dateOnlyKey(a.date) === dayKey,
+    ).length;
+
+    // Prefer a subject the child does not already have that day, so a full timetable reads
+    // like a school week rather than four periods of the same subject.
+    let guard = 0;
+    while (slots.filter((s) => s.kind === "LESSON").length + existingLessonCount < lessonsPerDay) {
+      if (guard++ > rotation.length * 3) break; // every subject is out of lessons
+
+      const subjectsToday = new Set(
+        slots.filter((s) => s.kind === "LESSON").map((s) => s.subjectId),
+      );
+      const ordered = [
+        ...rotation.filter((id) => !subjectsToday.has(id)),
+        ...rotation.filter((id) => subjectsToday.has(id)),
+      ];
+
+      let added = false;
+      for (const subjectId of ordered) {
+        const programmeId = programmeIdBySubjectId.get(subjectId);
+        if (!programmeId) continue;
+        const used = usedLessonIdsBySubject.get(subjectId) ?? new Set<string>();
+        const candidates = await getIncompleteLessonSequence(studentId, programmeId);
+        const lesson = candidates.find((l) => !used.has(l.id));
+        if (!lesson) continue;
+        used.add(lesson.id);
+        usedLessonIdsBySubject.set(subjectId, used);
+        slots.push({
+          kind: "LESSON",
+          subjectId,
+          lessonId: lesson.id,
+          estimatedMinutes: student.lessonMinutes,
+        });
+        added = true;
+        break;
+      }
+      if (!added) break;
+    }
+  }
+
   const created: DailyAssignment[] = [];
 
   for (let i = 0; i < dayKeys.length; i++) {
     const dayKey = dayKeys[i];
     const dayDate = toDateOnly(dayKey);
     const slots = daySlots.get(dayKey)!;
-
-    let runningTotal = dayExistingMinutes.get(dayKey) ?? 0;
-    let overflowStarted = false;
-    for (const slot of slots) {
-      runningTotal += slot.estimatedMinutes;
-      if (slot.kind === "LESSON" && runningTotal > maxDailyMinutes) overflowStarted = true;
-      if (slot.kind === "LESSON") slot.optional = overflowStarted;
-    }
-
-    if (runningTotal > maxDailyMinutes + 30) {
-      for (let j = slots.length - 1; j >= 0; j--) {
-        if (slots[j].kind === "LESSON") {
-          const [moved] = slots.splice(j, 1);
-          const nextKey = nextWeekdayKey(dayKey);
-          moved.movedTo = nextKey;
-          moved.optional = false;
-          slots.push(moved); // keep it in this day's list (will be persisted as MOVED, not counted again)
-          if (i < 4) {
-            daySlots.get(nextKey)!.push({
-              kind: "LESSON",
-              subjectId: moved.subjectId,
-              lessonId: moved.lessonId,
-              estimatedMinutes: moved.estimatedMinutes,
-            });
-          }
-          break;
-        }
-      }
-    }
 
     const existingForDay = existing.filter((a) => dateOnlyKey(a.date) === dayKey);
     let order = existingForDay.length > 0 ? Math.max(...existingForDay.map((a) => a.order)) + 1 : 0;

@@ -59,6 +59,17 @@ Redeploy, log in, then **delete that variable** so it doesn't reset your passwor
 resets the students' PINs to Eva `1234` and Mikhael `5678`. The deploy log prints the address the
 parent account ended up on.
 
+### The school day
+
+Each child has a fixed timetable: **five 45-minute periods**, separated by a **10-minute
+break**, starting at 09:00 — 3h45 of lessons, finishing at 13:25. Every subject appears every
+day. During a lesson a clock counts down the period; when a lesson is finished the break timer
+runs before the next one. The clock follows time actually spent, so stepping away does not
+burn the period, and it never locks a child out of a question they are mid-way through.
+
+Change any of it per child in **Settings**: `lessonsPerDay`, `lessonMinutes`, `breakMinutes`
+and `schoolStartTime` on their profile.
+
 ### First things to do after deploying
 
 - Log in as the parent, open **Settings**, change both children's PINs.

@@ -11,6 +11,7 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { subjectTheme } from "@/components/student/subjectTheme";
 import { firstName, formatDateWords, formatMinutes, greetingForHour } from "@/components/student/format";
 import { WelcomeOverlay } from "@/components/student/WelcomeOverlay";
+import { buildTimetable, dayEndsAt, teachingMinutes } from "@/lib/scheduling/timetable";
 
 export default async function TodayPage({
   searchParams,
@@ -30,6 +31,17 @@ export default async function TodayPage({
   await ensureDayPlanned(profileId, dateKey);
   const view = await getTodayView(profileId, dateKey);
   const cards = view.assignments.filter((a) => a.status !== "MOVED");
+
+  // Real clock times for the day, so it reads like a timetable rather than a to-do list.
+  const { breakMinutes, schoolStartTime } = user.studentProfile;
+  const timetable = new Map(
+    buildTimetable(
+      cards.map((a) => ({ id: a.id, estimatedMinutes: a.estimatedMinutes, kind: a.kind })),
+      schoolStartTime,
+      breakMinutes,
+    ).map((entry) => [entry.assignmentId, entry]),
+  );
+  const finishesAt = dayEndsAt(cards, schoolStartTime, breakMinutes);
 
   // Shown once, the first time a child ever opens the school. `?welcome=1` replays it so a
   // parent can walk them through it again without touching the database.
@@ -66,7 +78,8 @@ export default async function TodayPage({
       ) : (
         <>
           <p className="text-sm font-medium text-ink-muted">
-            {cards.length} lesson{cards.length === 1 ? "" : "s"} • about {formatMinutes(view.totalMinutes)}
+            {cards.length} lesson{cards.length === 1 ? "" : "s"} •{" "}
+            {formatMinutes(teachingMinutes(cards))} of lessons • {schoolStartTime} to {finishesAt}
           </p>
 
           <div className="space-y-4">
@@ -92,6 +105,11 @@ export default async function TodayPage({
                   <div className="flex flex-wrap items-start justify-between gap-4">
                     <div className="min-w-0 space-y-2">
                       <div className="flex flex-wrap items-center gap-2">
+                        {timetable.get(assignment.id)?.period ? (
+                          <span className="rounded-md bg-stone-100 px-1.5 py-0.5 text-xs font-semibold text-ink-muted">
+                            Period {timetable.get(assignment.id)!.period}
+                          </span>
+                        ) : null}
                         {subject ? (
                           <span className={`text-xs font-semibold uppercase tracking-wide ${theme.text}`}>
                             {subject.title}
@@ -108,7 +126,12 @@ export default async function TodayPage({
                         {isCompleted ? <CheckCircle2 className="h-5 w-5 shrink-0 text-success" /> : null}
                         {title}
                       </h2>
-                      <p className="text-sm text-ink-muted">{formatMinutes(assignment.estimatedMinutes)}</p>
+                      <p className="text-sm text-ink-muted">
+                        {timetable.get(assignment.id)
+                          ? `${timetable.get(assignment.id)!.startsAt} – ${timetable.get(assignment.id)!.endsAt} · `
+                          : ""}
+                        {formatMinutes(assignment.estimatedMinutes)}
+                      </p>
                     </div>
 
                     {href ? (

@@ -16,7 +16,16 @@ export type SessionUser = {
   avatar: string | null;
   email: string | null;
   username: string | null;
-  studentProfile: { id: string; yearGroup: number; keyStage: string; preferences: unknown } | null;
+  studentProfile: {
+    id: string;
+    yearGroup: number;
+    keyStage: string;
+    preferences: unknown;
+    lessonsPerDay: number;
+    lessonMinutes: number;
+    breakMinutes: number;
+    schoolStartTime: string;
+  } | null;
 };
 
 export type StudentSessionUser = SessionUser & {
@@ -39,6 +48,10 @@ function toSessionUser(user: UserWithProfile): SessionUser {
           yearGroup: user.studentProfile.yearGroup,
           keyStage: user.studentProfile.keyStage,
           preferences: user.studentProfile.preferences,
+          lessonsPerDay: user.studentProfile.lessonsPerDay,
+          lessonMinutes: user.studentProfile.lessonMinutes,
+          breakMinutes: user.studentProfile.breakMinutes,
+          schoolStartTime: user.studentProfile.schoolStartTime,
         }
       : null,
   };

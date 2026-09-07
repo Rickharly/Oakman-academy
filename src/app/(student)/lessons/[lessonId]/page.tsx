@@ -137,6 +137,9 @@ export default async function LessonPage({
       feedbackSummary={view.attempt.feedbackSummary}
       masteryScore={view.attempt.masteryScore}
       nextLessonId={nextLessonId}
+      lessonMinutes={user.studentProfile.lessonMinutes}
+      breakMinutes={user.studentProfile.breakMinutes}
+      elapsedSeconds={view.attempt.timeSpentSeconds}
     />
   );
 }

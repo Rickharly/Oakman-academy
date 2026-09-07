@@ -66,6 +66,13 @@ model StudentProfile {
   keyStage           String // "ks2", "ks3"
   dailyTargetMinutes Int      @default(180)
   maxDailyMinutes    Int      @default(210)
+  /// A fixed timetable: this many lessons every school day, each of `lessonMinutes`,
+  /// separated by a break of `breakMinutes`.
+  lessonsPerDay      Int      @default(5)
+  lessonMinutes      Int      @default(45)
+  breakMinutes       Int      @default(10)
+  /// When the school day starts, in the family's timezone, as "HH:MM".
+  schoolStartTime    String   @default("09:00")
   preferences        Json     @default("{}") // { gamification: "calm" | "playful", theme … }
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
