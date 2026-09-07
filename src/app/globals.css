@@ -138,3 +138,42 @@ body {
     opacity: 0.5;
   }
 }
+
+/* ---------------------------------------------------------------------------
+   Print. The parent's route to a shareable document is the browser's own
+   "Save as PDF", so the academic record has to survive being printed: the app
+   furniture goes, the page turns black-on-white, and sections do not split
+   across a page break mid-table.
+   --------------------------------------------------------------------------- */
+@media print {
+  nav,
+  header.app-chrome,
+  aside,
+  .print\:hidden {
+    display: none !important;
+  }
+
+  html,
+  body {
+    background: #fff;
+    color: #000;
+  }
+
+  main {
+    max-width: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+
+  section {
+    break-inside: avoid;
+  }
+
+  a[href]::after {
+    content: "";
+  }
+
+  @page {
+    margin: 16mm;
+  }
+}

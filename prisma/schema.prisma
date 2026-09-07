@@ -91,6 +91,8 @@ model StudentProfile {
   overrides      ParentOverride[]
   dailySummaries DailySummary[]
   readingEntries ReadingEntry[]
+  schoolDays     SchoolDay[]
+  focusEvents    FocusEvent[]
   reports        Report[]
   activityLogs   ActivityLog[]
   generatedQuestions Question[] @relation("GeneratedFor")
@@ -504,6 +506,16 @@ model LessonAttempt {
   completedAt             DateTime?
   videoProgress           Json           @default("{}") // { started, percentWatched, completed, positionSeconds, updatedAt }
   timeSpentSeconds        Int            @default(0)
+  /// How the period was actually spent. `timeSpentSeconds` is the total; these break it down.
+  /// activeSeconds: the child was interacting. idleSeconds: nothing happened and no reason was
+  /// given. awaySeconds: they said they were stepping away, and why (see FocusEvent).
+  activeSeconds           Int            @default(0)
+  idleSeconds             Int            @default(0)
+  awaySeconds             Int            @default(0)
+  /// When the timetable expected this period to begin, anchored to the day's actual start.
+  expectedStartAt         DateTime?
+  /// Positive = started late, negative = started early. Null when there was no expectation.
+  startedLateSeconds      Int?
   score                   Float?
   maxScore                Float?
   masteryScore            Float? // 0–1 from the CHECK stage (+ AI signals)
@@ -515,6 +527,7 @@ model LessonAttempt {
   conversations AiConversation[]
   feedback      TeacherFeedback[]
   overrides     ParentOverride[]
+  focusEvents   FocusEvent[]
 
   @@unique([studentId, lessonId, attemptNumber])
   @@index([studentId, startedAt])
@@ -822,6 +835,8 @@ model ParentOverride {
 enum ReportPeriod {
   WEEKLY
   MONTHLY
+  /// The cumulative academic record: everything studied, for handing to a school.
+  ACADEMIC_RECORD
 }
 
 model Report {
@@ -869,4 +884,60 @@ model CurriculumSyncJob {
   error      String?
   log        String? // newline-separated progress lines
   createdAt  DateTime   @default(now())
+}
+
+/// One school day as it was actually worked, as opposed to as it was planned.
+///
+/// The day is anchored to the moment the child starts their first lesson: every period after
+/// that is expected to begin a break's length after the previous one ended. Starting the day
+/// late shifts the day rather than making every later period "late" too.
+model SchoolDay {
+  id                 String         @id @default(cuid())
+  studentId          String
+  student            StudentProfile @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  date               DateTime       @db.Date
+  /// "HH:MM" the timetable said the day should begin, copied in so the record stands alone.
+  plannedStartTime   String
+  /// When they actually began the first lesson.
+  startedAt          DateTime?
+  /// Positive = started late. Null until they start.
+  startedLateSeconds Int?
+  /// The last moment any work was recorded.
+  lastActivityAt     DateTime?
+  createdAt          DateTime       @default(now())
+  updatedAt          DateTime       @updatedAt
+
+  @@unique([studentId, date])
+  @@index([studentId, date])
+}
+
+/// Why a child was not working, in their own words.
+///
+/// Idle time with no reason is just idle time. When they press "I need a moment" the gap is
+/// labelled instead, so a parent reading the record can tell a bathroom break from drifting off.
+enum FocusEventKind {
+  TOILET
+  DRINK
+  CALLED_AWAY
+  OTHER
+  /// Recorded by the app, not the child: no interaction for long enough to count as idle.
+  IDLE
+}
+
+model FocusEvent {
+  id         String         @id @default(cuid())
+  studentId  String
+  student    StudentProfile @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  attemptId  String?
+  attempt    LessonAttempt? @relation(fields: [attemptId], references: [id], onDelete: Cascade)
+  date       DateTime       @db.Date
+  kind       FocusEventKind
+  /// Anything the child chose to add. Never required.
+  note       String?
+  startedAt  DateTime       @default(now())
+  endedAt    DateTime?
+  seconds    Int?
+
+  @@index([studentId, date])
+  @@index([attemptId])
 }

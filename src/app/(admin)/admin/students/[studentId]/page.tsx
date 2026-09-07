@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { AlertCircle, BookMarked, Clock, ArrowRight } from "lucide-react";
+import { AlertCircle, BookMarked, Clock, ArrowRight, FileText } from "lucide-react";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Card } from "@/components/ui/Card";
 import { Avatar } from "@/components/ui/Avatar";
@@ -12,6 +12,8 @@ import { requireParentOfStudent } from "@/lib/auth/session";
 import { prisma } from "@/lib/db";
 import { getStudentOverview, getSubjectProgress, getWeakTopics } from "@/lib/progress/aggregate";
 import { getTodayView, getWeekStrip } from "@/lib/scheduling/planner";
+import { getDayEngagement } from "@/lib/engagement/service";
+import { DayEngagement } from "@/components/admin/DayEngagement";
 import { schoolDayKey } from "@/lib/dates";
 
 const ASSIGNMENT_BADGE: Record<string, { status?: BadgeStatus; tone?: "neutral" | "warning" }> = {
@@ -37,7 +39,7 @@ export default async function AdminStudentOverviewPage({ params }: { params: Pro
   const { student } = await requireParentOfStudent(studentId);
 
   const dateKey = schoolDayKey();
-  const [overview, todayView, weekStrip, subjects, weakTopics, summaries, activity, readingEntries] =
+  const [overview, todayView, weekStrip, subjects, weakTopics, summaries, activity, engagement, readingEntries] =
     await Promise.all([
     getStudentOverview(studentId),
     getTodayView(studentId, dateKey),
@@ -46,6 +48,7 @@ export default async function AdminStudentOverviewPage({ params }: { params: Pro
     getWeakTopics(studentId, 5),
     prisma.dailySummary.findMany({ where: { studentId }, orderBy: { date: "desc" }, take: 5 }),
     prisma.activityLog.findMany({ where: { studentId }, orderBy: { createdAt: "desc" }, take: 12 }),
+    getDayEngagement(studentId, dateKey),
     prisma.readingEntry.findMany({
       where: { studentId },
       include: { readingText: { select: { title: true, genre: true } } },
@@ -62,7 +65,16 @@ export default async function AdminStudentOverviewPage({ params }: { params: Pro
         title={student.user.displayName}
         description={`Year ${student.yearGroup} · ${student.keyStage.toUpperCase()}`}
         actions={
-          <Avatar emoji={student.user.avatar} name={student.user.displayName} size="lg" />
+          <div className="flex items-center gap-3">
+            <Link
+              href={`/admin/students/${studentId}/record`}
+              className="flex h-11 items-center gap-1.5 rounded-full border border-line px-4 text-sm font-medium text-ink transition-colors duration-150 hover:bg-stone-100"
+            >
+              <FileText className="h-4 w-4 text-ink-muted" />
+              Academic record
+            </Link>
+            <Avatar emoji={student.user.avatar} name={student.user.displayName} size="lg" />
+          </div>
         }
       />
 
@@ -79,6 +91,10 @@ export default async function AdminStudentOverviewPage({ params }: { params: Pro
         <Card padding="md">
           <Stat label="Needs review" value={overview.needsReview} deltaTone={overview.needsReview > 0 ? "negative" : "neutral"} />
         </Card>
+      </div>
+
+      <div className="mb-8">
+        <DayEngagement day={engagement} />
       </div>
 
       <div className="mb-8 grid gap-6 lg:grid-cols-3">
