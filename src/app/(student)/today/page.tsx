@@ -60,7 +60,9 @@ export default async function TodayPage() {
                 assignment.status === "IN_PROGRESS" || assignment.progress?.status === "IN_PROGRESS";
               const buttonLabel = isCompleted ? "Review" : isInProgress ? "Continue" : "Start";
               const title = lesson?.title ?? assignment.customTitle ?? "Assignment";
-              const href = lesson ? `/lessons/${lesson.id}` : undefined;
+              const href = lesson
+                ? `/lessons/${lesson.id}?assignmentId=${assignment.id}&kind=${assignment.kind}`
+                : undefined;
 
               return (
                 <Card

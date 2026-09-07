@@ -1,12 +1,17 @@
-import { MessageCircle } from "lucide-react";
+import { requireStudent } from "@/lib/auth/session";
 import { PageHeader } from "@/components/ui/PageHeader";
-import { EmptyState } from "@/components/ui/EmptyState";
+import { Card } from "@/components/ui/Card";
+import { TeacherPanel } from "@/components/student/TeacherPanel";
 
-export default function TeacherPage() {
+export default async function TeacherPage() {
+  await requireStudent();
+
   return (
-    <>
-      <PageHeader title="Teacher" />
-      <EmptyState icon={MessageCircle} title="Coming soon" description="Chat with your AI teacher here." />
-    </>
+    <div className="flex h-[calc(100vh-8rem)] flex-col md:h-[calc(100vh-9rem)]">
+      <PageHeader title="Teacher" description="Ask about anything you're learning." />
+      <Card padding="lg" className="flex min-h-0 flex-1 flex-col">
+        <TeacherPanel />
+      </Card>
+    </div>
   );
 }
