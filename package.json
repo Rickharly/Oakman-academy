@@ -19,7 +19,8 @@
     "oak:types": "openapi-typescript vendor/oak/openapi.json -o src/lib/oak/openapi.d.ts",
     "plan": "tsx scripts/plan.ts",
     "e2e": "playwright test",
-    "postinstall": "prisma generate"
+    "postinstall": "prisma generate",
+    "start:prod": "prisma migrate deploy && node scripts/release.mjs && next start"
   },
   "dependencies": {
     "@prisma/adapter-pg": "^7.10.0",
@@ -54,5 +55,8 @@
     "typescript": "^5",
     "vitest": "^5.0.0"
   },
-  "packageManager": "pnpm@10.33.0"
+  "packageManager": "pnpm@10.33.0",
+  "engines": {
+    "node": ">=22"
+  }
 }
