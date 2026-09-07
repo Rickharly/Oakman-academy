@@ -1,0 +1,1857 @@
+{
+  "subject": {
+    "slug": "maths",
+    "title": "Maths"
+  },
+  "programme": {
+    "sequenceSlug": "maths-primary",
+    "yearGroup": 5,
+    "keyStage": "ks2",
+    "phase": "primary",
+    "title": "Maths — Year 5"
+  },
+  "units": [
+    {
+      "unitSlug": "fractions",
+      "unitTitle": "Fractions",
+      "unitOrder": 1,
+      "description": "Pupils compare and order fractions with the same denominator, add and subtract fractions with the same denominator, and find fractions of amounts and sets of objects.",
+      "whyThisWhyNow": "This unit builds directly on pupils' Year 4 work on equivalent fractions and simple addition, preparing them for calculating with fractions that have different denominators in Year 6.",
+      "priorKnowledgeRequirements": [
+        "Pupils can recognise and write fractions with the same denominator, e.g. 2/5 and 4/5.",
+        "Pupils understand that the denominator shows how many equal parts a whole is split into.",
+        "Pupils can find unit fractions of small quantities, e.g. 1/2 of 10."
+      ],
+      "nationalCurriculumContent": [
+        "Compare and order fractions whose denominators are all multiples of the same number.",
+        "Add and subtract fractions with the same denominator, and denominators that are multiples of the same number.",
+        "Recognise, find and write fractions of a discrete set of objects: unit fractions and non-unit fractions with small denominators."
+      ],
+      "threads": [],
+      "categories": [],
+      "unitLessons": [
+        {
+          "lessonSlug": "comparing-and-ordering-fractions",
+          "lessonTitle": "Comparing and ordering fractions",
+          "lessonOrder": 1,
+          "state": "published"
+        },
+        {
+          "lessonSlug": "adding-and-subtracting-fractions-same-denominator",
+          "lessonTitle": "Adding and subtracting fractions with the same denominator",
+          "lessonOrder": 2,
+          "state": "published"
+        },
+        {
+          "lessonSlug": "finding-fractions-of-amounts",
+          "lessonTitle": "Finding fractions of amounts",
+          "lessonOrder": 3,
+          "state": "published"
+        }
+      ]
+    },
+    {
+      "unitSlug": "decimals-and-percentages",
+      "unitTitle": "Decimals and percentages",
+      "unitOrder": 2,
+      "description": "Pupils extend their understanding of decimal place value to three decimal places, connect decimals with their equivalent fractions, and calculate simple percentages of amounts.",
+      "whyThisWhyNow": "Having secured fraction skills in the previous unit, pupils now see how decimals and percentages are simply other ways of representing the same fraction relationships, ready for more complex calculations in Year 6.",
+      "priorKnowledgeRequirements": [
+        "Pupils can read and write decimal numbers with up to two decimal places, e.g. 3.45.",
+        "Pupils understand tenths and hundredths as fractions and as decimals.",
+        "Pupils can order a set of decimal numbers."
+      ],
+      "nationalCurriculumContent": [
+        "Read, write, order and compare numbers with up to three decimal places.",
+        "Recognise the per cent symbol (%) and understand that per cent relates to 'number of parts per hundred'.",
+        "Solve problems which require knowing percentage and decimal equivalents."
+      ],
+      "threads": [],
+      "categories": [],
+      "unitLessons": [
+        {
+          "lessonSlug": "decimal-place-value-to-three-decimal-places",
+          "lessonTitle": "Decimal place value to three decimal places",
+          "lessonOrder": 1,
+          "state": "published"
+        },
+        {
+          "lessonSlug": "converting-between-fractions-and-decimals",
+          "lessonTitle": "Converting between fractions and decimals",
+          "lessonOrder": 2,
+          "state": "published"
+        },
+        {
+          "lessonSlug": "finding-percentages-of-amounts",
+          "lessonTitle": "Finding percentages of amounts",
+          "lessonOrder": 3,
+          "state": "published"
+        }
+      ]
+    }
+  ],
+  "lessons": {
+    "comparing-and-ordering-fractions": {
+      "summary": {
+        "lessonTitle": "Comparing and ordering fractions",
+        "pupilLessonOutcome": "I can compare and order fractions that have the same denominator.",
+        "keyLearningPoints": [
+          {
+            "keyLearningPoint": "When fractions have the same denominator, the fraction with the larger numerator is the larger fraction."
+          },
+          {
+            "keyLearningPoint": "Fractions with the same denominator have equal-sized parts, so only the numerator changes how much we have."
+          },
+          {
+            "keyLearningPoint": "We use the symbols < (less than) and > (greater than) to compare two fractions."
+          },
+          {
+            "keyLearningPoint": "To order a list of fractions with the same denominator, we order their numerators."
+          }
+        ],
+        "lessonKeywords": [
+          {
+            "keyword": "numerator",
+            "description": "The top number of a fraction; it shows how many equal parts we have."
+          },
+          {
+            "keyword": "denominator",
+            "description": "The bottom number of a fraction; it shows how many equal parts the whole has been split into."
+          },
+          {
+            "keyword": "order",
+            "description": "To arrange numbers from smallest to largest, or largest to smallest."
+          }
+        ],
+        "misconceptionsAndCommonMistakes": [
+          {
+            "misconception": "Pupils assume that if the denominators are the same, the fractions must be equal, and don't look at the numerators at all.",
+            "response": "Show that when the denominator is fixed, only the numerator changes the fraction's size — e.g. 2/6 and 5/6 both have sixths, but 5/6 has more of them, so 5/6 is bigger."
+          },
+          {
+            "misconception": "When ordering fractions, pupils muddle the < and > symbols and read them the wrong way round.",
+            "response": "Teach the trick that the symbol always opens towards the bigger amount, like a crocodile's mouth opening towards the food it wants to eat most."
+          }
+        ],
+        "teacherTips": [
+          {
+            "teacherTip": "Use fraction strips or bars of the same length split into the same number of parts so pupils can see directly that more shaded parts means a bigger fraction."
+          },
+          {
+            "teacherTip": "Get pupils to say the fraction in words ('three eighths', 'five eighths') before comparing, so they focus on the numerator as 'how many'."
+          }
+        ],
+        "contentGuidance": null,
+        "supervisionLevel": null,
+        "canonicalUrl": "https://example-fixture.invalid/lessons/comparing-and-ordering-fractions",
+        "oakUrl": "https://example-fixture.invalid/lessons/comparing-and-ordering-fractions",
+        "downloadsAvailable": true
+      },
+      "quiz": {
+        "starterQuiz": [
+          {
+            "question": "What does the denominator of a fraction tell us?",
+            "questionType": "multiple-choice",
+            "answers": [
+              {
+                "type": "text",
+                "content": "How many parts we are counting",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "How many equal parts the whole is split into",
+                "distractor": false
+              },
+              {
+                "type": "text",
+                "content": "The total value of the fraction",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "Whether the fraction is more or less than one",
+                "distractor": true
+              }
+            ]
+          },
+          {
+            "question": "Which fraction shows 3 out of 5 equal parts?",
+            "questionType": "multiple-choice",
+            "answers": [
+              {
+                "type": "text",
+                "content": "5/3",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "3/5",
+                "distractor": false
+              },
+              {
+                "type": "text",
+                "content": "3/2",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "2/5",
+                "distractor": true
+              }
+            ]
+          },
+          {
+            "question": "What is 1/2 of 10?",
+            "questionType": "short-answer",
+            "answers": [
+              {
+                "type": "text",
+                "content": "5"
+              }
+            ]
+          }
+        ],
+        "exitQuiz": [
+          {
+            "question": "Which fraction is bigger, 4/9 or 7/9?",
+            "questionType": "multiple-choice",
+            "answers": [
+              {
+                "type": "text",
+                "content": "4/9",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "7/9",
+                "distractor": false
+              },
+              {
+                "type": "text",
+                "content": "They are equal",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "Cannot be compared",
+                "distractor": true
+              }
+            ]
+          },
+          {
+            "question": "If two fractions have the same denominator, which number do we compare to find out which is bigger?",
+            "questionType": "multiple-choice",
+            "answers": [
+              {
+                "type": "text",
+                "content": "The denominator",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "The numerator",
+                "distractor": false
+              },
+              {
+                "type": "text",
+                "content": "Both numbers added together",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "Neither number",
+                "distractor": true
+              }
+            ]
+          },
+          {
+            "question": "Write the missing symbol to make this true: 2/7 ___ 5/7 (use < or >)",
+            "questionType": "short-answer",
+            "answers": [
+              {
+                "type": "text",
+                "content": "<"
+              }
+            ]
+          },
+          {
+            "question": "Match each pair of fractions to the correct comparison.",
+            "questionType": "match",
+            "answers": [
+              {
+                "matchOption": {
+                  "type": "text",
+                  "content": "3/8 and 6/8"
+                },
+                "correctChoice": {
+                  "type": "text",
+                  "content": "6/8 is greater"
+                }
+              },
+              {
+                "matchOption": {
+                  "type": "text",
+                  "content": "5/10 and 2/10"
+                },
+                "correctChoice": {
+                  "type": "text",
+                  "content": "5/10 is greater"
+                }
+              },
+              {
+                "matchOption": {
+                  "type": "text",
+                  "content": "1/4 and 3/4"
+                },
+                "correctChoice": {
+                  "type": "text",
+                  "content": "3/4 is greater"
+                }
+              }
+            ]
+          },
+          {
+            "question": "Order these fractions from smallest to largest: 5/9, 1/9, 4/9.",
+            "questionType": "order",
+            "answers": [
+              {
+                "order": 1,
+                "type": "text",
+                "content": "1/9"
+              },
+              {
+                "order": 2,
+                "type": "text",
+                "content": "4/9"
+              },
+              {
+                "order": 3,
+                "type": "text",
+                "content": "5/9"
+              }
+            ]
+          }
+        ]
+      },
+      "transcript": {
+        "transcript": "Hello! Today we're comparing fractions, working out which fraction is bigger and which is smaller, when the fractions have the same denominator.\n\nLet's imagine two chocolate bars, both cut into eight equal pieces. On the first bar, three pieces are chocolate icing. On the second bar, five pieces are chocolate icing. Which bar has more icing? The second one, because five pieces is more than three pieces.\n\nWe can write this using fractions: 3/8 and 5/8. Both fractions have the same denominator, 8, which means both bars have been split into eight equal-sized pieces. Because the pieces are exactly the same size, we don't need to think about the denominator at all when comparing — we just look at the numerator, the top number, to see how many of those pieces we have. Five is more than three, so 5/8 is bigger than 3/8. We can write this as 5/8 > 3/8, or 3/8 < 5/8.\n\nThis little arrow, the greater than or less than sign, always opens towards the bigger number, like a hungry crocodile's mouth opening towards more food. So 3/8 < 5/8 shows the narrow point at 3/8 and the wide open end at 5/8.\n\nNow, what if we want to order more than two fractions with the same denominator? Say we have 2/6, 5/6 and 1/6. Since the denominator is the same for all three, we simply order the numerators: 1, then 2, then 5. So from smallest to largest, the fractions in order are 1/6, 2/6, 5/6.\n\nHere's the mistake to watch for. Some people see two fractions with the same denominator and think that because the bottom numbers match, that's all that matters. But it's the top number, the numerator, that tells us how big the fraction is, once the denominator is the same for both.\n\nNext, you'll practise comparing and ordering fractions with the same denominator yourself, using the greater than and less than signs."
+      },
+      "assets": {
+        "assets": [
+          {
+            "type": "worksheet",
+            "label": "Worksheet",
+            "url": "fixture://worksheet/comparing-and-ordering-fractions.pdf"
+          },
+          {
+            "type": "video",
+            "label": "Video",
+            "url": "fixture://video/comparing-and-ordering-fractions"
+          }
+        ],
+        "attribution": []
+      },
+      "worksheet": {
+        "questions": [
+          {
+            "number": "1",
+            "text": "Which is bigger, 3/7 or 6/7?",
+            "type": "short",
+            "answer": "6/7"
+          },
+          {
+            "number": "2",
+            "text": "Order these fractions from largest to smallest: 2/5, 4/5, 1/5.",
+            "type": "short",
+            "answer": "4/5, 2/5, 1/5"
+          },
+          {
+            "number": "3",
+            "text": "Write < or > to make this true: 5/12 ___ 9/12.",
+            "type": "short",
+            "answer": "<"
+          },
+          {
+            "number": "4",
+            "text": "Explain, in your own words, why we only need to look at the numerator when comparing fractions that have the same denominator.",
+            "type": "extended",
+            "answer": "A good answer says that when the denominator is the same, the parts are already the same size, so the numerator alone tells us how many of those equal parts we have, and therefore which fraction is bigger."
+          }
+        ]
+      }
+    },
+    "adding-and-subtracting-fractions-same-denominator": {
+      "summary": {
+        "lessonTitle": "Adding and subtracting fractions with the same denominator",
+        "pupilLessonOutcome": "I can add and subtract fractions that have the same denominator.",
+        "keyLearningPoints": [
+          {
+            "keyLearningPoint": "To add fractions with the same denominator, add the numerators and keep the denominator the same."
+          },
+          {
+            "keyLearningPoint": "To subtract fractions with the same denominator, subtract the numerators and keep the denominator the same."
+          },
+          {
+            "keyLearningPoint": "The denominator does not change when adding or subtracting, because the size of the parts stays the same."
+          },
+          {
+            "keyLearningPoint": "If the numerators add up to more than the denominator, the answer is greater than one whole, and can be written as a mixed number."
+          }
+        ],
+        "lessonKeywords": [
+          {
+            "keyword": "mixed number",
+            "description": "A number made of a whole number and a fraction together, e.g. 1 1/4."
+          },
+          {
+            "keyword": "numerator",
+            "description": "The top number of a fraction, showing how many parts we have."
+          },
+          {
+            "keyword": "denominator",
+            "description": "The bottom number of a fraction, showing the size of each equal part."
+          }
+        ],
+        "misconceptionsAndCommonMistakes": [
+          {
+            "misconception": "Pupils add both the numerators and the denominators, e.g. saying 1/4 + 2/4 = 3/8.",
+            "response": "Show with a diagram that the parts are still quarters, not eighths — adding the denominators would make the parts a different size, which doesn't happen just because we combine amounts; only the numerators are added."
+          },
+          {
+            "misconception": "Pupils don't recognise that an answer like 5/4 is bigger than one whole, and either leave it as a strange-looking fraction or think it must be wrong.",
+            "response": "Model converting 5/4 into the mixed number 1 1/4 using a diagram of one whole plus one extra quarter, so pupils see it is a perfectly good answer, just written differently."
+          }
+        ],
+        "teacherTips": [
+          {
+            "teacherTip": "Use pizza or bar diagrams split into the given denominator so pupils can see physically that combining parts keeps the same-sized slices."
+          },
+          {
+            "teacherTip": "Encourage pupils to say the calculation in words first, e.g. 'two fifths plus one fifth', to reinforce that the denominator names the type of part, like a unit."
+          }
+        ],
+        "contentGuidance": null,
+        "supervisionLevel": null,
+        "canonicalUrl": "https://example-fixture.invalid/lessons/adding-and-subtracting-fractions-same-denominator",
+        "oakUrl": "https://example-fixture.invalid/lessons/adding-and-subtracting-fractions-same-denominator",
+        "downloadsAvailable": true
+      },
+      "quiz": {
+        "starterQuiz": [
+          {
+            "question": "In the fraction 5/8, what does the number 5 represent?",
+            "questionType": "multiple-choice",
+            "answers": [
+              {
+                "type": "text",
+                "content": "The denominator, how many parts the whole is split into",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "The numerator, how many parts we have",
+                "distractor": false
+              },
+              {
+                "type": "text",
+                "content": "The total number of wholes",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "The value of one part",
+                "distractor": true
+              }
+            ]
+          },
+          {
+            "question": "Which fraction is bigger, 2/7 or 5/7?",
+            "questionType": "multiple-choice",
+            "answers": [
+              {
+                "type": "text",
+                "content": "2/7",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "5/7",
+                "distractor": false
+              },
+              {
+                "type": "text",
+                "content": "They are equal",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "Cannot tell",
+                "distractor": true
+              }
+            ]
+          },
+          {
+            "question": "What is 4 + 3?",
+            "questionType": "short-answer",
+            "answers": [
+              {
+                "type": "text",
+                "content": "7"
+              }
+            ]
+          }
+        ],
+        "exitQuiz": [
+          {
+            "question": "What is 2/5 + 1/5?",
+            "questionType": "multiple-choice",
+            "answers": [
+              {
+                "type": "text",
+                "content": "3/10",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "3/5",
+                "distractor": false
+              },
+              {
+                "type": "text",
+                "content": "2/10",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "1/5",
+                "distractor": true
+              }
+            ]
+          },
+          {
+            "question": "What is 5/6 - 2/6?",
+            "questionType": "multiple-choice",
+            "answers": [
+              {
+                "type": "text",
+                "content": "3/12",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "3/6",
+                "distractor": false
+              },
+              {
+                "type": "text",
+                "content": "7/6",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "3/0",
+                "distractor": true
+              }
+            ]
+          },
+          {
+            "question": "Write 4/3 as a mixed number.",
+            "questionType": "short-answer",
+            "answers": [
+              {
+                "type": "text",
+                "content": "1 1/3"
+              },
+              {
+                "type": "text",
+                "content": "1 and 1/3"
+              }
+            ]
+          },
+          {
+            "question": "Match each calculation to its answer.",
+            "questionType": "match",
+            "answers": [
+              {
+                "matchOption": {
+                  "type": "text",
+                  "content": "1/8 + 3/8"
+                },
+                "correctChoice": {
+                  "type": "text",
+                  "content": "4/8"
+                }
+              },
+              {
+                "matchOption": {
+                  "type": "text",
+                  "content": "7/9 - 4/9"
+                },
+                "correctChoice": {
+                  "type": "text",
+                  "content": "3/9"
+                }
+              },
+              {
+                "matchOption": {
+                  "type": "text",
+                  "content": "2/6 + 3/6"
+                },
+                "correctChoice": {
+                  "type": "text",
+                  "content": "5/6"
+                }
+              }
+            ]
+          },
+          {
+            "question": "Put these steps in order for adding fractions with the same denominator: check the denominators are the same, add the numerators together, keep the denominator the same, write the answer as a fraction.",
+            "questionType": "order",
+            "answers": [
+              {
+                "order": 1,
+                "type": "text",
+                "content": "check the denominators are the same"
+              },
+              {
+                "order": 2,
+                "type": "text",
+                "content": "add the numerators together"
+              },
+              {
+                "order": 3,
+                "type": "text",
+                "content": "keep the denominator the same"
+              },
+              {
+                "order": 4,
+                "type": "text",
+                "content": "write the answer as a fraction"
+              }
+            ]
+          }
+        ]
+      },
+      "transcript": {
+        "transcript": "Hello again! Today we're adding and subtracting fractions, where both fractions have the same denominator.\n\nPicture a pizza cut into five equal slices. If you eat two slices, you've eaten 2/5 of the pizza. If your friend then eats one more slice, together you've eaten 2/5 plus 1/5. How many slices have you eaten altogether? Three slices, out of the five the pizza was cut into. So 2/5 + 1/5 = 3/5.\n\nNotice what happened. We added the numerators, 2 and 1, to get 3. But the denominator stayed as 5, because the pizza is still cut into fifths — the size of each slice hasn't changed, only how many slices we've eaten. This is the golden rule: when adding or subtracting fractions with the same denominator, add or subtract the numerators, and keep the denominator exactly the same.\n\nSubtracting works the same way. If you had 4/6 of a chocolate bar and you gave away 1/6, you'd subtract the numerators: 4 take away 1 is 3, so you'd have 3/6 left. The denominator stays as 6 throughout.\n\nSometimes, when we add, the numerator ends up bigger than the denominator. Imagine eating 3/4 of one pizza, then 2/4 more from a second identical pizza. That's 3/4 + 2/4, and adding the numerators gives us 5/4. But 5/4 is more than one whole pizza! We can write this as a mixed number instead: one whole pizza, plus one quarter left over, which is 1 1/4.\n\nThe mistake to avoid is adding the denominators too, so writing 1/4 + 2/4 as 3/8. That's wrong, because the slices are still quarters, not eighths.\n\nNow it's your turn to practise adding and subtracting fractions with the same denominator."
+      },
+      "assets": {
+        "assets": [
+          {
+            "type": "worksheet",
+            "label": "Worksheet",
+            "url": "fixture://worksheet/adding-and-subtracting-fractions-same-denominator.pdf"
+          },
+          {
+            "type": "video",
+            "label": "Video",
+            "url": "fixture://video/adding-and-subtracting-fractions-same-denominator"
+          }
+        ],
+        "attribution": []
+      },
+      "worksheet": {
+        "questions": [
+          {
+            "number": "1",
+            "text": "Work out 3/7 + 2/7.",
+            "type": "short",
+            "answer": "5/7"
+          },
+          {
+            "number": "2",
+            "text": "Work out 6/8 - 3/8.",
+            "type": "short",
+            "answer": "3/8"
+          },
+          {
+            "number": "3",
+            "text": "Work out 4/5 + 3/5, and write your answer as a mixed number.",
+            "type": "short",
+            "answer": "1 2/5"
+          },
+          {
+            "number": "4",
+            "text": "Explain why the denominator does not change when we add two fractions with the same denominator.",
+            "type": "extended",
+            "answer": "A good answer explains that the denominator shows the size of the parts, and adding fractions only combines how many parts we have (the numerators) without changing how big each part is, so the denominator stays the same."
+          }
+        ]
+      }
+    },
+    "finding-fractions-of-amounts": {
+      "summary": {
+        "lessonTitle": "Finding fractions of amounts",
+        "pupilLessonOutcome": "I can find a fraction of an amount by dividing by the denominator and multiplying by the numerator.",
+        "keyLearningPoints": [
+          {
+            "keyLearningPoint": "To find a fraction of an amount, first divide the amount by the denominator to find what one part is worth."
+          },
+          {
+            "keyLearningPoint": "Then multiply that answer by the numerator to find out how many parts we need."
+          },
+          {
+            "keyLearningPoint": "Finding a unit fraction (like 1/5) of an amount only needs the dividing step."
+          },
+          {
+            "keyLearningPoint": "Finding a non-unit fraction (like 3/5) needs both steps: divide, then multiply."
+          }
+        ],
+        "lessonKeywords": [
+          {
+            "keyword": "unit fraction",
+            "description": "A fraction with a numerator of 1, e.g. 1/4 or 1/9."
+          },
+          {
+            "keyword": "non-unit fraction",
+            "description": "A fraction with a numerator greater than 1, e.g. 3/4 or 5/9."
+          },
+          {
+            "keyword": "divide",
+            "description": "To share an amount equally into a number of parts."
+          }
+        ],
+        "misconceptionsAndCommonMistakes": [
+          {
+            "misconception": "Pupils multiply the amount by the numerator first without dividing by the denominator, e.g. finding 3/4 of 20 by working out 20 x 3.",
+            "response": "Remind pupils that dividing by the denominator comes first because it tells us the size of one part; only after that do we multiply by the numerator to find several parts."
+          },
+          {
+            "misconception": "Pupils divide by the numerator instead of the denominator, e.g. finding 3/5 of 15 by dividing 15 by 3.",
+            "response": "Point back to what the denominator means — it's the number of equal groups we're splitting the amount into — so that is always the number we divide by first."
+          }
+        ],
+        "teacherTips": [
+          {
+            "teacherTip": "Model with a bar split into the denominator's number of equal sections, labelling one section's value, before shading the numerator's worth of sections."
+          },
+          {
+            "teacherTip": "Choose amounts that divide exactly by the denominator at first, so pupils can focus on the method before meeting remainders."
+          }
+        ],
+        "contentGuidance": null,
+        "supervisionLevel": null,
+        "canonicalUrl": "https://example-fixture.invalid/lessons/finding-fractions-of-amounts",
+        "oakUrl": "https://example-fixture.invalid/lessons/finding-fractions-of-amounts",
+        "downloadsAvailable": true
+      },
+      "quiz": {
+        "starterQuiz": [
+          {
+            "question": "What is 20 divided by 5?",
+            "questionType": "multiple-choice",
+            "answers": [
+              {
+                "type": "text",
+                "content": "5",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "4",
+                "distractor": false
+              },
+              {
+                "type": "text",
+                "content": "15",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "100",
+                "distractor": true
+              }
+            ]
+          },
+          {
+            "question": "In the fraction 2/5, what does the denominator tell us?",
+            "questionType": "multiple-choice",
+            "answers": [
+              {
+                "type": "text",
+                "content": "We are counting 5 parts",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "The whole is split into 5 equal parts",
+                "distractor": false
+              },
+              {
+                "type": "text",
+                "content": "The fraction equals 5",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "There are 5 wholes",
+                "distractor": true
+              }
+            ]
+          },
+          {
+            "question": "What is 1/3 of 12?",
+            "questionType": "short-answer",
+            "answers": [
+              {
+                "type": "text",
+                "content": "4"
+              }
+            ]
+          }
+        ],
+        "exitQuiz": [
+          {
+            "question": "What is 1/4 of 20?",
+            "questionType": "multiple-choice",
+            "answers": [
+              {
+                "type": "text",
+                "content": "4",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "5",
+                "distractor": false
+              },
+              {
+                "type": "text",
+                "content": "16",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "80",
+                "distractor": true
+              }
+            ]
+          },
+          {
+            "question": "To find 3/5 of an amount, what should you do first?",
+            "questionType": "multiple-choice",
+            "answers": [
+              {
+                "type": "text",
+                "content": "Multiply the amount by 3",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "Divide the amount by 5",
+                "distractor": false
+              },
+              {
+                "type": "text",
+                "content": "Divide the amount by 3",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "Multiply the amount by 5",
+                "distractor": true
+              }
+            ]
+          },
+          {
+            "question": "What is 2/3 of 21?",
+            "questionType": "short-answer",
+            "answers": [
+              {
+                "type": "text",
+                "content": "14"
+              }
+            ]
+          },
+          {
+            "question": "Match each calculation to its answer.",
+            "questionType": "match",
+            "answers": [
+              {
+                "matchOption": {
+                  "type": "text",
+                  "content": "1/4 of 24"
+                },
+                "correctChoice": {
+                  "type": "text",
+                  "content": "6"
+                }
+              },
+              {
+                "matchOption": {
+                  "type": "text",
+                  "content": "3/4 of 24"
+                },
+                "correctChoice": {
+                  "type": "text",
+                  "content": "18"
+                }
+              },
+              {
+                "matchOption": {
+                  "type": "text",
+                  "content": "1/6 of 24"
+                },
+                "correctChoice": {
+                  "type": "text",
+                  "content": "4"
+                }
+              }
+            ]
+          },
+          {
+            "question": "Order the steps for finding 3/4 of 20: divide 20 by the denominator, 4; find that one quarter is 5; multiply 5 by the numerator, 3; the answer is 15.",
+            "questionType": "order",
+            "answers": [
+              {
+                "order": 1,
+                "type": "text",
+                "content": "divide 20 by the denominator, 4"
+              },
+              {
+                "order": 2,
+                "type": "text",
+                "content": "find that one quarter is 5"
+              },
+              {
+                "order": 3,
+                "type": "text",
+                "content": "multiply 5 by the numerator, 3"
+              },
+              {
+                "order": 4,
+                "type": "text",
+                "content": "the answer is 15"
+              }
+            ]
+          }
+        ]
+      },
+      "transcript": {
+        "transcript": "Hello! Today's lesson is about finding a fraction of an amount, like finding 3/4 of 20 sweets.\n\nLet's start with something simpler. Imagine you have 15 sweets and you want to find 1/5 of them. The denominator, 5, tells us to share the sweets into 5 equal groups. 15 shared into 5 equal groups is 3 sweets in each group, because 15 divided by 5 equals 3. So 1/5 of 15 is 3.\n\nNow let's try a trickier one: 3/5 of 15. We still start the same way, divide by the denominator. 15 divided by 5 is 3, so each fifth is worth 3 sweets. But this time we want 3/5, not just 1/5, so we multiply that answer by the numerator: 3 sweets multiplied by 3 gives us 9. So 3/5 of 15 is 9.\n\nThe method has two steps. Step one: divide the amount by the denominator, to find the value of one part. Step two: multiply that answer by the numerator, to find the value of however many parts we need. If we're finding a unit fraction, like 1/5, we only need step one, because we're only looking for one part.\n\nLet's try another example together: what is 2/3 of 18? First, divide 18 by the denominator, 3. That gives 6, so each third is worth 6. Then multiply by the numerator, 2, because we want two thirds: 6 times 2 is 12. So 2/3 of 18 is 12.\n\nHere's a mistake to avoid. Some people multiply by the numerator first, without dividing by the denominator, which gives a much bigger, wrong answer. Others divide by the numerator instead of the denominator. Always remember: divide by the bottom number first, then multiply by the top number.\n\nNow you'll practise finding fractions of amounts using this two-step method."
+      },
+      "assets": {
+        "assets": [
+          {
+            "type": "worksheet",
+            "label": "Worksheet",
+            "url": "fixture://worksheet/finding-fractions-of-amounts.pdf"
+          },
+          {
+            "type": "video",
+            "label": "Video",
+            "url": "fixture://video/finding-fractions-of-amounts"
+          }
+        ],
+        "attribution": []
+      },
+      "worksheet": {
+        "questions": [
+          {
+            "number": "1",
+            "text": "Find 1/3 of 27.",
+            "type": "numeric",
+            "answer": "9"
+          },
+          {
+            "number": "2",
+            "text": "Find 3/8 of 16.",
+            "type": "numeric",
+            "answer": "6"
+          },
+          {
+            "number": "3",
+            "text": "Find 2/5 of 30.",
+            "type": "numeric",
+            "answer": "12"
+          },
+          {
+            "number": "4",
+            "text": "A class of 28 pupils has 3/4 of them bringing a packed lunch. Explain how you would work out how many pupils that is, then give the answer.",
+            "type": "extended",
+            "answer": "A good answer divides 28 by the denominator 4 to get 7, then multiplies 7 by the numerator 3, giving 21 pupils."
+          }
+        ]
+      }
+    },
+    "decimal-place-value-to-three-decimal-places": {
+      "summary": {
+        "lessonTitle": "Decimal place value to three decimal places",
+        "pupilLessonOutcome": "I can read, write and understand the value of digits in numbers with up to three decimal places.",
+        "keyLearningPoints": [
+          {
+            "keyLearningPoint": "The first digit after the decimal point is the tenths column, the second is the hundredths column, and the third is the thousandths column."
+          },
+          {
+            "keyLearningPoint": "Each column to the right of the decimal point is ten times smaller than the one before it."
+          },
+          {
+            "keyLearningPoint": "A digit's value depends on which column it is in, e.g. the 4 in 0.243 is worth 4 hundredths, not 4 tenths."
+          },
+          {
+            "keyLearningPoint": "Zero can be used as a placeholder, e.g. in 0.05, the zero shows there are no tenths."
+          }
+        ],
+        "lessonKeywords": [
+          {
+            "keyword": "tenths",
+            "description": "The first column after the decimal point; each tenth is one part when a whole is split into 10 equal parts."
+          },
+          {
+            "keyword": "hundredths",
+            "description": "The second column after the decimal point; each hundredth is one part when a whole is split into 100 equal parts."
+          },
+          {
+            "keyword": "thousandths",
+            "description": "The third column after the decimal point; each thousandth is one part when a whole is split into 1000 equal parts."
+          }
+        ],
+        "misconceptionsAndCommonMistakes": [
+          {
+            "misconception": "Pupils think that more digits after the decimal point always means a bigger number, e.g. thinking 0.4 is smaller than 0.25 because 0.4 has fewer digits.",
+            "response": "Line the numbers up by place value using a place value grid, adding a trailing zero to 0.4 to make 0.40, so pupils can see 0.40 is bigger than 0.25 because 4 tenths is more than 2 tenths."
+          },
+          {
+            "misconception": "Pupils read 0.05 as 'zero point five' instead of 'zero point zero five', missing the placeholder zero.",
+            "response": "Point to the empty tenths column and explain the zero must be said and written to hold that column's place, otherwise the digit 5 would jump into the wrong column."
+          }
+        ],
+        "teacherTips": [
+          {
+            "teacherTip": "Use a place value grid with headed columns (tenths, hundredths, thousandths) so pupils can physically place digits in the correct column."
+          },
+          {
+            "teacherTip": "Link each column back to fractions pupils already know: tenths to /10, hundredths to /100, to reinforce that decimals and fractions describe the same thing."
+          }
+        ],
+        "contentGuidance": null,
+        "supervisionLevel": null,
+        "canonicalUrl": "https://example-fixture.invalid/lessons/decimal-place-value-to-three-decimal-places",
+        "oakUrl": "https://example-fixture.invalid/lessons/decimal-place-value-to-three-decimal-places",
+        "downloadsAvailable": true
+      },
+      "quiz": {
+        "starterQuiz": [
+          {
+            "question": "In the number 3.45, what is the value of the 4?",
+            "questionType": "multiple-choice",
+            "answers": [
+              {
+                "type": "text",
+                "content": "Four hundredths",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "Four tenths",
+                "distractor": false
+              },
+              {
+                "type": "text",
+                "content": "Forty",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "Four",
+                "distractor": true
+              }
+            ]
+          },
+          {
+            "question": "Which is bigger, 0.6 or 0.45?",
+            "questionType": "multiple-choice",
+            "answers": [
+              {
+                "type": "text",
+                "content": "0.45",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "0.6",
+                "distractor": false
+              },
+              {
+                "type": "text",
+                "content": "They are equal",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "Cannot tell",
+                "distractor": true
+              }
+            ]
+          },
+          {
+            "question": "Write four tenths as a decimal.",
+            "questionType": "short-answer",
+            "answers": [
+              {
+                "type": "text",
+                "content": "0.4"
+              }
+            ]
+          }
+        ],
+        "exitQuiz": [
+          {
+            "question": "In the number 0.372, what is the value of the 7?",
+            "questionType": "multiple-choice",
+            "answers": [
+              {
+                "type": "text",
+                "content": "Seven tenths",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "Seven hundredths",
+                "distractor": false
+              },
+              {
+                "type": "text",
+                "content": "Seven thousandths",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "Seventy",
+                "distractor": true
+              }
+            ]
+          },
+          {
+            "question": "What is the purpose of the zero in 0.05?",
+            "questionType": "multiple-choice",
+            "answers": [
+              {
+                "type": "text",
+                "content": "It shows there are no hundredths",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "It shows there are no tenths",
+                "distractor": false
+              },
+              {
+                "type": "text",
+                "content": "It makes the number bigger",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "It has no purpose",
+                "distractor": true
+              }
+            ]
+          },
+          {
+            "question": "Write 'three tenths, two hundredths and five thousandths' as a decimal.",
+            "questionType": "short-answer",
+            "answers": [
+              {
+                "type": "text",
+                "content": "0.325"
+              }
+            ]
+          },
+          {
+            "question": "Match each decimal to the value of its first digit after the point.",
+            "questionType": "match",
+            "answers": [
+              {
+                "matchOption": {
+                  "type": "text",
+                  "content": "0.6"
+                },
+                "correctChoice": {
+                  "type": "text",
+                  "content": "six tenths"
+                }
+              },
+              {
+                "matchOption": {
+                  "type": "text",
+                  "content": "0.3"
+                },
+                "correctChoice": {
+                  "type": "text",
+                  "content": "three tenths"
+                }
+              },
+              {
+                "matchOption": {
+                  "type": "text",
+                  "content": "0.9"
+                },
+                "correctChoice": {
+                  "type": "text",
+                  "content": "nine tenths"
+                }
+              }
+            ]
+          },
+          {
+            "question": "Order these decimals from smallest to largest: 0.45, 0.5, 0.09.",
+            "questionType": "order",
+            "answers": [
+              {
+                "order": 1,
+                "type": "text",
+                "content": "0.09"
+              },
+              {
+                "order": 2,
+                "type": "text",
+                "content": "0.45"
+              },
+              {
+                "order": 3,
+                "type": "text",
+                "content": "0.5"
+              }
+            ]
+          }
+        ]
+      },
+      "transcript": {
+        "transcript": "Hello! Today we're looking closely at decimal numbers, and working out exactly what each digit after the decimal point is worth.\n\nYou already know that in a whole number like 352, the 3 is worth three hundred, the 5 is worth fifty, and the 2 is worth two, because of which column each digit sits in. Decimals work in exactly the same way, but the columns get smaller as we move right, past the decimal point.\n\nThe first column after the decimal point is called the tenths column. In the number 0.7, the 7 is in the tenths column, so it's worth seven tenths. The next column is the hundredths column, ten times smaller again. In the number 0.47, the 4 is worth four tenths, and the 7 is worth seven hundredths. The third column is the thousandths column, another ten times smaller. In the number 0.256, the 2 is two tenths, the 5 is five hundredths, and the 6 is six thousandths.\n\nEach column is exactly ten times smaller than the column to its left, just like whole numbers, only now we're moving in the other direction, getting smaller each time.\n\nSometimes a column has nothing in it, and we use a zero to hold that place. Take the number 0.08. There's a zero in the tenths column, which tells us there are no tenths at all, and the 8 is in the hundredths column, worth eight hundredths. If we left that zero out and just wrote 0.8, the 8 would jump into the tenths column, and become a much bigger number, eight tenths instead of eight hundredths.\n\nHere's a common mistake. Some people think a decimal with more digits must be bigger, so they think 0.4 is smaller than 0.25 because 0.4 only has one digit. But 0.4 is the same as 0.40, which is four tenths, and that's bigger than 0.25, which is two tenths and five hundredths. Always compare column by column, starting with the tenths.\n\nNow let's practise reading and writing decimal numbers together."
+      },
+      "assets": {
+        "assets": [
+          {
+            "type": "worksheet",
+            "label": "Worksheet",
+            "url": "fixture://worksheet/decimal-place-value-to-three-decimal-places.pdf"
+          },
+          {
+            "type": "video",
+            "label": "Video",
+            "url": "fixture://video/decimal-place-value-to-three-decimal-places"
+          }
+        ],
+        "attribution": []
+      },
+      "worksheet": {
+        "questions": [
+          {
+            "number": "1",
+            "text": "What is the value of the 6 in 0.263?",
+            "type": "short",
+            "answer": "six thousandths"
+          },
+          {
+            "number": "2",
+            "text": "Write the decimal that has 5 in the tenths column, 0 in the hundredths column and 2 in the thousandths column.",
+            "type": "short",
+            "answer": "0.502"
+          },
+          {
+            "number": "3",
+            "text": "Order these decimals from largest to smallest: 0.7, 0.68, 0.702.",
+            "type": "short",
+            "answer": "0.702, 0.7, 0.68"
+          },
+          {
+            "number": "4",
+            "text": "Explain why 0.5 and 0.50 have exactly the same value.",
+            "type": "extended",
+            "answer": "A good answer explains that the extra zero is in the hundredths column but adds nothing there, so 0.50 still means five tenths and no hundredths, the same value as 0.5; trailing zeros after the decimal point don't change a number's value."
+          }
+        ]
+      }
+    },
+    "converting-between-fractions-and-decimals": {
+      "summary": {
+        "lessonTitle": "Converting between fractions and decimals",
+        "pupilLessonOutcome": "I can convert between fractions with a denominator of 10 or 100 and their decimal equivalents.",
+        "keyLearningPoints": [
+          {
+            "keyLearningPoint": "A fraction with a denominator of 10 converts directly to a decimal with one digit after the decimal point, e.g. 3/10 = 0.3."
+          },
+          {
+            "keyLearningPoint": "A fraction with a denominator of 100 converts directly to a decimal with two digits after the decimal point, e.g. 47/100 = 0.47."
+          },
+          {
+            "keyLearningPoint": "Some common fractions have decimal equivalents worth memorising, such as 1/2 = 0.5, 1/4 = 0.25, and 3/4 = 0.75."
+          },
+          {
+            "keyLearningPoint": "To convert a fraction with a different denominator, first find an equivalent fraction with a denominator of 10 or 100."
+          }
+        ],
+        "lessonKeywords": [
+          {
+            "keyword": "equivalent",
+            "description": "Having the same value, even though written differently, e.g. 1/2 and 0.5 are equivalent."
+          },
+          {
+            "keyword": "decimal equivalent",
+            "description": "The decimal number that has exactly the same value as a given fraction."
+          },
+          {
+            "keyword": "convert",
+            "description": "To change a number from one form into another without changing its value."
+          }
+        ],
+        "misconceptionsAndCommonMistakes": [
+          {
+            "misconception": "Pupils convert 3/10 to 0.3 correctly, but then convert 3/100 to 0.3 as well, forgetting the extra place value column.",
+            "response": "Show that hundredths need two digits after the point, so 3/100 must be written 0.03, with a placeholder zero in the tenths column, not 0.3."
+          },
+          {
+            "misconception": "Pupils think 1/4 converts to 0.14 by just using the digits in the fraction.",
+            "response": "Show the working: 1/4 is equivalent to 25/100 (multiplying top and bottom by 25), and 25/100 is 0.25 — the conversion goes through finding an equivalent hundredths fraction, not just copying digits."
+          }
+        ],
+        "teacherTips": [
+          {
+            "teacherTip": "Keep a hundred square visible so pupils can shade a fraction of it and read off the decimal directly, e.g. shading 47 squares out of 100 shows 47/100 = 0.47."
+          },
+          {
+            "teacherTip": "Build a short list of 'facts to know by heart' (1/2, 1/4, 3/4, 1/5, 1/10) and practise them regularly until they are instant recall."
+          }
+        ],
+        "contentGuidance": null,
+        "supervisionLevel": null,
+        "canonicalUrl": "https://example-fixture.invalid/lessons/converting-between-fractions-and-decimals",
+        "oakUrl": "https://example-fixture.invalid/lessons/converting-between-fractions-and-decimals",
+        "downloadsAvailable": true
+      },
+      "quiz": {
+        "starterQuiz": [
+          {
+            "question": "What is the value of the 6 in 0.163?",
+            "questionType": "multiple-choice",
+            "answers": [
+              {
+                "type": "text",
+                "content": "Six tenths",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "Six hundredths",
+                "distractor": false
+              },
+              {
+                "type": "text",
+                "content": "Six thousandths",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "Sixty",
+                "distractor": true
+              }
+            ]
+          },
+          {
+            "question": "Which fraction is equivalent to 1/2 when the top and bottom are multiplied by 50?",
+            "questionType": "multiple-choice",
+            "answers": [
+              {
+                "type": "text",
+                "content": "1/50",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "50/100",
+                "distractor": false
+              },
+              {
+                "type": "text",
+                "content": "50/2",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "2/100",
+                "distractor": true
+              }
+            ]
+          },
+          {
+            "question": "Write 7 tenths as a decimal.",
+            "questionType": "short-answer",
+            "answers": [
+              {
+                "type": "text",
+                "content": "0.7"
+              }
+            ]
+          }
+        ],
+        "exitQuiz": [
+          {
+            "question": "What is 3/10 as a decimal?",
+            "questionType": "multiple-choice",
+            "answers": [
+              {
+                "type": "text",
+                "content": "0.03",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "0.3",
+                "distractor": false
+              },
+              {
+                "type": "text",
+                "content": "0.13",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "3.10",
+                "distractor": true
+              }
+            ]
+          },
+          {
+            "question": "What is 1/4 as a decimal?",
+            "questionType": "multiple-choice",
+            "answers": [
+              {
+                "type": "text",
+                "content": "0.14",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "0.25",
+                "distractor": false
+              },
+              {
+                "type": "text",
+                "content": "0.4",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "1.4",
+                "distractor": true
+              }
+            ]
+          },
+          {
+            "question": "Write 65/100 as a decimal.",
+            "questionType": "short-answer",
+            "answers": [
+              {
+                "type": "text",
+                "content": "0.65"
+              }
+            ]
+          },
+          {
+            "question": "Match each fraction to its decimal equivalent.",
+            "questionType": "match",
+            "answers": [
+              {
+                "matchOption": {
+                  "type": "text",
+                  "content": "1/2"
+                },
+                "correctChoice": {
+                  "type": "text",
+                  "content": "0.5"
+                }
+              },
+              {
+                "matchOption": {
+                  "type": "text",
+                  "content": "3/4"
+                },
+                "correctChoice": {
+                  "type": "text",
+                  "content": "0.75"
+                }
+              },
+              {
+                "matchOption": {
+                  "type": "text",
+                  "content": "9/10"
+                },
+                "correctChoice": {
+                  "type": "text",
+                  "content": "0.9"
+                }
+              }
+            ]
+          },
+          {
+            "question": "Order these from smallest to largest: 0.4, 1/2, 0.25.",
+            "questionType": "order",
+            "answers": [
+              {
+                "order": 1,
+                "type": "text",
+                "content": "0.25"
+              },
+              {
+                "order": 2,
+                "type": "text",
+                "content": "0.4"
+              },
+              {
+                "order": 3,
+                "type": "text",
+                "content": "1/2"
+              }
+            ]
+          }
+        ]
+      },
+      "transcript": {
+        "transcript": "Hello! Today we're linking two things you already know about, fractions and decimals, by converting between them.\n\nLet's start with tenths. If I have the fraction 3/10, that means 3 parts out of 10. In decimal form, tenths sit in the very first column after the decimal point. So 3/10 is exactly the same as the decimal 0.3. They're two different ways of writing the same value.\n\nHundredths work the same way, but they use the second column after the decimal point. The fraction 47/100 means 47 parts out of 100, and as a decimal, that's 0.47, the 4 sits in the tenths column and the 7 sits in the hundredths column.\n\nNow, what if the fraction has a different denominator, like 1/4? We can't write quarters straight into a place value column, so first we find an equivalent fraction with a denominator of 10 or 100. To turn 1/4 into hundredths, we multiply the numerator and denominator by 25, because 4 times 25 is 100. That gives us 25/100, which as a decimal is 0.25. So 1/4 = 0.25.\n\nSome fraction and decimal pairs come up so often that it's worth learning them by heart: 1/2 is 0.5, 1/4 is 0.25, 3/4 is 0.75, and 1/10 is 0.1. Knowing these instantly will save you time later.\n\nNow, a common mistake. If someone is converting 3/100 to a decimal, they might carelessly write 0.3, copying the digits without thinking about place value. But 3/100 only has three hundredths, not three tenths, so it needs a placeholder zero in the tenths column: the correct answer is 0.03. Always check how many digits the denominator needs, tenths need one decimal place, hundredths need two.\n\nLet's practise converting between fractions and decimals now."
+      },
+      "assets": {
+        "assets": [
+          {
+            "type": "worksheet",
+            "label": "Worksheet",
+            "url": "fixture://worksheet/converting-between-fractions-and-decimals.pdf"
+          },
+          {
+            "type": "video",
+            "label": "Video",
+            "url": "fixture://video/converting-between-fractions-and-decimals"
+          }
+        ],
+        "attribution": []
+      },
+      "worksheet": {
+        "questions": [
+          {
+            "number": "1",
+            "text": "Write 9/10 as a decimal.",
+            "type": "short",
+            "answer": "0.9"
+          },
+          {
+            "number": "2",
+            "text": "Write 3/4 as a decimal.",
+            "type": "short",
+            "answer": "0.75"
+          },
+          {
+            "number": "3",
+            "text": "Write 8/100 as a decimal.",
+            "type": "short",
+            "answer": "0.08"
+          },
+          {
+            "number": "4",
+            "text": "Explain how you would convert 1/5 into a decimal, showing your working.",
+            "type": "extended",
+            "answer": "A good answer finds an equivalent fraction with a denominator of 10 by multiplying top and bottom by 2, giving 2/10, and then writes this as the decimal 0.2."
+          }
+        ]
+      }
+    },
+    "finding-percentages-of-amounts": {
+      "summary": {
+        "lessonTitle": "Finding percentages of amounts",
+        "pupilLessonOutcome": "I can find simple percentages (10%, 25%, 50%) of an amount.",
+        "keyLearningPoints": [
+          {
+            "keyLearningPoint": "Per cent means 'out of 100', and the symbol % is used to show it."
+          },
+          {
+            "keyLearningPoint": "10% of an amount is found by dividing the amount by 10."
+          },
+          {
+            "keyLearningPoint": "50% of an amount is the same as finding one half; 25% is the same as finding one quarter."
+          },
+          {
+            "keyLearningPoint": "Once we know 10% of an amount, we can use it to find other percentages, e.g. 20% is double 10%."
+          }
+        ],
+        "lessonKeywords": [
+          {
+            "keyword": "per cent",
+            "description": "Meaning 'out of 100'; shown using the % symbol, e.g. 25% means 25 out of 100."
+          },
+          {
+            "keyword": "percentage",
+            "description": "A way of describing part of a whole as a number out of 100."
+          },
+          {
+            "keyword": "equivalent",
+            "description": "Having the same value even though shown in a different way, e.g. 50% is equivalent to 1/2."
+          }
+        ],
+        "misconceptionsAndCommonMistakes": [
+          {
+            "misconception": "Pupils think finding 10% means dividing by 100 rather than by 10, muddling percentage with the fact that percentages are measured out of 100.",
+            "response": "Remind pupils that finding 10% specifically means finding one tenth, so we divide by 10; percentages are always measured out of 100, but that doesn't mean we always divide by 100."
+          },
+          {
+            "misconception": "Pupils think 50% and 25% need a completely different method from fractions, rather than connecting them to halves and quarters they already know.",
+            "response": "Explicitly link each percentage to its matching fraction, e.g. show 50% of 40 the fraction way (half of 40) and the percentage way (50 out of every 100), so pupils see they give the same answer."
+          }
+        ],
+        "teacherTips": [
+          {
+            "teacherTip": "Anchor everything to 10% first, since it is the easiest percentage to calculate and can be scaled up or down to find many others (20%, 30%, 5%)."
+          },
+          {
+            "teacherTip": "Use money as a context (e.g. a shop sale) since percentages of amounts are a familiar real-life idea for this age group."
+          }
+        ],
+        "contentGuidance": null,
+        "supervisionLevel": null,
+        "canonicalUrl": "https://example-fixture.invalid/lessons/finding-percentages-of-amounts",
+        "oakUrl": "https://example-fixture.invalid/lessons/finding-percentages-of-amounts",
+        "downloadsAvailable": true
+      },
+      "quiz": {
+        "starterQuiz": [
+          {
+            "question": "What is 1/2 of 40?",
+            "questionType": "multiple-choice",
+            "answers": [
+              {
+                "type": "text",
+                "content": "10",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "20",
+                "distractor": false
+              },
+              {
+                "type": "text",
+                "content": "40",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "4",
+                "distractor": true
+              }
+            ]
+          },
+          {
+            "question": "What is 1/4 of 40?",
+            "questionType": "multiple-choice",
+            "answers": [
+              {
+                "type": "text",
+                "content": "20",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "10",
+                "distractor": false
+              },
+              {
+                "type": "text",
+                "content": "4",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "5",
+                "distractor": true
+              }
+            ]
+          },
+          {
+            "question": "What is 60 divided by 10?",
+            "questionType": "short-answer",
+            "answers": [
+              {
+                "type": "text",
+                "content": "6"
+              }
+            ]
+          }
+        ],
+        "exitQuiz": [
+          {
+            "question": "What does 'per cent' mean?",
+            "questionType": "multiple-choice",
+            "answers": [
+              {
+                "type": "text",
+                "content": "Out of 10",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "Out of 100",
+                "distractor": false
+              },
+              {
+                "type": "text",
+                "content": "Out of 1000",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "A type of fraction with a denominator of 4",
+                "distractor": true
+              }
+            ]
+          },
+          {
+            "question": "What is 10% of 80?",
+            "questionType": "multiple-choice",
+            "answers": [
+              {
+                "type": "text",
+                "content": "80",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "8",
+                "distractor": false
+              },
+              {
+                "type": "text",
+                "content": "0.8",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "18",
+                "distractor": true
+              }
+            ]
+          },
+          {
+            "question": "What is 50% of 36?",
+            "questionType": "short-answer",
+            "answers": [
+              {
+                "type": "text",
+                "content": "18"
+              }
+            ]
+          },
+          {
+            "question": "Match each percentage to the fraction it is equivalent to.",
+            "questionType": "match",
+            "answers": [
+              {
+                "matchOption": {
+                  "type": "text",
+                  "content": "50%"
+                },
+                "correctChoice": {
+                  "type": "text",
+                  "content": "1/2"
+                }
+              },
+              {
+                "matchOption": {
+                  "type": "text",
+                  "content": "25%"
+                },
+                "correctChoice": {
+                  "type": "text",
+                  "content": "1/4"
+                }
+              },
+              {
+                "matchOption": {
+                  "type": "text",
+                  "content": "10%"
+                },
+                "correctChoice": {
+                  "type": "text",
+                  "content": "1/10"
+                }
+              }
+            ]
+          },
+          {
+            "question": "Order the steps for finding 25% of 40: recognise 25% is the same as one quarter, divide 40 by 4, the answer is 10.",
+            "questionType": "order",
+            "answers": [
+              {
+                "order": 1,
+                "type": "text",
+                "content": "recognise 25% is the same as one quarter"
+              },
+              {
+                "order": 2,
+                "type": "text",
+                "content": "divide 40 by 4"
+              },
+              {
+                "order": 3,
+                "type": "text",
+                "content": "the answer is 10"
+              }
+            ]
+          }
+        ]
+      },
+      "transcript": {
+        "transcript": "Hello! Today we're finding percentages of amounts, something you'll see in real life, like sale signs in shops that say '25% off'.\n\nThe word per cent means 'out of 100'. We write it using the % symbol. So 50% means 50 out of 100, and 25% means 25 out of 100.\n\nLet's start with the easiest percentage to find: 10%. Because 10% means 10 out of every 100, finding 10% of an amount is the same as dividing that amount by 10. So 10% of 60 is 60 divided by 10, which is 6.\n\nOnce we know 10% of something, we can use it to find lots of other percentages. For example, 20% is double 10%, so 20% of 60 would be 6 doubled, which is 12. And 5% is half of 10%, so 5% of 60 would be half of 6, which is 3.\n\nNow let's think about 50% and 25%. These connect to fractions you already know well. 50% is exactly the same as one half, because 50 out of 100 is the same amount as 1 out of 2. So finding 50% of an amount is the same as halving it. 50% of 30 is 15.\n\n25% is the same as one quarter, because 25 out of 100 is the same as 1 out of 4. So finding 25% of an amount is the same as finding a quarter of it, which means dividing by 4. 25% of 40 is 10.\n\nA common mistake is muddling up what 'divide by 10' really means for 10%. Some people think percentages always mean dividing by 100, but dividing the whole amount by 100 actually gives us 1%, not 10%. To find 10% specifically, we divide by 10, because 10% is one tenth of the whole.\n\nNow you'll practise finding 10%, 50% and 25% of different amounts."
+      },
+      "assets": {
+        "assets": [
+          {
+            "type": "worksheet",
+            "label": "Worksheet",
+            "url": "fixture://worksheet/finding-percentages-of-amounts.pdf"
+          },
+          {
+            "type": "video",
+            "label": "Video",
+            "url": "fixture://video/finding-percentages-of-amounts"
+          }
+        ],
+        "attribution": []
+      },
+      "worksheet": {
+        "questions": [
+          {
+            "number": "1",
+            "text": "Find 10% of 90.",
+            "type": "numeric",
+            "answer": "9"
+          },
+          {
+            "number": "2",
+            "text": "Find 50% of 64.",
+            "type": "numeric",
+            "answer": "32"
+          },
+          {
+            "number": "3",
+            "text": "Find 25% of 200.",
+            "type": "numeric",
+            "answer": "50"
+          },
+          {
+            "number": "4",
+            "text": "A jacket costs £40 and is reduced by 25% in a sale. Explain how you would work out the new price, and give your answer.",
+            "type": "extended",
+            "answer": "A good answer recognises 25% is one quarter, finds a quarter of £40 (£10), and subtracts it from £40 to get a new price of £30."
+          }
+        ]
+      }
+    }
+  },
+  "licences": {
+    "comparing-and-ordering-fractions": "ogl-compatible",
+    "adding-and-subtracting-fractions-same-denominator": "ogl-compatible",
+    "finding-fractions-of-amounts": "ogl-compatible",
+    "decimal-place-value-to-three-decimal-places": "ogl-compatible",
+    "converting-between-fractions-and-decimals": "ogl-compatible",
+    "finding-percentages-of-amounts": "ogl-compatible"
+  }
+}

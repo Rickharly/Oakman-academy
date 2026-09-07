@@ -1,0 +1,1921 @@
+{
+  "subject": {
+    "slug": "science",
+    "title": "Science"
+  },
+  "programme": {
+    "sequenceSlug": "science-primary",
+    "yearGroup": 5,
+    "keyStage": "ks2",
+    "phase": "primary",
+    "title": "Science — Year 5"
+  },
+  "units": [
+    {
+      "unitSlug": "properties-and-changes-of-materials",
+      "unitTitle": "Properties and changes of materials",
+      "unitOrder": 1,
+      "description": "Pupils investigate the properties of solids, liquids and gases, explore dissolving and separating mixtures, and distinguish between reversible and irreversible changes.",
+      "whyThisWhyNow": "This unit builds on pupils' Year 4 work identifying and grouping materials, moving them towards a more scientific understanding of how and why materials change, ready for chemistry concepts in secondary school.",
+      "priorKnowledgeRequirements": [
+        "Pupils can compare and group materials based on their properties, e.g. hard/soft, rough/smooth.",
+        "Pupils know that materials can be solid, liquid or gas.",
+        "Pupils have observed that some materials change when heated or cooled, e.g. ice melting."
+      ],
+      "nationalCurriculumContent": [
+        "Compare and group together everyday materials on the basis of their properties, including hardness and solubility.",
+        "Know that some materials will dissolve in liquid to form a solution, and describe how to recover a substance from a solution.",
+        "Use knowledge of solids, liquids and gases to decide how mixtures might be separated, including through filtering, sieving and evaporating.",
+        "Demonstrate that dissolving, mixing and changes of state are reversible changes, and explain that some changes result in the formation of new materials that are not usually reversible."
+      ],
+      "threads": [],
+      "categories": [],
+      "unitLessons": [
+        {
+          "lessonSlug": "properties-of-materials-solids-liquids-gases",
+          "lessonTitle": "Solids, liquids and gases",
+          "lessonOrder": 1,
+          "state": "published"
+        },
+        {
+          "lessonSlug": "dissolving-and-separating-mixtures",
+          "lessonTitle": "Dissolving and separating mixtures",
+          "lessonOrder": 2,
+          "state": "published"
+        },
+        {
+          "lessonSlug": "reversible-and-irreversible-changes",
+          "lessonTitle": "Reversible and irreversible changes",
+          "lessonOrder": 3,
+          "state": "published"
+        }
+      ]
+    },
+    {
+      "unitSlug": "earth-and-space",
+      "unitTitle": "Earth and space",
+      "unitOrder": 2,
+      "description": "Pupils learn about the planets in our solar system and their orbits, understand what causes day and night, and explore the Moon and why it appears to change shape.",
+      "whyThisWhyNow": "This unit introduces pupils to their first formal model of the solar system, building spatial reasoning about the Earth's movement that underpins later physics and astronomy.",
+      "priorKnowledgeRequirements": [
+        "Pupils know that the Sun is a source of light and heat, and that the Earth is a planet.",
+        "Pupils have observed that the Moon appears to change shape over time.",
+        "Pupils understand that the Earth is round, like a giant ball, not flat."
+      ],
+      "nationalCurriculumContent": [
+        "Describe the movement of the Earth, and other planets, relative to the Sun in the solar system.",
+        "Describe the movement of the Moon relative to the Earth, and describe the Sun, Earth and Moon as approximately spherical bodies.",
+        "Use the idea of the Earth's rotation to explain day and night and the apparent movement of the Sun across the sky."
+      ],
+      "threads": [],
+      "categories": [],
+      "unitLessons": [
+        {
+          "lessonSlug": "the-solar-system-planets-and-orbits",
+          "lessonTitle": "The solar system: planets and orbits",
+          "lessonOrder": 1,
+          "state": "published"
+        },
+        {
+          "lessonSlug": "day-and-night-earths-rotation",
+          "lessonTitle": "Day and night: the Earth's rotation",
+          "lessonOrder": 2,
+          "state": "published"
+        },
+        {
+          "lessonSlug": "the-moon-and-its-phases",
+          "lessonTitle": "The Moon and its phases",
+          "lessonOrder": 3,
+          "state": "published"
+        }
+      ]
+    }
+  ],
+  "lessons": {
+    "properties-of-materials-solids-liquids-gases": {
+      "summary": {
+        "lessonTitle": "Solids, liquids and gases",
+        "pupilLessonOutcome": "I can describe and compare the properties of solids, liquids and gases.",
+        "keyLearningPoints": [
+          {
+            "keyLearningPoint": "A solid keeps its own shape and volume, whatever container it is put in."
+          },
+          {
+            "keyLearningPoint": "A liquid keeps the same volume but changes shape to fill the bottom of whatever container it is put in."
+          },
+          {
+            "keyLearningPoint": "A gas has no fixed shape or volume; it spreads out to fill the whole of whatever container it is put in."
+          },
+          {
+            "keyLearningPoint": "The same substance, such as water, can exist as a solid, liquid or gas depending on its temperature."
+          }
+        ],
+        "lessonKeywords": [
+          {
+            "keyword": "solid",
+            "description": "A material that keeps its own fixed shape and volume."
+          },
+          {
+            "keyword": "liquid",
+            "description": "A material that flows and takes the shape of its container, but keeps the same volume."
+          },
+          {
+            "keyword": "gas",
+            "description": "A material with no fixed shape or volume that spreads out to completely fill its container."
+          }
+        ],
+        "misconceptionsAndCommonMistakes": [
+          {
+            "misconception": "Pupils think that if a solid is broken into small pieces, like sand or sugar, it becomes a liquid because it can be poured.",
+            "response": "Explain that each individual grain of sand or sugar is still a solid, keeping its own shape; it's only the whole collection of separate grains that can be poured, unlike a true liquid which flows as one connected substance."
+          },
+          {
+            "misconception": "Pupils think gases don't really exist, or don't have mass, unless they can be seen, such as smoke or steam.",
+            "response": "Point out that air, an invisible gas, still takes up space and has mass, e.g. a football feels heavier and firmer when pumped full of air compared with when it is flat."
+          }
+        ],
+        "teacherTips": [
+          {
+            "teacherTip": "Use real, safe examples pupils can handle or observe (an ice cube, water, steam from a kettle seen from a safe distance) to link the states directly to a single familiar substance, water."
+          },
+          {
+            "teacherTip": "Ask pupils to test their idea that 'sand is a liquid because it pours' by examining a single grain of sand closely, to correct the misconception directly."
+          }
+        ],
+        "contentGuidance": null,
+        "supervisionLevel": null,
+        "canonicalUrl": "https://example-fixture.invalid/lessons/properties-of-materials-solids-liquids-gases",
+        "oakUrl": "https://example-fixture.invalid/lessons/properties-of-materials-solids-liquids-gases",
+        "downloadsAvailable": true
+      },
+      "quiz": {
+        "starterQuiz": [
+          {
+            "question": "Which of these is an example of a liquid?",
+            "questionType": "multiple-choice",
+            "answers": [
+              {
+                "type": "text",
+                "content": "a brick",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "milk",
+                "distractor": false
+              },
+              {
+                "type": "text",
+                "content": "air",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "a wooden spoon",
+                "distractor": true
+              }
+            ]
+          },
+          {
+            "question": "What happens to ice when it is heated?",
+            "questionType": "multiple-choice",
+            "answers": [
+              {
+                "type": "text",
+                "content": "It turns into a gas immediately",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "It melts into liquid water",
+                "distractor": false
+              },
+              {
+                "type": "text",
+                "content": "It stays solid",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "It disappears completely",
+                "distractor": true
+              }
+            ]
+          },
+          {
+            "question": "Name one material that is a solid at room temperature.",
+            "questionType": "short-answer",
+            "answers": [
+              {
+                "type": "text",
+                "content": "wood"
+              },
+              {
+                "type": "text",
+                "content": "metal"
+              },
+              {
+                "type": "text",
+                "content": "stone"
+              },
+              {
+                "type": "text",
+                "content": "plastic"
+              },
+              {
+                "type": "text",
+                "content": "glass"
+              },
+              {
+                "type": "text",
+                "content": "rock"
+              }
+            ]
+          }
+        ],
+        "exitQuiz": [
+          {
+            "question": "Which property is true of a solid?",
+            "questionType": "multiple-choice",
+            "answers": [
+              {
+                "type": "text",
+                "content": "It takes the shape of its container",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "It keeps its own fixed shape",
+                "distractor": false
+              },
+              {
+                "type": "text",
+                "content": "It has no fixed shape or volume",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "It always flows",
+                "distractor": true
+              }
+            ]
+          },
+          {
+            "question": "Which property is true of a gas?",
+            "questionType": "multiple-choice",
+            "answers": [
+              {
+                "type": "text",
+                "content": "It keeps a fixed shape",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "It has no fixed shape or volume",
+                "distractor": false
+              },
+              {
+                "type": "text",
+                "content": "It only flows downward",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "It cannot be poured",
+                "distractor": true
+              }
+            ]
+          },
+          {
+            "question": "What happens to liquid water when it is heated enough?",
+            "questionType": "short-answer",
+            "answers": [
+              {
+                "type": "text",
+                "content": "it turns into gas"
+              },
+              {
+                "type": "text",
+                "content": "it becomes steam"
+              },
+              {
+                "type": "text",
+                "content": "it evaporates into a gas"
+              }
+            ]
+          },
+          {
+            "question": "Match each state of matter to its correct description.",
+            "questionType": "match",
+            "answers": [
+              {
+                "matchOption": {
+                  "type": "text",
+                  "content": "solid"
+                },
+                "correctChoice": {
+                  "type": "text",
+                  "content": "keeps a fixed shape and volume"
+                }
+              },
+              {
+                "matchOption": {
+                  "type": "text",
+                  "content": "liquid"
+                },
+                "correctChoice": {
+                  "type": "text",
+                  "content": "takes the shape of its container but keeps the same volume"
+                }
+              },
+              {
+                "matchOption": {
+                  "type": "text",
+                  "content": "gas"
+                },
+                "correctChoice": {
+                  "type": "text",
+                  "content": "spreads out to fill the whole container"
+                }
+              }
+            ]
+          },
+          {
+            "question": "Order these states of water from coldest to hottest: liquid water, ice, steam.",
+            "questionType": "order",
+            "answers": [
+              {
+                "order": 1,
+                "type": "text",
+                "content": "ice"
+              },
+              {
+                "order": 2,
+                "type": "text",
+                "content": "liquid water"
+              },
+              {
+                "order": 3,
+                "type": "text",
+                "content": "steam"
+              }
+            ]
+          }
+        ]
+      },
+      "transcript": {
+        "transcript": "Hello! Today we're looking at the three states that materials can exist in: solid, liquid and gas.\n\nLet's start with a solid. A solid keeps its own shape, no matter what container you put it in. If you put a wooden block in a bowl, it stays a block shape. If you put it in a jug instead, it's still exactly the same shape. Solids also keep the same volume, meaning the same amount of space, wherever they go.\n\nNow let's think about a liquid, like water. If you pour water into a bowl, it spreads out and takes the shape of the bottom of the bowl. Pour the same water into a tall, thin glass instead, and it changes shape again. But the amount of water, its volume, stays exactly the same. A liquid changes shape to match its container, but keeps the same volume.\n\nFinally, there's gas. Gas has no fixed shape and no fixed volume at all. If you release a gas into a room, it doesn't sit in a puddle like a liquid would, it spreads out and fills the entire room, however big that room is.\n\nHere's something fascinating: the very same substance can exist in all three states, depending on how hot or cold it is. Take water. As ice, it's a solid, with a fixed shape. Warm it up, and it melts into liquid water, which flows and takes the shape of its container. Heat it further, and it turns into steam, a gas, which spreads out and disappears into the air.\n\nA common mistake is thinking that sand or sugar is a liquid because it can be poured. But look closely: each tiny grain of sand keeps its own solid shape. It's only the whole collection of separate grains, pouring past each other, that looks a bit like a liquid. It's still made of millions of tiny solids.\n\nNow you'll investigate and sort some materials into solids, liquids and gases."
+      },
+      "assets": {
+        "assets": [
+          {
+            "type": "worksheet",
+            "label": "Worksheet",
+            "url": "fixture://worksheet/properties-of-materials-solids-liquids-gases.pdf"
+          },
+          {
+            "type": "video",
+            "label": "Video",
+            "url": "fixture://video/properties-of-materials-solids-liquids-gases"
+          }
+        ],
+        "attribution": []
+      },
+      "worksheet": {
+        "questions": [
+          {
+            "number": "1",
+            "text": "Name the three states of matter.",
+            "type": "short",
+            "answer": "solid, liquid, gas"
+          },
+          {
+            "number": "2",
+            "text": "Explain why sand can be poured even though each grain is a solid.",
+            "type": "extended",
+            "answer": "A good answer explains that each individual grain of sand keeps its own solid shape, but the huge number of separate grains can slide past one another and be poured, unlike a true liquid which flows as one connected substance."
+          },
+          {
+            "number": "3",
+            "text": "Describe what happens to the volume of a liquid when it is poured into a different-shaped container.",
+            "type": "short",
+            "answer": "the volume stays the same, only the shape changes"
+          },
+          {
+            "number": "4",
+            "text": "Explain why a gas released into a room fills the whole room, using the word 'volume' in your answer.",
+            "type": "extended",
+            "answer": "A good answer explains that a gas has no fixed volume or shape, so it spreads out and expands until it fills the whole available space in the room, unlike a solid or liquid which keep a fixed volume."
+          }
+        ]
+      }
+    },
+    "dissolving-and-separating-mixtures": {
+      "summary": {
+        "lessonTitle": "Dissolving and separating mixtures",
+        "pupilLessonOutcome": "I can explain what happens when a substance dissolves, and describe ways to separate different types of mixtures.",
+        "keyLearningPoints": [
+          {
+            "keyLearningPoint": "When a soluble solid dissolves in a liquid, it seems to disappear, but it is still there, broken into particles too small to see, forming a solution."
+          },
+          {
+            "keyLearningPoint": "A solution is a mixture formed when a solid dissolves completely in a liquid."
+          },
+          {
+            "keyLearningPoint": "Not all solids dissolve; those that do not dissolve are called insoluble."
+          },
+          {
+            "keyLearningPoint": "Different separating methods suit different mixtures: filtering separates an insoluble solid from a liquid, sieving separates solids of different sizes, and evaporating recovers a dissolved solid from a solution."
+          }
+        ],
+        "lessonKeywords": [
+          {
+            "keyword": "dissolve",
+            "description": "When a solid mixes completely into a liquid, breaking into particles too small to see, forming a solution."
+          },
+          {
+            "keyword": "solution",
+            "description": "A mixture formed when a solid dissolves completely in a liquid."
+          },
+          {
+            "keyword": "insoluble",
+            "description": "Describes a solid that does not dissolve in a particular liquid."
+          }
+        ],
+        "misconceptionsAndCommonMistakes": [
+          {
+            "misconception": "Pupils think a dissolved solid has disappeared completely or has been destroyed.",
+            "response": "Point out that evaporating the liquid brings the solid back exactly as it was — it has not disappeared, just spread out too small to see."
+          },
+          {
+            "misconception": "Pupils think 'dissolving' and 'melting' are the same thing.",
+            "response": "Contrast the two clearly: melting is a solid turning into a liquid because of heat (like ice into water), with no other substance needed, whereas dissolving needs a solid to mix into a separate liquid to form a solution."
+          }
+        ],
+        "teacherTips": [
+          {
+            "teacherTip": "Let pupils observe salt or sugar dissolving in water, then evaporate a small sample to reveal the solid again, providing direct evidence it hasn't disappeared."
+          },
+          {
+            "teacherTip": "Use a sorting table (soluble/insoluble, and which separating method fits which mixture) to help pupils link each mixture type to the correct method."
+          }
+        ],
+        "contentGuidance": null,
+        "supervisionLevel": null,
+        "canonicalUrl": "https://example-fixture.invalid/lessons/dissolving-and-separating-mixtures",
+        "oakUrl": "https://example-fixture.invalid/lessons/dissolving-and-separating-mixtures",
+        "downloadsAvailable": true
+      },
+      "quiz": {
+        "starterQuiz": [
+          {
+            "question": "What is the name for a material that keeps its own fixed shape?",
+            "questionType": "multiple-choice",
+            "answers": [
+              {
+                "type": "text",
+                "content": "a liquid",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "a solid",
+                "distractor": false
+              },
+              {
+                "type": "text",
+                "content": "a gas",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "a solution",
+                "distractor": true
+              }
+            ]
+          },
+          {
+            "question": "Which state of matter has no fixed shape or volume?",
+            "questionType": "multiple-choice",
+            "answers": [
+              {
+                "type": "text",
+                "content": "solid",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "gas",
+                "distractor": false
+              },
+              {
+                "type": "text",
+                "content": "liquid",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "none of these",
+                "distractor": true
+              }
+            ]
+          },
+          {
+            "question": "Name one material that dissolves in water.",
+            "questionType": "short-answer",
+            "answers": [
+              {
+                "type": "text",
+                "content": "salt"
+              },
+              {
+                "type": "text",
+                "content": "sugar"
+              }
+            ]
+          }
+        ],
+        "exitQuiz": [
+          {
+            "question": "What is a solution?",
+            "questionType": "multiple-choice",
+            "answers": [
+              {
+                "type": "text",
+                "content": "Any mixture of two solids",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "A mixture formed when a solid dissolves completely in a liquid",
+                "distractor": false
+              },
+              {
+                "type": "text",
+                "content": "A solid that has melted",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "A liquid that has evaporated",
+                "distractor": true
+              }
+            ]
+          },
+          {
+            "question": "Which method would best separate sand from water?",
+            "questionType": "multiple-choice",
+            "answers": [
+              {
+                "type": "text",
+                "content": "Evaporating",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "Filtering",
+                "distractor": false
+              },
+              {
+                "type": "text",
+                "content": "Sieving",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "Stirring",
+                "distractor": true
+              }
+            ]
+          },
+          {
+            "question": "What word describes a solid that will not dissolve in a liquid?",
+            "questionType": "short-answer",
+            "answers": [
+              {
+                "type": "text",
+                "content": "insoluble"
+              }
+            ]
+          },
+          {
+            "question": "Match each separating method to the mixture it is best suited to.",
+            "questionType": "match",
+            "answers": [
+              {
+                "matchOption": {
+                  "type": "text",
+                  "content": "Filtering"
+                },
+                "correctChoice": {
+                  "type": "text",
+                  "content": "an insoluble solid mixed with a liquid"
+                }
+              },
+              {
+                "matchOption": {
+                  "type": "text",
+                  "content": "Sieving"
+                },
+                "correctChoice": {
+                  "type": "text",
+                  "content": "two solids with different sized pieces"
+                }
+              },
+              {
+                "matchOption": {
+                  "type": "text",
+                  "content": "Evaporating"
+                },
+                "correctChoice": {
+                  "type": "text",
+                  "content": "a solid dissolved in a liquid"
+                }
+              }
+            ]
+          },
+          {
+            "question": "Order these steps for recovering salt from salty water.",
+            "questionType": "order",
+            "answers": [
+              {
+                "order": 1,
+                "type": "text",
+                "content": "pour the solution into a shallow dish"
+              },
+              {
+                "order": 2,
+                "type": "text",
+                "content": "gently heat the solution"
+              },
+              {
+                "order": 3,
+                "type": "text",
+                "content": "the water evaporates into the air"
+              },
+              {
+                "order": 4,
+                "type": "text",
+                "content": "the salt is left behind"
+              }
+            ]
+          }
+        ]
+      },
+      "transcript": {
+        "transcript": "Hello! Today we're exploring what happens when things dissolve, and how we can separate different types of mixtures.\n\nHave you ever stirred sugar into a cup of tea and watched it seem to vanish? That's dissolving. When a solid like sugar dissolves in a liquid like water, it breaks up into particles far too small for us to see. The sugar hasn't disappeared or been destroyed, it's still there, spread evenly through the water. This mixture of a dissolved solid and a liquid is called a solution.\n\nNot every solid dissolves. If you stir sand into water, it doesn't disappear, it just sits there or swirls around, still visible as sand. We say sand is insoluble in water, meaning it will not dissolve in it.\n\nHow do we know the sugar is still there? If we let the water evaporate, turning from a liquid into a gas that drifts into the air, the sugar is left behind, exactly as before. This proves the sugar didn't vanish, it was just spread too small to see.\n\nNow, different mixtures need different separating methods. If you have an insoluble solid mixed into a liquid, like sand in water, you use filtering: pouring the mixture through filter paper with tiny holes, small enough to let the water through but too small for the sand, trapping the sand behind.\n\nIf you have a mixture of two solids with different sized pieces, like pebbles and sand, you use sieving: a sieve has holes of a certain size, letting the smaller sand fall through while trapping the larger pebbles.\n\nAnd if you want to recover a solid that has dissolved, like getting the salt back out of salty water, you use evaporation: heating the solution gently so the liquid turns to gas and drifts away, leaving the solid behind.\n\nThe common mistake is muddling dissolving with melting. Melting is a solid turning into a liquid because of heat, like ice turning to water. Dissolving needs two different substances, a solid mixing into a separate liquid.\n\nNow you'll investigate dissolving and try separating a mixture yourself."
+      },
+      "assets": {
+        "assets": [
+          {
+            "type": "worksheet",
+            "label": "Worksheet",
+            "url": "fixture://worksheet/dissolving-and-separating-mixtures.pdf"
+          },
+          {
+            "type": "video",
+            "label": "Video",
+            "url": "fixture://video/dissolving-and-separating-mixtures"
+          }
+        ],
+        "attribution": []
+      },
+      "worksheet": {
+        "questions": [
+          {
+            "number": "1",
+            "text": "What is the name of a mixture formed when a solid dissolves completely in a liquid?",
+            "type": "short",
+            "answer": "a solution"
+          },
+          {
+            "number": "2",
+            "text": "Explain how you know that sugar has not disappeared when it dissolves in water.",
+            "type": "extended",
+            "answer": "A good answer explains that if the water is evaporated, the sugar is left behind exactly as before, showing it was still there all along, just broken into particles too small to see."
+          },
+          {
+            "number": "3",
+            "text": "Would you use filtering or sieving to separate pebbles from sand? Explain your answer.",
+            "type": "extended",
+            "answer": "A good answer chooses sieving, and explains that both pebbles and sand are solids of different sizes, so a sieve with holes of the right size lets the smaller sand fall through while trapping the larger pebbles."
+          },
+          {
+            "number": "4",
+            "text": "Explain the difference between dissolving and melting.",
+            "type": "extended",
+            "answer": "A good answer explains that melting is a solid turning into a liquid because of heat with no other substance involved (like ice into water), while dissolving is a solid mixing completely into a separate liquid to form a solution."
+          }
+        ]
+      }
+    },
+    "reversible-and-irreversible-changes": {
+      "summary": {
+        "lessonTitle": "Reversible and irreversible changes",
+        "pupilLessonOutcome": "I can distinguish between reversible and irreversible changes and explain why.",
+        "keyLearningPoints": [
+          {
+            "keyLearningPoint": "A reversible change can be undone, and the original materials can be recovered, e.g. melting, freezing, dissolving and mixing."
+          },
+          {
+            "keyLearningPoint": "An irreversible change cannot be undone; the original materials cannot be recovered because a new material has been formed."
+          },
+          {
+            "keyLearningPoint": "A key sign of an irreversible change is when heating or mixing produces a completely new substance with different properties, such as burning wood into ash, or baking a cake."
+          },
+          {
+            "keyLearningPoint": "The test for reversibility is simple: can the original materials be recovered? If yes, it's reversible; if a new material has formed and cannot be undone, it's irreversible."
+          }
+        ],
+        "lessonKeywords": [
+          {
+            "keyword": "reversible change",
+            "description": "A change that can be undone, allowing the original materials to be recovered."
+          },
+          {
+            "keyword": "irreversible change",
+            "description": "A change that cannot be undone, because a new material has formed."
+          },
+          {
+            "keyword": "new material",
+            "description": "A substance with different properties from the materials that combined or changed to form it."
+          }
+        ],
+        "misconceptionsAndCommonMistakes": [
+          {
+            "misconception": "Pupils think all changes caused by heating are irreversible, because they associate heat with cooking or burning.",
+            "response": "Contrast melting chocolate (reversible, it can be cooled back to a solid) with baking a cake (irreversible, the raw ingredients cannot be recovered once baked) to show that heating alone doesn't decide reversibility; what matters is whether a new material has formed."
+          },
+          {
+            "misconception": "Pupils think mixing two substances together always creates an irreversible change, because the substances 'disappear' into each other.",
+            "response": "Show an example like mixing sand and water, which can be separated again by filtering, to demonstrate that mixing alone does not always create a new material."
+          }
+        ],
+        "teacherTips": [
+          {
+            "teacherTip": "Build a class table of examples pupils suggest, sorting them into reversible and irreversible, and discuss any that cause debate to sharpen the 'can we get the original material back?' test."
+          },
+          {
+            "teacherTip": "Use dramatic, memorable examples (toasting bread, burning a candle, baking a cake) to anchor the idea of irreversible change, since new materials with new properties are formed."
+          }
+        ],
+        "contentGuidance": null,
+        "supervisionLevel": null,
+        "canonicalUrl": "https://example-fixture.invalid/lessons/reversible-and-irreversible-changes",
+        "oakUrl": "https://example-fixture.invalid/lessons/reversible-and-irreversible-changes",
+        "downloadsAvailable": true
+      },
+      "quiz": {
+        "starterQuiz": [
+          {
+            "question": "What is a solution?",
+            "questionType": "multiple-choice",
+            "answers": [
+              {
+                "type": "text",
+                "content": "A solid that has melted",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "A mixture formed when a solid dissolves in a liquid",
+                "distractor": false
+              },
+              {
+                "type": "text",
+                "content": "A mixture of two gases",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "A new material formed by burning",
+                "distractor": true
+              }
+            ]
+          },
+          {
+            "question": "Which method would recover salt from salty water?",
+            "questionType": "multiple-choice",
+            "answers": [
+              {
+                "type": "text",
+                "content": "Filtering",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "Evaporating",
+                "distractor": false
+              },
+              {
+                "type": "text",
+                "content": "Sieving",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "Freezing",
+                "distractor": true
+              }
+            ]
+          },
+          {
+            "question": "What happens to ice when it melts?",
+            "questionType": "short-answer",
+            "answers": [
+              {
+                "type": "text",
+                "content": "it turns into liquid water"
+              },
+              {
+                "type": "text",
+                "content": "it becomes water"
+              }
+            ]
+          }
+        ],
+        "exitQuiz": [
+          {
+            "question": "What is a reversible change?",
+            "questionType": "multiple-choice",
+            "answers": [
+              {
+                "type": "text",
+                "content": "A change that always involves heating",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "A change that can be undone, recovering the original materials",
+                "distractor": false
+              },
+              {
+                "type": "text",
+                "content": "A change that creates a new material",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "A change that cannot be undone",
+                "distractor": true
+              }
+            ]
+          },
+          {
+            "question": "Which of these is an irreversible change?",
+            "questionType": "multiple-choice",
+            "answers": [
+              {
+                "type": "text",
+                "content": "Melting an ice cube",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "Burning a piece of wood",
+                "distractor": false
+              },
+              {
+                "type": "text",
+                "content": "Dissolving sugar in water",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "Freezing water",
+                "distractor": true
+              }
+            ]
+          },
+          {
+            "question": "What forms when an irreversible change happens?",
+            "questionType": "short-answer",
+            "answers": [
+              {
+                "type": "text",
+                "content": "a new material"
+              },
+              {
+                "type": "text",
+                "content": "a new substance"
+              }
+            ]
+          },
+          {
+            "question": "Match each change to whether it is reversible or irreversible.",
+            "questionType": "match",
+            "answers": [
+              {
+                "matchOption": {
+                  "type": "text",
+                  "content": "Melting chocolate"
+                },
+                "correctChoice": {
+                  "type": "text",
+                  "content": "reversible"
+                }
+              },
+              {
+                "matchOption": {
+                  "type": "text",
+                  "content": "Baking a cake"
+                },
+                "correctChoice": {
+                  "type": "text",
+                  "content": "irreversible"
+                }
+              },
+              {
+                "matchOption": {
+                  "type": "text",
+                  "content": "Dissolving salt in water"
+                },
+                "correctChoice": {
+                  "type": "text",
+                  "content": "reversible"
+                }
+              }
+            ]
+          },
+          {
+            "question": "Order these steps for testing whether a change is reversible.",
+            "questionType": "order",
+            "answers": [
+              {
+                "order": 1,
+                "type": "text",
+                "content": "make the change happen"
+              },
+              {
+                "order": 2,
+                "type": "text",
+                "content": "try to get the original materials back"
+              },
+              {
+                "order": 3,
+                "type": "text",
+                "content": "check if a new material has formed"
+              },
+              {
+                "order": 4,
+                "type": "text",
+                "content": "decide if it is reversible or irreversible"
+              }
+            ]
+          }
+        ]
+      },
+      "transcript": {
+        "transcript": "Hello! Today we're comparing reversible and irreversible changes, and working out how to tell them apart.\n\nA reversible change is one that can be undone. Think about melting ice. If you melt an ice cube, it turns into liquid water. But if you put that water back in the freezer, it turns back into ice. We've undone the change completely, so melting and freezing are reversible changes. Dissolving is reversible too: if you dissolve salt in water, you can evaporate the water and get the salt back again.\n\nAn irreversible change is different. It cannot be undone, because the original materials have been changed into something new, and we cannot get them back. Think about baking a cake. You mix flour, eggs and sugar, and once you bake that mixture, you cannot un-bake it back into flour, eggs and sugar again. A completely new material, cake, has been formed, with totally different properties from the ingredients that made it.\n\nBurning is another really clear example. If you burn a piece of wood, it turns into ash and smoke. You can never turn that ash back into wood. A new material has been created, and there's no way back.\n\nSo how do we tell reversible and irreversible changes apart? Ask yourself: can I get the original materials back? If yes, it's reversible. If no, because a new material has formed, it's irreversible.\n\nHere's a mistake to watch out for. Some people think that any change caused by heating must be irreversible, because they think of cooking and burning. But melting chocolate with gentle heat is reversible, you can let it cool and it turns solid again. It's only when heating creates a genuinely new substance, like turning cake batter into cake, that the change becomes irreversible.\n\nAnother mistake is thinking that mixing two things together always makes an irreversible change. But mixing sand into water doesn't create a new material, we can still filter the sand back out, so that's reversible.\n\nNow you'll sort some everyday changes into reversible and irreversible, explaining your reasoning."
+      },
+      "assets": {
+        "assets": [
+          {
+            "type": "worksheet",
+            "label": "Worksheet",
+            "url": "fixture://worksheet/reversible-and-irreversible-changes.pdf"
+          },
+          {
+            "type": "video",
+            "label": "Video",
+            "url": "fixture://video/reversible-and-irreversible-changes"
+          }
+        ],
+        "attribution": []
+      },
+      "worksheet": {
+        "questions": [
+          {
+            "number": "1",
+            "text": "Name two changes of state that are reversible opposites of each other.",
+            "type": "short",
+            "answer": "melting and freezing"
+          },
+          {
+            "number": "2",
+            "text": "Explain why baking a cake is an irreversible change.",
+            "type": "extended",
+            "answer": "A good answer explains that baking combines the ingredients (flour, eggs, sugar) into a completely new material, cake, with different properties, and there is no way to separate the ingredients back out again."
+          },
+          {
+            "number": "3",
+            "text": "Is dissolving sugar in water reversible or irreversible? Explain how you know.",
+            "type": "extended",
+            "answer": "A good answer says it is reversible, and explains that evaporating the water leaves the sugar behind unchanged, showing the original materials can be recovered."
+          },
+          {
+            "number": "4",
+            "text": "Explain why melting chocolate is reversible but baking a cake is not, even though both involve heat.",
+            "type": "extended",
+            "answer": "A good answer explains that melting chocolate only changes its state (solid to liquid), and cooling it reverses this exactly, whereas baking a cake creates a genuinely new material from the ingredients that cannot be separated back out, regardless of temperature."
+          }
+        ]
+      }
+    },
+    "the-solar-system-planets-and-orbits": {
+      "summary": {
+        "lessonTitle": "The solar system: planets and orbits",
+        "pupilLessonOutcome": "I can describe the order of the planets in the solar system and explain what an orbit is.",
+        "keyLearningPoints": [
+          {
+            "keyLearningPoint": "The solar system is made up of the Sun and everything that travels around it, including eight planets."
+          },
+          {
+            "keyLearningPoint": "The order of the planets from the Sun is Mercury, Venus, Earth, Mars, Jupiter, Saturn, Uranus, Neptune."
+          },
+          {
+            "keyLearningPoint": "An orbit is the curved path an object takes as it travels around another object in space, such as a planet orbiting the Sun."
+          },
+          {
+            "keyLearningPoint": "Planets closer to the Sun take less time to complete one orbit than planets further away."
+          }
+        ],
+        "lessonKeywords": [
+          {
+            "keyword": "solar system",
+            "description": "The Sun and all the planets, moons and other objects that travel around it."
+          },
+          {
+            "keyword": "orbit",
+            "description": "The curved path that an object follows as it travels around another object in space."
+          },
+          {
+            "keyword": "planet",
+            "description": "A large, round object in space that orbits a star, such as the Sun."
+          }
+        ],
+        "misconceptionsAndCommonMistakes": [
+          {
+            "misconception": "Pupils think the Sun orbits the Earth, based on how it looks from the ground.",
+            "response": "Explain that although the Sun appears to move across our sky, it is actually the Earth spinning and orbiting the Sun that causes this, not the Sun moving around us; use a simple model to show the Earth as one of eight planets orbiting the Sun."
+          },
+          {
+            "misconception": "Pupils think planets orbit at the same speed and are all roughly the same size and distance apart, as shown in simplified classroom diagrams.",
+            "response": "Clarify that classroom diagrams are not to scale; the actual distances and sizes between planets vary enormously and are far bigger than diagrams suggest."
+          }
+        ],
+        "teacherTips": [
+          {
+            "teacherTip": "Use a memorable mnemonic for planet order, e.g. 'My Very Easy Method Just Speeds Up Naming' for Mercury, Venus, Earth, Mars, Jupiter, Saturn, Uranus, Neptune."
+          },
+          {
+            "teacherTip": "Be explicit that classroom models and diagrams of the solar system are never drawn to scale, since real distances are too vast to fit on a page."
+          }
+        ],
+        "contentGuidance": null,
+        "supervisionLevel": null,
+        "canonicalUrl": "https://example-fixture.invalid/lessons/the-solar-system-planets-and-orbits",
+        "oakUrl": "https://example-fixture.invalid/lessons/the-solar-system-planets-and-orbits",
+        "downloadsAvailable": true
+      },
+      "quiz": {
+        "starterQuiz": [
+          {
+            "question": "What shape is the Earth?",
+            "questionType": "multiple-choice",
+            "answers": [
+              {
+                "type": "text",
+                "content": "Flat, like a disc",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "A sphere, like a giant ball",
+                "distractor": false
+              },
+              {
+                "type": "text",
+                "content": "A cube",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "A cylinder",
+                "distractor": true
+              }
+            ]
+          },
+          {
+            "question": "What is the Sun?",
+            "questionType": "multiple-choice",
+            "answers": [
+              {
+                "type": "text",
+                "content": "A planet",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "A huge, glowing star",
+                "distractor": false
+              },
+              {
+                "type": "text",
+                "content": "A moon",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "A comet",
+                "distractor": true
+              }
+            ]
+          },
+          {
+            "question": "What force pulls objects towards the Earth?",
+            "questionType": "short-answer",
+            "answers": [
+              {
+                "type": "text",
+                "content": "gravity"
+              }
+            ]
+          }
+        ],
+        "exitQuiz": [
+          {
+            "question": "Which planet is closest to the Sun?",
+            "questionType": "multiple-choice",
+            "answers": [
+              {
+                "type": "text",
+                "content": "Venus",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "Mercury",
+                "distractor": false
+              },
+              {
+                "type": "text",
+                "content": "Earth",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "Mars",
+                "distractor": true
+              }
+            ]
+          },
+          {
+            "question": "What is an orbit?",
+            "questionType": "multiple-choice",
+            "answers": [
+              {
+                "type": "text",
+                "content": "The spin of a planet on its axis",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "The curved path an object takes around another object in space",
+                "distractor": false
+              },
+              {
+                "type": "text",
+                "content": "A type of star",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "The surface of a planet",
+                "distractor": true
+              }
+            ]
+          },
+          {
+            "question": "How many planets are in the solar system?",
+            "questionType": "short-answer",
+            "answers": [
+              {
+                "type": "text",
+                "content": "8"
+              },
+              {
+                "type": "text",
+                "content": "eight"
+              }
+            ]
+          },
+          {
+            "question": "Match each planet to its position from the Sun.",
+            "questionType": "match",
+            "answers": [
+              {
+                "matchOption": {
+                  "type": "text",
+                  "content": "Earth"
+                },
+                "correctChoice": {
+                  "type": "text",
+                  "content": "3rd planet from the Sun"
+                }
+              },
+              {
+                "matchOption": {
+                  "type": "text",
+                  "content": "Mars"
+                },
+                "correctChoice": {
+                  "type": "text",
+                  "content": "4th planet from the Sun"
+                }
+              },
+              {
+                "matchOption": {
+                  "type": "text",
+                  "content": "Mercury"
+                },
+                "correctChoice": {
+                  "type": "text",
+                  "content": "1st planet from the Sun"
+                }
+              }
+            ]
+          },
+          {
+            "question": "Order these planets from closest to the Sun to furthest: Mars, Mercury, Venus, Earth.",
+            "questionType": "order",
+            "answers": [
+              {
+                "order": 1,
+                "type": "text",
+                "content": "Mercury"
+              },
+              {
+                "order": 2,
+                "type": "text",
+                "content": "Venus"
+              },
+              {
+                "order": 3,
+                "type": "text",
+                "content": "Earth"
+              },
+              {
+                "order": 4,
+                "type": "text",
+                "content": "Mars"
+              }
+            ]
+          }
+        ]
+      },
+      "transcript": {
+        "transcript": "Hello! Today we're exploring the solar system, the Sun and all the planets that travel around it.\n\nAt the centre of our solar system is the Sun, a huge, glowing star. Everything else in the solar system travels around the Sun, including eight planets. Earth, the planet we live on, is one of them.\n\nThe path a planet takes as it travels around the Sun is called an orbit. Imagine tying a ball to a piece of string and swinging it around your hand in a circle, that curved path is a bit like an orbit, except planets are held in their orbit by gravity, an invisible pulling force, rather than a string.\n\nThe eight planets, in order starting from the one closest to the Sun, are: Mercury, Venus, Earth, Mars, Jupiter, Saturn, Uranus, and Neptune. A handy way to remember this order is the sentence 'My Very Easy Method Just Speeds Up Naming', the first letter of each word matches the first letter of each planet.\n\nHere's something important: planets closer to the Sun take less time to complete one full orbit than planets further away. Mercury, the closest planet, zips around the Sun in just 88 days. Earth takes 365 days, one year, to complete its orbit. Neptune, the furthest planet, takes about 165 Earth years.\n\nA common mistake is thinking the Sun orbits the Earth, because from the ground, it looks like the Sun moves across the sky above us. Actually, it's the Earth that is moving, both spinning and orbiting the Sun, and this movement is what makes the Sun appear to travel across our sky.\n\nAnother mistake is picturing all the planets as roughly the same size and close together, like they're often drawn in simple classroom diagrams. In reality, the distances between planets are enormous, and the planets vary hugely in size, Jupiter alone could fit more than a thousand Earths inside it. Diagrams in books are never drawn to true scale.\n\nNow you'll practise ordering the planets and describing what an orbit is."
+      },
+      "assets": {
+        "assets": [
+          {
+            "type": "worksheet",
+            "label": "Worksheet",
+            "url": "fixture://worksheet/the-solar-system-planets-and-orbits.pdf"
+          },
+          {
+            "type": "video",
+            "label": "Video",
+            "url": "fixture://video/the-solar-system-planets-and-orbits"
+          }
+        ],
+        "attribution": []
+      },
+      "worksheet": {
+        "questions": [
+          {
+            "number": "1",
+            "text": "Name the planet that is closest to the Sun.",
+            "type": "short",
+            "answer": "Mercury"
+          },
+          {
+            "number": "2",
+            "text": "Name the planet that is fourth from the Sun.",
+            "type": "short",
+            "answer": "Mars"
+          },
+          {
+            "number": "3",
+            "text": "What is an orbit? Give your answer in one sentence.",
+            "type": "short",
+            "answer": "the curved path an object takes as it travels around another object in space"
+          },
+          {
+            "number": "4",
+            "text": "Explain why planets closer to the Sun take less time to complete an orbit than planets further away.",
+            "type": "extended",
+            "answer": "A good answer recognises that planets closer to the Sun have a shorter path to travel around, so they complete one full orbit more quickly than planets further away, which have a much longer path to travel."
+          }
+        ]
+      }
+    },
+    "day-and-night-earths-rotation": {
+      "summary": {
+        "lessonTitle": "Day and night: the Earth's rotation",
+        "pupilLessonOutcome": "I can explain how the Earth's rotation causes day and night.",
+        "keyLearningPoints": [
+          {
+            "keyLearningPoint": "The Earth spins on its own axis, an imaginary line through the middle from the North Pole to the South Pole, once every 24 hours."
+          },
+          {
+            "keyLearningPoint": "Day happens on the side of the Earth facing the Sun; night happens on the side facing away from the Sun."
+          },
+          {
+            "keyLearningPoint": "The Sun does not move across the sky; the Earth's rotation makes it look as though the Sun is moving."
+          },
+          {
+            "keyLearningPoint": "One full rotation of the Earth takes 24 hours, which is why a day is 24 hours long."
+          }
+        ],
+        "lessonKeywords": [
+          {
+            "keyword": "rotate",
+            "description": "To spin around on an axis, like a top spinning."
+          },
+          {
+            "keyword": "axis",
+            "description": "An imaginary line through the middle of a planet, around which it spins."
+          },
+          {
+            "keyword": "rotation",
+            "description": "One complete spin of the Earth on its axis, which takes 24 hours."
+          }
+        ],
+        "misconceptionsAndCommonMistakes": [
+          {
+            "misconception": "Pupils think the Sun moves across the sky during the day, rather than the Earth spinning.",
+            "response": "Use a torch and a globe (or a ball) in a darkened room to show that as the globe spins, different places move into and out of the torch's light, demonstrating that it is the Earth's spin, not the Sun's movement, that causes the appearance of the Sun crossing the sky."
+          },
+          {
+            "misconception": "Pupils think day and night happen because the Sun switches on and off, or because clouds cover the Sun at night.",
+            "response": "Clarify using the torch and globe model that the Sun keeps shining constantly; night happens simply because that part of the Earth has spun round to face away from the Sun, not because the Sun has gone out."
+          }
+        ],
+        "teacherTips": [
+          {
+            "teacherTip": "Physically model rotation using a globe and a torch (or lamp) in a darkened room, spinning the globe slowly so pupils can see day and night moving across its surface in real time."
+          },
+          {
+            "teacherTip": "Reinforce vocabulary carefully: rotation (spinning on its own axis, causing day and night) is different from orbit (travelling around the Sun, causing a year), and pupils often muddle the two."
+          }
+        ],
+        "contentGuidance": null,
+        "supervisionLevel": null,
+        "canonicalUrl": "https://example-fixture.invalid/lessons/day-and-night-earths-rotation",
+        "oakUrl": "https://example-fixture.invalid/lessons/day-and-night-earths-rotation",
+        "downloadsAvailable": true
+      },
+      "quiz": {
+        "starterQuiz": [
+          {
+            "question": "What is the Sun?",
+            "questionType": "multiple-choice",
+            "answers": [
+              {
+                "type": "text",
+                "content": "A planet",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "A huge, glowing star",
+                "distractor": false
+              },
+              {
+                "type": "text",
+                "content": "A moon",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "A galaxy",
+                "distractor": true
+              }
+            ]
+          },
+          {
+            "question": "How many planets orbit the Sun?",
+            "questionType": "multiple-choice",
+            "answers": [
+              {
+                "type": "text",
+                "content": "7",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "8",
+                "distractor": false
+              },
+              {
+                "type": "text",
+                "content": "9",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "10",
+                "distractor": true
+              }
+            ]
+          },
+          {
+            "question": "What force keeps planets in orbit around the Sun?",
+            "questionType": "short-answer",
+            "answers": [
+              {
+                "type": "text",
+                "content": "gravity"
+              }
+            ]
+          }
+        ],
+        "exitQuiz": [
+          {
+            "question": "What causes day and night?",
+            "questionType": "multiple-choice",
+            "answers": [
+              {
+                "type": "text",
+                "content": "The Sun moving around the Earth",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "The Earth rotating on its axis",
+                "distractor": false
+              },
+              {
+                "type": "text",
+                "content": "The Sun switching on and off",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "Clouds covering the Sun",
+                "distractor": true
+              }
+            ]
+          },
+          {
+            "question": "How long does one full rotation of the Earth take?",
+            "questionType": "multiple-choice",
+            "answers": [
+              {
+                "type": "text",
+                "content": "12 hours",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "24 hours",
+                "distractor": false
+              },
+              {
+                "type": "text",
+                "content": "365 days",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "1 hour",
+                "distractor": true
+              }
+            ]
+          },
+          {
+            "question": "What do we call the imaginary line the Earth spins around?",
+            "questionType": "short-answer",
+            "answers": [
+              {
+                "type": "text",
+                "content": "axis"
+              },
+              {
+                "type": "text",
+                "content": "its axis"
+              }
+            ]
+          },
+          {
+            "question": "Match each term to its correct meaning.",
+            "questionType": "match",
+            "answers": [
+              {
+                "matchOption": {
+                  "type": "text",
+                  "content": "rotation"
+                },
+                "correctChoice": {
+                  "type": "text",
+                  "content": "the Earth spinning on its own axis"
+                }
+              },
+              {
+                "matchOption": {
+                  "type": "text",
+                  "content": "orbit"
+                },
+                "correctChoice": {
+                  "type": "text",
+                  "content": "a planet travelling around the Sun"
+                }
+              },
+              {
+                "matchOption": {
+                  "type": "text",
+                  "content": "axis"
+                },
+                "correctChoice": {
+                  "type": "text",
+                  "content": "the imaginary line a planet spins around"
+                }
+              }
+            ]
+          },
+          {
+            "question": "Order these events as the Earth rotates over 24 hours, starting from midday where you live.",
+            "questionType": "order",
+            "answers": [
+              {
+                "order": 1,
+                "type": "text",
+                "content": "midday (facing the Sun)"
+              },
+              {
+                "order": 2,
+                "type": "text",
+                "content": "evening"
+              },
+              {
+                "order": 3,
+                "type": "text",
+                "content": "midnight (facing away from the Sun)"
+              },
+              {
+                "order": 4,
+                "type": "text",
+                "content": "morning"
+              }
+            ]
+          }
+        ]
+      },
+      "transcript": {
+        "transcript": "Hello! Today we're finding out what really causes day and night.\n\nYou might think the Sun moves across the sky during the day, rising in the morning and setting at night. But actually, the Sun stays roughly still. It's the Earth that is moving.\n\nThe Earth spins, all the way round, on an imaginary line running straight through it called an axis, from the North Pole to the South Pole. This spinning is called rotation. The Earth completes one full rotation, one whole spin, every 24 hours.\n\nAs the Earth spins, different parts of it face towards the Sun, and different parts face away. Wherever it is facing the Sun, that part of the Earth experiences daytime, because sunlight is reaching it. Wherever it is facing away from the Sun, that part experiences night-time, because sunlight cannot reach it.\n\nImagine shining a torch at a ball in a dark room, and slowly spinning that ball. The side facing the torch is lit up, that's daytime. The side facing away is in darkness, that's night-time. As the ball keeps spinning, different parts move into and out of the torchlight, just like different parts of the Earth move into and out of sunlight as it rotates.\n\nBecause one full rotation takes 24 hours, that's why a day is 24 hours long, it's the time it takes for any point on Earth to spin all the way round and experience both day and night once.\n\nHere's a mistake to watch for. Some people think the Sun moves across the sky, rising and setting, but really it's us who are moving, spinning on the Earth. What looks like the Sun travelling from east to west is actually the Earth rotating from west to east.\n\nAnother mistake is thinking night happens because the Sun switches off, or gets covered by clouds. The Sun is shining constantly. Night simply happens because our part of the Earth has spun around to face away from it.\n\nNow you're going to model day and night using a torch and a globe."
+      },
+      "assets": {
+        "assets": [
+          {
+            "type": "worksheet",
+            "label": "Worksheet",
+            "url": "fixture://worksheet/day-and-night-earths-rotation.pdf"
+          },
+          {
+            "type": "video",
+            "label": "Video",
+            "url": "fixture://video/day-and-night-earths-rotation"
+          }
+        ],
+        "attribution": []
+      },
+      "worksheet": {
+        "questions": [
+          {
+            "number": "1",
+            "text": "What is the name for the imaginary line the Earth spins around?",
+            "type": "short",
+            "answer": "axis"
+          },
+          {
+            "number": "2",
+            "text": "How long does it take the Earth to complete one full rotation?",
+            "type": "short",
+            "answer": "24 hours"
+          },
+          {
+            "number": "3",
+            "text": "Explain, using the word 'rotation', why different parts of the Earth experience day and night at different times.",
+            "type": "extended",
+            "answer": "A good answer explains that as the Earth rotates on its axis, the side facing the Sun experiences day, while the side facing away experiences night, and because the Earth keeps turning, every part of it moves through both day and night during one rotation."
+          },
+          {
+            "number": "4",
+            "text": "Explain why it is incorrect to say 'the Sun moves across the sky'.",
+            "type": "extended",
+            "answer": "A good answer explains that the Sun stays roughly still while the Earth rotates, and it is this rotation that makes the Sun appear to move across the sky from our point of view, rather than the Sun actually moving around the Earth."
+          }
+        ]
+      }
+    },
+    "the-moon-and-its-phases": {
+      "summary": {
+        "lessonTitle": "The Moon and its phases",
+        "pupilLessonOutcome": "I can explain why the Moon appears to change shape over the course of a month.",
+        "keyLearningPoints": [
+          {
+            "keyLearningPoint": "The Moon does not produce its own light; it appears bright because it reflects light from the Sun."
+          },
+          {
+            "keyLearningPoint": "The Moon orbits the Earth, taking about 27 to 29 days to complete one full orbit."
+          },
+          {
+            "keyLearningPoint": "The Moon's apparent shape, or phase, changes because we see different amounts of its sunlit half as it orbits the Earth."
+          },
+          {
+            "keyLearningPoint": "The main phases, in order, are new moon, waxing crescent, first quarter, waxing gibbous, full moon, then the same stages in reverse as it wanes back to new moon."
+          }
+        ],
+        "lessonKeywords": [
+          {
+            "keyword": "reflect",
+            "description": "To bounce light off a surface, rather than producing light itself."
+          },
+          {
+            "keyword": "orbit",
+            "description": "The path an object takes as it travels around another object in space."
+          },
+          {
+            "keyword": "phase",
+            "description": "The changing shape of the Moon as seen from Earth, caused by how much of its sunlit side we can see."
+          }
+        ],
+        "misconceptionsAndCommonMistakes": [
+          {
+            "misconception": "Pupils think the Moon produces its own light, like the Sun does.",
+            "response": "Explain clearly that the Moon has no light of its own; what we see is sunlight bouncing, or reflecting, off the Moon's surface and travelling to our eyes."
+          },
+          {
+            "misconception": "Pupils think the Moon's phases are caused by the Earth's shadow falling on it, confusing phases with a lunar eclipse.",
+            "response": "Clarify that phases happen because we see different amounts of the Moon's sunlit half as it orbits the Earth; the Earth's shadow causing an eclipse is a much rarer, separate event."
+          }
+        ],
+        "teacherTips": [
+          {
+            "teacherTip": "Use a torch, a small ball (the Moon) and a person's head (the Earth) to model phases: hold the ball at different points in an orbit around your head, keeping the torch shining from one direction, and look at how much of the lit side is visible each time."
+          },
+          {
+            "teacherTip": "Display a simple phase diagram in order and refer back to it regularly, since remembering the sequence of phases takes repeated practice."
+          }
+        ],
+        "contentGuidance": null,
+        "supervisionLevel": null,
+        "canonicalUrl": "https://example-fixture.invalid/lessons/the-moon-and-its-phases",
+        "oakUrl": "https://example-fixture.invalid/lessons/the-moon-and-its-phases",
+        "downloadsAvailable": true
+      },
+      "quiz": {
+        "starterQuiz": [
+          {
+            "question": "What causes day and night on Earth?",
+            "questionType": "multiple-choice",
+            "answers": [
+              {
+                "type": "text",
+                "content": "The Sun moving around the Earth",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "The Earth rotating on its axis",
+                "distractor": false
+              },
+              {
+                "type": "text",
+                "content": "The Moon blocking the Sun",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "The Earth orbiting the Sun",
+                "distractor": true
+              }
+            ]
+          },
+          {
+            "question": "Roughly how long does it take the Earth to orbit the Sun?",
+            "questionType": "multiple-choice",
+            "answers": [
+              {
+                "type": "text",
+                "content": "24 hours",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "365 days",
+                "distractor": false
+              },
+              {
+                "type": "text",
+                "content": "27 days",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "100 days",
+                "distractor": true
+              }
+            ]
+          },
+          {
+            "question": "What force keeps the Moon in orbit around the Earth?",
+            "questionType": "short-answer",
+            "answers": [
+              {
+                "type": "text",
+                "content": "gravity"
+              }
+            ]
+          }
+        ],
+        "exitQuiz": [
+          {
+            "question": "Why does the Moon appear bright in the sky?",
+            "questionType": "multiple-choice",
+            "answers": [
+              {
+                "type": "text",
+                "content": "It produces its own light",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "It reflects light from the Sun",
+                "distractor": false
+              },
+              {
+                "type": "text",
+                "content": "It absorbs starlight",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "It is on fire",
+                "distractor": true
+              }
+            ]
+          },
+          {
+            "question": "Roughly how long does the Moon take to orbit the Earth?",
+            "questionType": "multiple-choice",
+            "answers": [
+              {
+                "type": "text",
+                "content": "24 hours",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "27 to 29 days",
+                "distractor": false
+              },
+              {
+                "type": "text",
+                "content": "365 days",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "7 days",
+                "distractor": true
+              }
+            ]
+          },
+          {
+            "question": "What do we call the changing shape of the Moon as seen from Earth?",
+            "questionType": "short-answer",
+            "answers": [
+              {
+                "type": "text",
+                "content": "phases"
+              },
+              {
+                "type": "text",
+                "content": "a phase"
+              }
+            ]
+          },
+          {
+            "question": "Match each Moon phase to its description.",
+            "questionType": "match",
+            "answers": [
+              {
+                "matchOption": {
+                  "type": "text",
+                  "content": "New moon"
+                },
+                "correctChoice": {
+                  "type": "text",
+                  "content": "the Moon is barely visible"
+                }
+              },
+              {
+                "matchOption": {
+                  "type": "text",
+                  "content": "Full moon"
+                },
+                "correctChoice": {
+                  "type": "text",
+                  "content": "the whole sunlit side faces Earth"
+                }
+              },
+              {
+                "matchOption": {
+                  "type": "text",
+                  "content": "First quarter"
+                },
+                "correctChoice": {
+                  "type": "text",
+                  "content": "half of the visible side is lit"
+                }
+              }
+            ]
+          },
+          {
+            "question": "Order these Moon phases as they occur after a new moon.",
+            "questionType": "order",
+            "answers": [
+              {
+                "order": 1,
+                "type": "text",
+                "content": "waxing crescent"
+              },
+              {
+                "order": 2,
+                "type": "text",
+                "content": "first quarter"
+              },
+              {
+                "order": 3,
+                "type": "text",
+                "content": "waxing gibbous"
+              },
+              {
+                "order": 4,
+                "type": "text",
+                "content": "full moon"
+              }
+            ]
+          }
+        ]
+      },
+      "transcript": {
+        "transcript": "Hello! Today we're exploring the Moon, and working out why it seems to change shape throughout the month.\n\nFirst, an important fact: the Moon does not make its own light. It might look like it's glowing, but really it's reflecting light from the Sun, just like a mirror bounces light back at you. Half of the Moon is always lit up by the Sun, just like half of the Earth always has daytime, while the other half is always in darkness.\n\nThe Moon orbits the Earth, travelling all the way around it roughly every 27 to 29 days, which is about a month. As the Moon moves along its orbit, we on Earth see different amounts of its sunlit half, and this is what causes its apparent shape, or phase, to change.\n\nWhen the Moon is between the Earth and the Sun, the sunlit half is facing away from us, so we can barely see it at all, this is called a new moon. As the Moon continues its orbit, we gradually see more of its sunlit side: first a thin sliver, called a waxing crescent, then a half circle, called first quarter, then most of the circle, called waxing gibbous, until eventually we see the whole sunlit side facing us, a full moon. After that, the visible sunlit portion shrinks again, through the same stages in reverse, until it disappears back to a new moon, and the cycle begins again.\n\nHere's a mistake to clear up. The Moon's phases are not caused by the Earth's shadow falling on it, that's a different, much rarer event called a lunar eclipse. Phases happen simply because of how much of the Moon's constantly sunlit half we can see from our position on Earth as it travels around us.\n\nAnother mistake is thinking the Moon makes its own light. Remember, it's reflecting sunlight, like a giant mirror in the sky, bouncing sunlight down towards Earth.\n\nNow you'll practise putting the Moon's phases in order and explaining what causes them."
+      },
+      "assets": {
+        "assets": [
+          {
+            "type": "worksheet",
+            "label": "Worksheet",
+            "url": "fixture://worksheet/the-moon-and-its-phases.pdf"
+          },
+          {
+            "type": "video",
+            "label": "Video",
+            "url": "fixture://video/the-moon-and-its-phases"
+          }
+        ],
+        "attribution": []
+      },
+      "worksheet": {
+        "questions": [
+          {
+            "number": "1",
+            "text": "Why does the Moon appear to shine?",
+            "type": "short",
+            "answer": "it reflects sunlight"
+          },
+          {
+            "number": "2",
+            "text": "Roughly how many days does it take the Moon to complete one orbit of the Earth?",
+            "type": "short",
+            "answer": "about 27 to 29 days"
+          },
+          {
+            "number": "3",
+            "text": "Explain why we see a full moon at one point in the month and a new moon at another point, using the word 'orbit' in your answer.",
+            "type": "extended",
+            "answer": "A good answer explains that as the Moon orbits the Earth, we see different amounts of its sunlit half; a full moon happens when we see all of the sunlit side, and a new moon happens when the sunlit side is facing away from us."
+          },
+          {
+            "number": "4",
+            "text": "Explain why the Moon's phases are not caused by the Earth's shadow.",
+            "type": "extended",
+            "answer": "A good answer explains that phases are caused by seeing different amounts of the Moon's constantly sunlit half as it orbits Earth, whereas the Earth's shadow falling on the Moon is a separate, much rarer event called a lunar eclipse."
+          }
+        ]
+      }
+    }
+  },
+  "licences": {
+    "properties-of-materials-solids-liquids-gases": "ogl-compatible",
+    "dissolving-and-separating-mixtures": "ogl-compatible",
+    "reversible-and-irreversible-changes": "ogl-compatible",
+    "the-solar-system-planets-and-orbits": "ogl-compatible",
+    "day-and-night-earths-rotation": "ogl-compatible",
+    "the-moon-and-its-phases": "ogl-compatible"
+  }
+}

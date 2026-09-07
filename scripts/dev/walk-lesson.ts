@@ -95,8 +95,17 @@ async function main(): Promise<void> {
   const greeting = todayHtml.match(/Good [a-z]+, [A-Za-z]+\./)?.[0];
   report(today.status < 400, "GET /today", `[${today.status}] ${greeting ?? "no greeting found"}`);
 
+  // A lesson from a programme this particular student is enrolled in, so each child's
+  // walk exercises their own year group's content.
+  const profile = await prisma.studentProfile.findFirst({
+    where: { user: { username: STUDENT.username } },
+    include: { enrolments: true },
+  });
   const lesson = await prisma.lesson.findFirst({
-    where: { questions: { some: {} } },
+    where: {
+      questions: { some: {} },
+      unit: { programme: { id: { in: profile?.enrolments.map((e) => e.programmeId) ?? [] } } },
+    },
     orderBy: { providerSlug: "asc" },
   });
   if (!lesson) {

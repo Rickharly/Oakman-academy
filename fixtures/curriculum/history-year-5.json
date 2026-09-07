@@ -1,0 +1,1904 @@
+{
+  "subject": {
+    "slug": "history",
+    "title": "History"
+  },
+  "programme": {
+    "sequenceSlug": "history-primary",
+    "yearGroup": 5,
+    "keyStage": "ks2",
+    "phase": "primary",
+    "title": "History — Year 5"
+  },
+  "units": [
+    {
+      "unitSlug": "the-anglo-saxons-and-vikings",
+      "unitTitle": "The Anglo-Saxons and Vikings",
+      "unitOrder": 1,
+      "description": "Pupils learn about the Anglo-Saxon settlement of Britain, daily life and beliefs in Anglo-Saxon England, and the Viking raids and invasions that followed.",
+      "whyThisWhyNow": "This unit gives pupils a chronological understanding of a formative period in British history after the Romans left, showing how invasion and settlement shaped early England.",
+      "priorKnowledgeRequirements": [
+        "Pupils know that the Romans invaded and then left Britain.",
+        "Pupils understand that Britain has been settled by different peoples throughout its history.",
+        "Pupils can place events on a simple timeline in chronological order."
+      ],
+      "nationalCurriculumContent": [
+        "Britain's settlement by Anglo-Saxons and Scots.",
+        "The Viking and Anglo-Saxon struggle for the Kingdom of England to the time of Edward the Confessor."
+      ],
+      "threads": [],
+      "categories": [],
+      "unitLessons": [
+        {
+          "lessonSlug": "anglo-saxon-settlement-of-britain",
+          "lessonTitle": "Anglo-Saxon settlement of Britain",
+          "lessonOrder": 1,
+          "state": "published"
+        },
+        {
+          "lessonSlug": "anglo-saxon-daily-life-and-beliefs",
+          "lessonTitle": "Anglo-Saxon daily life and beliefs",
+          "lessonOrder": 2,
+          "state": "published"
+        },
+        {
+          "lessonSlug": "viking-raids-and-invasion",
+          "lessonTitle": "Viking raids and invasion",
+          "lessonOrder": 3,
+          "state": "published"
+        }
+      ]
+    },
+    {
+      "unitSlug": "ancient-greece",
+      "unitTitle": "Ancient Greece",
+      "unitOrder": 2,
+      "description": "Pupils learn about the city states of Ancient Greece, everyday life for different groups of people, and the lasting legacy Ancient Greece has left on the modern world.",
+      "whyThisWhyNow": "This unit introduces pupils to one of the foundational civilisations of Western history, developing their understanding of democracy, culture and ideas that still shape life today.",
+      "priorKnowledgeRequirements": [
+        "Pupils understand that civilisations existed a very long time ago, before Britain's own history began in earnest.",
+        "Pupils can use simple historical vocabulary such as 'BC' and 'ancient' to describe periods of time.",
+        "Pupils know that different ancient civilisations had their own rulers, beliefs and ways of life."
+      ],
+      "nationalCurriculumContent": [
+        "Ancient Greece: a study of Greek life and achievements and their influence on the western world."
+      ],
+      "threads": [],
+      "categories": [],
+      "unitLessons": [
+        {
+          "lessonSlug": "ancient-greek-city-states",
+          "lessonTitle": "Ancient Greek city states",
+          "lessonOrder": 1,
+          "state": "published"
+        },
+        {
+          "lessonSlug": "daily-life-in-ancient-greece",
+          "lessonTitle": "Daily life in Ancient Greece",
+          "lessonOrder": 2,
+          "state": "published"
+        },
+        {
+          "lessonSlug": "the-legacy-of-ancient-greece",
+          "lessonTitle": "The legacy of Ancient Greece",
+          "lessonOrder": 3,
+          "state": "published"
+        }
+      ]
+    }
+  ],
+  "lessons": {
+    "anglo-saxon-settlement-of-britain": {
+      "summary": {
+        "lessonTitle": "Anglo-Saxon settlement of Britain",
+        "pupilLessonOutcome": "I can explain when and why the Anglo-Saxons settled in Britain.",
+        "keyLearningPoints": [
+          {
+            "keyLearningPoint": "The Anglo-Saxons began arriving in Britain from around AD 410, after the Romans left."
+          },
+          {
+            "keyLearningPoint": "The Anglo-Saxons came from northern Europe, from areas that are now Germany, Denmark and the Netherlands."
+          },
+          {
+            "keyLearningPoint": "The Anglo-Saxons settled across Britain and gradually divided the land into several separate kingdoms, such as Wessex, Mercia and Northumbria."
+          },
+          {
+            "keyLearningPoint": "'Anglo-Saxon' describes several different groups, including the Angles, Saxons and Jutes, who together shaped the culture, language and place names of England."
+          }
+        ],
+        "lessonKeywords": [
+          {
+            "keyword": "settle",
+            "description": "To arrive in a new place and set up a permanent home there."
+          },
+          {
+            "keyword": "kingdom",
+            "description": "An area of land ruled by a king or queen."
+          },
+          {
+            "keyword": "migrate",
+            "description": "To move from one place to live in another."
+          }
+        ],
+        "misconceptionsAndCommonMistakes": [
+          {
+            "misconception": "Pupils think 'Anglo-Saxon' is one single tribe or nationality, rather than several related groups who settled in Britain over time.",
+            "response": "Clarify that 'Anglo-Saxon' is a name historians use for several related groups, including the Angles, Saxons and Jutes, who came from different parts of northern Europe and gradually merged their cultures in Britain."
+          },
+          {
+            "misconception": "Pupils think Britain was a single, unified country under one Anglo-Saxon king from the very start of the settlement.",
+            "response": "Explain that Anglo-Saxon Britain was originally divided into several separate kingdoms, each with its own king, and it took hundreds of years before England began to unite under a single ruler."
+          }
+        ],
+        "teacherTips": [
+          {
+            "teacherTip": "Use a simple map showing northern Europe and Britain to help pupils visualise the sea journey the Anglo-Saxons made, and to explain why they settled mainly in the east and south of Britain first."
+          },
+          {
+            "teacherTip": "Introduce the word 'kingdom' early and revisit it throughout the unit, since understanding that Anglo-Saxon Britain was divided into several kingdoms is key to later lessons on Viking invasion."
+          }
+        ],
+        "contentGuidance": null,
+        "supervisionLevel": null,
+        "canonicalUrl": "https://example-fixture.invalid/lessons/anglo-saxon-settlement-of-britain",
+        "oakUrl": "https://example-fixture.invalid/lessons/anglo-saxon-settlement-of-britain",
+        "downloadsAvailable": true
+      },
+      "quiz": {
+        "starterQuiz": [
+          {
+            "question": "Which ancient empire ruled Britain before the Anglo-Saxons arrived?",
+            "questionType": "multiple-choice",
+            "answers": [
+              {
+                "type": "text",
+                "content": "The Vikings",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "The Romans",
+                "distractor": false
+              },
+              {
+                "type": "text",
+                "content": "The Greeks",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "The Normans",
+                "distractor": true
+              }
+            ]
+          },
+          {
+            "question": "What does it mean to 'settle' somewhere?",
+            "questionType": "multiple-choice",
+            "answers": [
+              {
+                "type": "text",
+                "content": "To visit somewhere briefly",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "To arrive in a new place and set up a permanent home",
+                "distractor": false
+              },
+              {
+                "type": "text",
+                "content": "To conquer a country by force only",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "To trade with another country",
+                "distractor": true
+              }
+            ]
+          },
+          {
+            "question": "Approximately what year did the Romans leave Britain?",
+            "questionType": "short-answer",
+            "answers": [
+              {
+                "type": "text",
+                "content": "AD 410"
+              },
+              {
+                "type": "text",
+                "content": "410"
+              }
+            ]
+          }
+        ],
+        "exitQuiz": [
+          {
+            "question": "Where did the Anglo-Saxons originally come from?",
+            "questionType": "multiple-choice",
+            "answers": [
+              {
+                "type": "text",
+                "content": "Southern Europe",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "Northern Europe (areas now Germany, Denmark and the Netherlands)",
+                "distractor": false
+              },
+              {
+                "type": "text",
+                "content": "North Africa",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "Scandinavia only",
+                "distractor": true
+              }
+            ]
+          },
+          {
+            "question": "Which of these was an Anglo-Saxon kingdom?",
+            "questionType": "multiple-choice",
+            "answers": [
+              {
+                "type": "text",
+                "content": "Normandy",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "Mercia",
+                "distractor": false
+              },
+              {
+                "type": "text",
+                "content": "Gaul",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "Rome",
+                "distractor": true
+              }
+            ]
+          },
+          {
+            "question": "Name one of the groups that made up the Anglo-Saxons.",
+            "questionType": "short-answer",
+            "answers": [
+              {
+                "type": "text",
+                "content": "Angles"
+              },
+              {
+                "type": "text",
+                "content": "Saxons"
+              },
+              {
+                "type": "text",
+                "content": "Jutes"
+              }
+            ]
+          },
+          {
+            "question": "Match each term to its meaning.",
+            "questionType": "match",
+            "answers": [
+              {
+                "matchOption": {
+                  "type": "text",
+                  "content": "settle"
+                },
+                "correctChoice": {
+                  "type": "text",
+                  "content": "to arrive somewhere and set up a permanent home"
+                }
+              },
+              {
+                "matchOption": {
+                  "type": "text",
+                  "content": "kingdom"
+                },
+                "correctChoice": {
+                  "type": "text",
+                  "content": "an area of land ruled by a king or queen"
+                }
+              },
+              {
+                "matchOption": {
+                  "type": "text",
+                  "content": "migrate"
+                },
+                "correctChoice": {
+                  "type": "text",
+                  "content": "to move from one place to live in another"
+                }
+              }
+            ]
+          },
+          {
+            "question": "Order these events chronologically.",
+            "questionType": "order",
+            "answers": [
+              {
+                "order": 1,
+                "type": "text",
+                "content": "Romans leave Britain"
+              },
+              {
+                "order": 2,
+                "type": "text",
+                "content": "Anglo-Saxons begin settling in Britain"
+              },
+              {
+                "order": 3,
+                "type": "text",
+                "content": "Anglo-Saxon kingdoms such as Wessex and Mercia form"
+              }
+            ]
+          }
+        ]
+      },
+      "transcript": {
+        "transcript": "Hello! Today we're travelling back over 1,600 years, to find out about the Anglo-Saxons and why they settled in Britain.\n\nAfter the Romans left Britain, around the year AD 410, groups of people from northern Europe began crossing the sea and settling here. We call these people the Anglo-Saxons. But 'Anglo-Saxon' isn't really the name of one single tribe. It's a name historians use to describe several different groups who came over, including the Angles, the Saxons, and the Jutes, from areas that are now part of Germany, Denmark and the Netherlands.\n\nWhy did they come? Historians think there were several reasons. Farmland in their homelands may have been in short supply, or damaged by flooding. Some may have come looking for better land to farm, others may have come as fighters, hired to help defend Britain, who then decided to stay and settle instead.\n\nOnce they arrived, the Anglo-Saxons didn't create one single united country straight away. Instead, they settled in different areas and gradually formed several separate kingdoms, each with its own king. Some of the most powerful kingdoms were called Wessex, Mercia and Northumbria. These kingdoms sometimes worked together, and sometimes fought each other, for hundreds of years.\n\nThe Anglo-Saxons left a huge mark on England that we can still see today. Many English place names come from Anglo-Saxon words, for example, place names ending in '-ham' or '-ton' often meant 'farm' or 'settlement'. Even the word 'England' comes from 'Angle-land', named after the Angles.\n\nA common mistake is thinking the Anglo-Saxons were one single tribe or nationality. Really, they were several related groups who gradually blended together over time in Britain. Another mistake is picturing Anglo-Saxon Britain as one unified country from the beginning, when actually it was made up of separate, often rival, kingdoms for hundreds of years.\n\nNow you'll look at a map and timeline to see where and when the Anglo-Saxons settled."
+      },
+      "assets": {
+        "assets": [
+          {
+            "type": "worksheet",
+            "label": "Worksheet",
+            "url": "fixture://worksheet/anglo-saxon-settlement-of-britain.pdf"
+          },
+          {
+            "type": "video",
+            "label": "Video",
+            "url": "fixture://video/anglo-saxon-settlement-of-britain"
+          }
+        ],
+        "attribution": []
+      },
+      "worksheet": {
+        "questions": [
+          {
+            "number": "1",
+            "text": "Name one Anglo-Saxon kingdom.",
+            "type": "short",
+            "answer": "Wessex, Mercia, or Northumbria"
+          },
+          {
+            "number": "2",
+            "text": "Explain why 'Anglo-Saxon' is not the name of just one tribe.",
+            "type": "extended",
+            "answer": "A good answer explains that 'Anglo-Saxon' describes several related groups, including the Angles, Saxons and Jutes, who came from different parts of northern Europe and gradually blended together in Britain."
+          },
+          {
+            "number": "3",
+            "text": "Give one possible reason the Anglo-Saxons came to Britain.",
+            "type": "short",
+            "answer": "looking for better farmland, or came as fighters who decided to stay"
+          },
+          {
+            "number": "4",
+            "text": "Explain why it is inaccurate to describe Anglo-Saxon Britain as 'one united country' in the years after the Romans left.",
+            "type": "extended",
+            "answer": "A good answer explains that Anglo-Saxon Britain was divided into several separate kingdoms, such as Wessex, Mercia and Northumbria, each with its own king, and it took hundreds of years before England began to unite under one ruler."
+          }
+        ]
+      }
+    },
+    "anglo-saxon-daily-life-and-beliefs": {
+      "summary": {
+        "lessonTitle": "Anglo-Saxon daily life and beliefs",
+        "pupilLessonOutcome": "I can describe what daily life was like for Anglo-Saxon people, including their beliefs.",
+        "keyLearningPoints": [
+          {
+            "keyLearningPoint": "Most Anglo-Saxons lived in small farming villages, in wooden houses with thatched roofs, and grew crops and kept animals to survive."
+          },
+          {
+            "keyLearningPoint": "Anglo-Saxon society had clear roles: a king ruled each kingdom, supported by nobles called thegns, while most people were farmers, and some were enslaved."
+          },
+          {
+            "keyLearningPoint": "Early Anglo-Saxons were pagans who worshipped several gods, including Woden and Thunor, before gradually converting to Christianity from the late 6th century onwards."
+          },
+          {
+            "keyLearningPoint": "Anglo-Saxon craftspeople were highly skilled, especially at metalwork, as shown by discoveries such as the Sutton Hoo ship burial."
+          }
+        ],
+        "lessonKeywords": [
+          {
+            "keyword": "pagan",
+            "description": "Someone who worships several gods or nature spirits, rather than one single god."
+          },
+          {
+            "keyword": "thegn",
+            "description": "A noble in Anglo-Saxon society who served the king, often in exchange for land."
+          },
+          {
+            "keyword": "convert",
+            "description": "To change from one religion or set of beliefs to another."
+          }
+        ],
+        "misconceptionsAndCommonMistakes": [
+          {
+            "misconception": "Pupils assume all Anglo-Saxons were Christian from the moment they arrived in Britain.",
+            "response": "Clarify that early Anglo-Saxons were pagans, worshipping several gods; Christianity spread gradually across Anglo-Saxon kingdoms over more than a century, starting from the late 6th century."
+          },
+          {
+            "misconception": "Pupils imagine Anglo-Saxon life as entirely primitive or unskilled, without recognising their genuine craftsmanship and organisation.",
+            "response": "Show examples like the treasures found at Sutton Hoo, including an intricately decorated helmet and fine jewellery, to demonstrate that Anglo-Saxon craftspeople were highly skilled, and Anglo-Saxon society was carefully structured, not simple or crude."
+          }
+        ],
+        "teacherTips": [
+          {
+            "teacherTip": "Use images of Sutton Hoo artefacts to challenge pupils' assumptions about Anglo-Saxon skill and status; the sheer craftsmanship of the objects found often surprises children."
+          },
+          {
+            "teacherTip": "Draw a simple diagram of Anglo-Saxon society (king, thegns, farmers, enslaved people) to help pupils understand that it was structured, not equal, and that people's roles were often fixed by birth."
+          }
+        ],
+        "contentGuidance": null,
+        "supervisionLevel": null,
+        "canonicalUrl": "https://example-fixture.invalid/lessons/anglo-saxon-daily-life-and-beliefs",
+        "oakUrl": "https://example-fixture.invalid/lessons/anglo-saxon-daily-life-and-beliefs",
+        "downloadsAvailable": true
+      },
+      "quiz": {
+        "starterQuiz": [
+          {
+            "question": "Where did the Anglo-Saxons originally come from?",
+            "questionType": "multiple-choice",
+            "answers": [
+              {
+                "type": "text",
+                "content": "Southern Europe",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "Northern Europe",
+                "distractor": false
+              },
+              {
+                "type": "text",
+                "content": "North Africa",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "Asia",
+                "distractor": true
+              }
+            ]
+          },
+          {
+            "question": "What is a kingdom?",
+            "questionType": "multiple-choice",
+            "answers": [
+              {
+                "type": "text",
+                "content": "A type of farm",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "An area of land ruled by a king or queen",
+                "distractor": false
+              },
+              {
+                "type": "text",
+                "content": "A group of enslaved people",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "A Roman city",
+                "distractor": true
+              }
+            ]
+          },
+          {
+            "question": "Name one Anglo-Saxon kingdom.",
+            "questionType": "short-answer",
+            "answers": [
+              {
+                "type": "text",
+                "content": "Wessex"
+              },
+              {
+                "type": "text",
+                "content": "Mercia"
+              },
+              {
+                "type": "text",
+                "content": "Northumbria"
+              }
+            ]
+          }
+        ],
+        "exitQuiz": [
+          {
+            "question": "What does 'pagan' mean?",
+            "questionType": "multiple-choice",
+            "answers": [
+              {
+                "type": "text",
+                "content": "Worshipping one single god",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "Worshipping several gods or nature spirits",
+                "distractor": false
+              },
+              {
+                "type": "text",
+                "content": "Having no beliefs at all",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "Following Roman laws",
+                "distractor": true
+              }
+            ]
+          },
+          {
+            "question": "Which discovery revealed the skill of Anglo-Saxon craftspeople?",
+            "questionType": "multiple-choice",
+            "answers": [
+              {
+                "type": "text",
+                "content": "Stonehenge",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "The Sutton Hoo ship burial",
+                "distractor": false
+              },
+              {
+                "type": "text",
+                "content": "The Roman baths at Bath",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "Hadrian's Wall",
+                "distractor": true
+              }
+            ]
+          },
+          {
+            "question": "Name one Anglo-Saxon god.",
+            "questionType": "short-answer",
+            "answers": [
+              {
+                "type": "text",
+                "content": "Woden"
+              },
+              {
+                "type": "text",
+                "content": "Thunor"
+              }
+            ]
+          },
+          {
+            "question": "Match each Anglo-Saxon role to its description.",
+            "questionType": "match",
+            "answers": [
+              {
+                "matchOption": {
+                  "type": "text",
+                  "content": "King"
+                },
+                "correctChoice": {
+                  "type": "text",
+                  "content": "ruled a kingdom"
+                }
+              },
+              {
+                "matchOption": {
+                  "type": "text",
+                  "content": "Thegn"
+                },
+                "correctChoice": {
+                  "type": "text",
+                  "content": "a noble who served the king"
+                }
+              },
+              {
+                "matchOption": {
+                  "type": "text",
+                  "content": "Farmer"
+                },
+                "correctChoice": {
+                  "type": "text",
+                  "content": "grew crops and kept animals"
+                }
+              }
+            ]
+          },
+          {
+            "question": "Order these events.",
+            "questionType": "order",
+            "answers": [
+              {
+                "order": 1,
+                "type": "text",
+                "content": "Anglo-Saxons arrive as pagans"
+              },
+              {
+                "order": 2,
+                "type": "text",
+                "content": "missionaries arrive from Europe"
+              },
+              {
+                "order": 3,
+                "type": "text",
+                "content": "Christianity gradually spreads across the kingdoms"
+              }
+            ]
+          }
+        ]
+      },
+      "transcript": {
+        "transcript": "Hello! Today we're finding out what everyday life was really like for the Anglo-Saxons, and what they believed in.\n\nMost Anglo-Saxons were farmers, living in small villages. Their houses were built from wood, with roofs made of thatch, bundles of straw or reeds tied tightly together. Families grew crops like wheat and barley, and kept animals such as pigs, sheep and cattle. Life revolved around the seasons: ploughing and planting in spring, harvesting in autumn, and surviving the cold winter months on stored food.\n\nAnglo-Saxon society had clear roles. Each kingdom had a king, who was supported by powerful nobles called thegns, who had usually been given land in exchange for loyalty and fighting for the king when needed. Most ordinary people were farmers, working the land. Sadly, some people in Anglo-Saxon society were enslaved, meaning they were owned by others and forced to work without freedom.\n\nWhat did the Anglo-Saxons believe? When they first arrived in Britain, they were pagans, meaning they worshipped several different gods, rather than one single god. Their gods included Woden, associated with wisdom and war, and Thunor, the god of thunder. You can still hear echoes of these gods in our days of the week, Wednesday comes from 'Woden's day', and Thursday from 'Thunor's day'. From the late 6th century onwards, missionaries began arriving from Europe, gradually converting Anglo-Saxon kingdoms to Christianity, though this took over a hundred years to spread across the whole of England.\n\nAnglo-Saxon people are sometimes wrongly imagined as unskilled or primitive. But archaeologists have discovered incredible evidence of their craftsmanship. At a site called Sutton Hoo, in Suffolk, a ship burial was discovered containing a stunningly decorated helmet, gold jewellery and fine metalwork, proving that Anglo-Saxon craftspeople had remarkable skill.\n\nA common mistake is assuming all Anglo-Saxons were Christian from the very beginning. In fact, they started as pagans, and Christianity spread gradually, kingdom by kingdom, over many decades.\n\nNow you'll explore some real Anglo-Saxon artefacts and what they tell us about daily life."
+      },
+      "assets": {
+        "assets": [
+          {
+            "type": "worksheet",
+            "label": "Worksheet",
+            "url": "fixture://worksheet/anglo-saxon-daily-life-and-beliefs.pdf"
+          },
+          {
+            "type": "video",
+            "label": "Video",
+            "url": "fixture://video/anglo-saxon-daily-life-and-beliefs"
+          }
+        ],
+        "attribution": []
+      },
+      "worksheet": {
+        "questions": [
+          {
+            "number": "1",
+            "text": "What material were Anglo-Saxon roofs usually made from?",
+            "type": "short",
+            "answer": "thatch"
+          },
+          {
+            "number": "2",
+            "text": "Name one Anglo-Saxon god and explain what he was associated with.",
+            "type": "short",
+            "answer": "Woden (wisdom and war) or Thunor (thunder)"
+          },
+          {
+            "number": "3",
+            "text": "Explain what the discoveries at Sutton Hoo tell us about the Anglo-Saxons.",
+            "type": "extended",
+            "answer": "A good answer explains that the finely decorated helmet, gold jewellery and metalwork found at Sutton Hoo show that Anglo-Saxon craftspeople were highly skilled, challenging the idea that Anglo-Saxon society was primitive or unskilled."
+          },
+          {
+            "number": "4",
+            "text": "Explain how and why Anglo-Saxon religious beliefs changed over time.",
+            "type": "extended",
+            "answer": "A good answer explains that Anglo-Saxons began as pagans worshipping several gods, and gradually converted to Christianity from the late 6th century onwards, as missionaries arrived from Europe and spread the new religion kingdom by kingdom."
+          }
+        ]
+      }
+    },
+    "viking-raids-and-invasion": {
+      "summary": {
+        "lessonTitle": "Viking raids and invasion",
+        "pupilLessonOutcome": "I can explain when the Viking raids began and how they affected Anglo-Saxon England.",
+        "keyLearningPoints": [
+          {
+            "keyLearningPoint": "The first recorded Viking raid on Britain was on the monastery at Lindisfarne in AD 793."
+          },
+          {
+            "keyLearningPoint": "Vikings came from Scandinavia (modern-day Norway, Sweden and Denmark), and travelled by longship, a fast, sturdy vessel that could sail on open sea and shallow rivers."
+          },
+          {
+            "keyLearningPoint": "Early Viking attacks were sudden raids, often targeting monasteries, which were rich in treasure and poorly defended; later, Vikings began to settle permanently in parts of England."
+          },
+          {
+            "keyLearningPoint": "King Alfred the Great of Wessex successfully defended his kingdom against the Vikings and later reached an agreement that divided England, with the Vikings controlling an area called the Danelaw."
+          }
+        ],
+        "lessonKeywords": [
+          {
+            "keyword": "raid",
+            "description": "A sudden, surprise attack, often to steal goods or treasure."
+          },
+          {
+            "keyword": "longship",
+            "description": "A fast, narrow Viking ship, built to sail across open sea and along shallow rivers."
+          },
+          {
+            "keyword": "Danelaw",
+            "description": "The area of England controlled by the Vikings, under Viking law, following agreements with Anglo-Saxon kings."
+          }
+        ],
+        "misconceptionsAndCommonMistakes": [
+          {
+            "misconception": "Pupils think all Vikings only ever raided and never settled or lived peacefully in England.",
+            "response": "Explain that while early Viking activity was mostly raiding, many Vikings later settled permanently in England, farming, trading and even ruling parts of the country, particularly within the Danelaw."
+          },
+          {
+            "misconception": "Pupils think Alfred the Great defeated the Vikings completely and drove them out of Britain entirely.",
+            "response": "Clarify that Alfred successfully defended Wessex and won important victories, but the Vikings were not driven out of Britain altogether; instead, an agreement divided England, with Vikings controlling the Danelaw while Alfred ruled Wessex."
+          }
+        ],
+        "teacherTips": [
+          {
+            "teacherTip": "Use the Lindisfarne raid as a vivid, well-documented starting point, since a monk's written account of the attack survives and can be shared (in simplified form) to bring the event to life."
+          },
+          {
+            "teacherTip": "Draw a simple map of England showing the Danelaw boundary, to help pupils visualise that Viking control was over part of England, not the whole country."
+          }
+        ],
+        "contentGuidance": null,
+        "supervisionLevel": null,
+        "canonicalUrl": "https://example-fixture.invalid/lessons/viking-raids-and-invasion",
+        "oakUrl": "https://example-fixture.invalid/lessons/viking-raids-and-invasion",
+        "downloadsAvailable": true
+      },
+      "quiz": {
+        "starterQuiz": [
+          {
+            "question": "What does it mean for people to be 'pagan'?",
+            "questionType": "multiple-choice",
+            "answers": [
+              {
+                "type": "text",
+                "content": "Worshipping one single god",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "Worshipping several gods or nature spirits",
+                "distractor": false
+              },
+              {
+                "type": "text",
+                "content": "Following no beliefs",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "Practising Roman customs",
+                "distractor": true
+              }
+            ]
+          },
+          {
+            "question": "What were Anglo-Saxon houses usually built from?",
+            "questionType": "multiple-choice",
+            "answers": [
+              {
+                "type": "text",
+                "content": "Stone, with tiled roofs",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "Wood, with thatched roofs",
+                "distractor": false
+              },
+              {
+                "type": "text",
+                "content": "Brick, with slate roofs",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "Ice",
+                "distractor": true
+              }
+            ]
+          },
+          {
+            "question": "Name one Anglo-Saxon kingdom.",
+            "questionType": "short-answer",
+            "answers": [
+              {
+                "type": "text",
+                "content": "Wessex"
+              },
+              {
+                "type": "text",
+                "content": "Mercia"
+              },
+              {
+                "type": "text",
+                "content": "Northumbria"
+              }
+            ]
+          }
+        ],
+        "exitQuiz": [
+          {
+            "question": "Where did the first recorded Viking raid on Britain take place?",
+            "questionType": "multiple-choice",
+            "answers": [
+              {
+                "type": "text",
+                "content": "Sutton Hoo",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "Lindisfarne",
+                "distractor": false
+              },
+              {
+                "type": "text",
+                "content": "London",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "York",
+                "distractor": true
+              }
+            ]
+          },
+          {
+            "question": "What was a longship?",
+            "questionType": "multiple-choice",
+            "answers": [
+              {
+                "type": "text",
+                "content": "A type of Anglo-Saxon farmhouse",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "A fast Viking ship that could sail on open sea and shallow rivers",
+                "distractor": false
+              },
+              {
+                "type": "text",
+                "content": "A Roman road",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "A Viking sword",
+                "distractor": true
+              }
+            ]
+          },
+          {
+            "question": "In what year did the first recorded Viking raid on Britain take place?",
+            "questionType": "short-answer",
+            "answers": [
+              {
+                "type": "text",
+                "content": "793"
+              },
+              {
+                "type": "text",
+                "content": "AD 793"
+              }
+            ]
+          },
+          {
+            "question": "Match each term to its meaning.",
+            "questionType": "match",
+            "answers": [
+              {
+                "matchOption": {
+                  "type": "text",
+                  "content": "raid"
+                },
+                "correctChoice": {
+                  "type": "text",
+                  "content": "a sudden, surprise attack to steal goods"
+                }
+              },
+              {
+                "matchOption": {
+                  "type": "text",
+                  "content": "longship"
+                },
+                "correctChoice": {
+                  "type": "text",
+                  "content": "a fast Viking ship"
+                }
+              },
+              {
+                "matchOption": {
+                  "type": "text",
+                  "content": "Danelaw"
+                },
+                "correctChoice": {
+                  "type": "text",
+                  "content": "the area of England under Viking control and law"
+                }
+              }
+            ]
+          },
+          {
+            "question": "Order these events chronologically.",
+            "questionType": "order",
+            "answers": [
+              {
+                "order": 1,
+                "type": "text",
+                "content": "the raid on Lindisfarne"
+              },
+              {
+                "order": 2,
+                "type": "text",
+                "content": "Vikings begin settling permanently in parts of England"
+              },
+              {
+                "order": 3,
+                "type": "text",
+                "content": "England is divided between Wessex and the Danelaw"
+              }
+            ]
+          }
+        ]
+      },
+      "transcript": {
+        "transcript": "Hello! Today we're learning about the Vikings, and how their raids changed Anglo-Saxon England.\n\nThe Vikings came from Scandinavia, from lands that are now Norway, Sweden and Denmark. They were skilled sailors, and built fast, sturdy ships called longships, which could sail across rough open sea, but were also narrow enough to travel up shallow rivers deep into England.\n\nThe first recorded Viking raid on Britain happened in the year AD 793, at a monastery called Lindisfarne, on the coast of Northumbria. A monastery is a religious community, and Lindisfarne was full of treasure, gold, silver, and holy objects, but had very few people to defend it. The Vikings arrived suddenly, attacked, stole what they could, and sailed away. This shocking event terrified people across Anglo-Saxon England, and monasteries along the coast became frequent targets in the years that followed, because they were rich but poorly protected.\n\nOver time, Viking activity changed. What started as sudden, hit-and-run raids gradually turned into something bigger: Vikings began arriving in large armies, fighting battles, and eventually settling permanently in parts of England, farming the land and building their own communities.\n\nOne Anglo-Saxon king stood out for successfully resisting the Vikings: Alfred the Great, king of Wessex. Alfred won important victories against Viking armies and worked hard to defend his kingdom. Eventually, an agreement was reached that divided England into two: Alfred ruled Wessex, in the south and west, while the Vikings controlled a large area called the Danelaw, in the north and east, where Viking law applied.\n\nA common mistake is thinking Alfred completely defeated the Vikings and drove them entirely out of Britain. That's not quite right, he successfully defended his own kingdom and won key battles, but the Vikings continued to control the Danelaw for many years afterwards.\n\nAnother mistake is imagining the Vikings only ever raided and never settled peacefully. In reality, many Vikings went on to live, farm, trade and raise families in England.\n\nNow you'll investigate a source about the Lindisfarne raid and think about how people reacted to it."
+      },
+      "assets": {
+        "assets": [
+          {
+            "type": "worksheet",
+            "label": "Worksheet",
+            "url": "fixture://worksheet/viking-raids-and-invasion.pdf"
+          },
+          {
+            "type": "video",
+            "label": "Video",
+            "url": "fixture://video/viking-raids-and-invasion"
+          }
+        ],
+        "attribution": []
+      },
+      "worksheet": {
+        "questions": [
+          {
+            "number": "1",
+            "text": "In which year did the Vikings first raid Lindisfarne?",
+            "type": "short",
+            "answer": "AD 793"
+          },
+          {
+            "number": "2",
+            "text": "Why were monasteries such as Lindisfarne common targets for Viking raids?",
+            "type": "short",
+            "answer": "they were rich in treasure but poorly defended"
+          },
+          {
+            "number": "3",
+            "text": "Explain why it is inaccurate to say Alfred the Great drove the Vikings completely out of Britain.",
+            "type": "extended",
+            "answer": "A good answer explains that Alfred successfully defended Wessex and won important victories, but an agreement divided England instead, with the Vikings continuing to control the Danelaw rather than being driven out entirely."
+          },
+          {
+            "number": "4",
+            "text": "Explain how Viking activity in England changed over time, from the first raids onwards.",
+            "type": "extended",
+            "answer": "A good answer explains that Viking activity began as sudden hit-and-run raids on rich, poorly defended targets like monasteries, and gradually changed into larger invasions, with Vikings eventually settling permanently and farming parts of England, particularly the Danelaw."
+          }
+        ]
+      }
+    },
+    "ancient-greek-city-states": {
+      "summary": {
+        "lessonTitle": "Ancient Greek city states",
+        "pupilLessonOutcome": "I can explain what a city state was and compare two Ancient Greek city states, Athens and Sparta.",
+        "keyLearningPoints": [
+          {
+            "keyLearningPoint": "Ancient Greece was not one single country; it was made up of many separate city states, each with its own government, laws and army."
+          },
+          {
+            "keyLearningPoint": "A city state, or 'polis', was an independent city along with the surrounding countryside and villages that it controlled."
+          },
+          {
+            "keyLearningPoint": "Athens was famous for developing an early form of democracy, where male citizens could vote on decisions."
+          },
+          {
+            "keyLearningPoint": "Sparta was famous for its powerful, highly trained army, and Spartan society was organised around military life from a young age."
+          }
+        ],
+        "lessonKeywords": [
+          {
+            "keyword": "city state",
+            "description": "An independent city, together with its surrounding land, that governed itself with its own laws and army."
+          },
+          {
+            "keyword": "democracy",
+            "description": "A system of government where citizens vote on decisions or leaders, rather than being ruled by one all-powerful person."
+          },
+          {
+            "keyword": "citizen",
+            "description": "In Ancient Greece, a free person (usually a man) with the right to take part in decisions about their city state."
+          }
+        ],
+        "misconceptionsAndCommonMistakes": [
+          {
+            "misconception": "Pupils think Ancient Greece was a single, unified country, like Greece is today.",
+            "response": "Explain that Ancient Greece was made up of many separate, independent city states, such as Athens and Sparta, which often had very different governments and customs, and even fought wars against each other."
+          },
+          {
+            "misconception": "Pupils think Athenian democracy worked exactly like democracy in Britain today, with everyone allowed to vote.",
+            "response": "Clarify that only free adult male citizens could vote in Athenian democracy; women, enslaved people and foreigners living in Athens had no vote at all, so it was very different from, and much less fair than, democracy today."
+          }
+        ],
+        "teacherTips": [
+          {
+            "teacherTip": "Use a simple comparison table (government, army, education, role of women) to help pupils see clearly how different Athens and Sparta were, despite both being Greek city states."
+          },
+          {
+            "teacherTip": "Be precise and honest about who could vote in Athenian democracy; it's an important, thought-provoking point for pupils to grasp rather than gloss over."
+          }
+        ],
+        "contentGuidance": null,
+        "supervisionLevel": null,
+        "canonicalUrl": "https://example-fixture.invalid/lessons/ancient-greek-city-states",
+        "oakUrl": "https://example-fixture.invalid/lessons/ancient-greek-city-states",
+        "downloadsAvailable": true
+      },
+      "quiz": {
+        "starterQuiz": [
+          {
+            "question": "What does 'ancient' mean?",
+            "questionType": "multiple-choice",
+            "answers": [
+              {
+                "type": "text",
+                "content": "Belonging to the present day",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "Belonging to a period of history a very long time ago",
+                "distractor": false
+              },
+              {
+                "type": "text",
+                "content": "Belonging to the future",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "A type of government",
+                "distractor": true
+              }
+            ]
+          },
+          {
+            "question": "What is a government?",
+            "questionType": "multiple-choice",
+            "answers": [
+              {
+                "type": "text",
+                "content": "A type of army",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "The group of people who make decisions and laws for a country or city",
+                "distractor": false
+              },
+              {
+                "type": "text",
+                "content": "A religious building",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "A form of currency",
+                "distractor": true
+              }
+            ]
+          },
+          {
+            "question": "What does BC mean when used with a date?",
+            "questionType": "short-answer",
+            "answers": [
+              {
+                "type": "text",
+                "content": "before Christ"
+              },
+              {
+                "type": "text",
+                "content": "before the birth of Christ"
+              }
+            ]
+          }
+        ],
+        "exitQuiz": [
+          {
+            "question": "What was a city state in Ancient Greece?",
+            "questionType": "multiple-choice",
+            "answers": [
+              {
+                "type": "text",
+                "content": "A small village with no laws",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "An independent city with its own government, laws and army",
+                "distractor": false
+              },
+              {
+                "type": "text",
+                "content": "A region ruled entirely by Athens",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "A type of Greek temple",
+                "distractor": true
+              }
+            ]
+          },
+          {
+            "question": "Which city state was famous for developing an early form of democracy?",
+            "questionType": "multiple-choice",
+            "answers": [
+              {
+                "type": "text",
+                "content": "Sparta",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "Athens",
+                "distractor": false
+              },
+              {
+                "type": "text",
+                "content": "Troy",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "Corinth",
+                "distractor": true
+              }
+            ]
+          },
+          {
+            "question": "Who could vote in Athenian democracy?",
+            "questionType": "short-answer",
+            "answers": [
+              {
+                "type": "text",
+                "content": "free adult male citizens"
+              },
+              {
+                "type": "text",
+                "content": "male citizens"
+              }
+            ]
+          },
+          {
+            "question": "Match each city state (or term) to what it was most famous for.",
+            "questionType": "match",
+            "answers": [
+              {
+                "matchOption": {
+                  "type": "text",
+                  "content": "Athens"
+                },
+                "correctChoice": {
+                  "type": "text",
+                  "content": "an early form of democracy"
+                }
+              },
+              {
+                "matchOption": {
+                  "type": "text",
+                  "content": "Sparta"
+                },
+                "correctChoice": {
+                  "type": "text",
+                  "content": "a powerful, highly trained army"
+                }
+              },
+              {
+                "matchOption": {
+                  "type": "text",
+                  "content": "polis"
+                },
+                "correctChoice": {
+                  "type": "text",
+                  "content": "the Greek word for a city state"
+                }
+              }
+            ]
+          },
+          {
+            "question": "Order these groups from most to least political power in Athenian democracy.",
+            "questionType": "order",
+            "answers": [
+              {
+                "order": 1,
+                "type": "text",
+                "content": "free adult male citizens"
+              },
+              {
+                "order": 2,
+                "type": "text",
+                "content": "women"
+              },
+              {
+                "order": 3,
+                "type": "text",
+                "content": "enslaved people"
+              }
+            ]
+          }
+        ]
+      },
+      "transcript": {
+        "transcript": "Hello! Today we're travelling to Ancient Greece, over two thousand years ago, to learn about city states.\n\nYou might imagine Ancient Greece as one single country, a bit like Greece today. But it wasn't. Ancient Greece was actually made up of many separate, independent city states. Each city state, sometimes called a 'polis', was its own little country really, with its own government, its own laws, and its own army, even though people living in different city states shared a similar language and similar gods.\n\nLet's compare two of the most famous city states: Athens and Sparta. They were both Greek, but they were remarkably different from each other.\n\nAthens is famous for developing an early form of democracy. The word democracy means 'rule by the people', and in Athens, male citizens could gather together and vote on important decisions affecting their city. This was a genuinely new idea at the time. However, it's important to know that Athenian democracy was far from equal by today's standards. Only free adult men who were citizens could vote. Women could not vote, enslaved people could not vote, and people who had moved to Athens from elsewhere could not vote either.\n\nSparta, meanwhile, was famous for something completely different: its powerful army. Spartan society was built almost entirely around military training. Spartan boys left home around the age of seven to begin intense military training, preparing them to become soldiers. Spartan society valued discipline, toughness and loyalty to the state above almost everything else.\n\nHere's a mistake to avoid. Some people assume Ancient Greece was one unified nation, but really, these separate city states were fiercely independent, and sometimes went to war against each other, including a long war between Athens and Sparta themselves.\n\nNow you're going to compare Athens and Sparta yourself, thinking about how different life would have been in each city state."
+      },
+      "assets": {
+        "assets": [
+          {
+            "type": "worksheet",
+            "label": "Worksheet",
+            "url": "fixture://worksheet/ancient-greek-city-states.pdf"
+          },
+          {
+            "type": "video",
+            "label": "Video",
+            "url": "fixture://video/ancient-greek-city-states"
+          }
+        ],
+        "attribution": []
+      },
+      "worksheet": {
+        "questions": [
+          {
+            "number": "1",
+            "text": "What was a Greek city state also called?",
+            "type": "short",
+            "answer": "a polis"
+          },
+          {
+            "number": "2",
+            "text": "Name one thing Athens was famous for.",
+            "type": "short",
+            "answer": "democracy, or an early form of democracy"
+          },
+          {
+            "number": "3",
+            "text": "Explain why Athenian democracy was very different from democracy in Britain today.",
+            "type": "extended",
+            "answer": "A good answer explains that only free adult male citizens could vote in Athens, while women, enslaved people and foreigners had no vote at all, unlike modern democracy where all adult citizens can usually vote."
+          },
+          {
+            "number": "4",
+            "text": "Compare Athens and Sparta, describing one key difference between them.",
+            "type": "extended",
+            "answer": "A good answer describes a genuine difference, such as Athens developing an early democracy where citizens voted on decisions, while Sparta focused on producing a powerful, highly trained army through strict military training from childhood."
+          }
+        ]
+      }
+    },
+    "daily-life-in-ancient-greece": {
+      "summary": {
+        "lessonTitle": "Daily life in Ancient Greece",
+        "pupilLessonOutcome": "I can describe what daily life was like for different groups of people in Ancient Greece.",
+        "keyLearningPoints": [
+          {
+            "keyLearningPoint": "Daily life in Ancient Greece was very different depending on whether you were a man, a woman, a child, or enslaved."
+          },
+          {
+            "keyLearningPoint": "Greek men who were citizens took part in public life, including politics, the marketplace (called the agora), and sport."
+          },
+          {
+            "keyLearningPoint": "Greek women mostly managed the household and had far fewer rights and freedoms than men; they could not vote or take part in politics."
+          },
+          {
+            "keyLearningPoint": "Enslaved people made up a significant part of the population in Ancient Greece and had no personal freedom, often doing hard labour or domestic work."
+          }
+        ],
+        "lessonKeywords": [
+          {
+            "keyword": "agora",
+            "description": "The central marketplace and meeting place in an Ancient Greek city, used for trade, politics and public life."
+          },
+          {
+            "keyword": "household",
+            "description": "A home and the family (and enslaved people, where they were present) living and working within it."
+          },
+          {
+            "keyword": "rights",
+            "description": "The freedoms and powers a person is allowed to have within their society."
+          }
+        ],
+        "misconceptionsAndCommonMistakes": [
+          {
+            "misconception": "Pupils assume everyone in Ancient Greece had the same experience of daily life, regardless of whether they were a man, woman, child, or enslaved person.",
+            "response": "Emphasise that daily life varied enormously depending on a person's status; a wealthy male citizen's daily routine looked completely different from that of a woman confined mostly to the home, or an enslaved person with no personal freedom at all."
+          },
+          {
+            "misconception": "Pupils think slavery in Ancient Greece was rare or unimportant.",
+            "response": "Explain clearly that enslaved people made up a significant part of the population in many Greek city states and were essential to how Greek society and economy functioned, doing much of the hard labour and domestic work."
+          }
+        ],
+        "teacherTips": [
+          {
+            "teacherTip": "Use short 'a day in the life' descriptions for different people (a male citizen, a woman, a child, an enslaved person) to make the contrast in daily experience vivid and concrete for pupils."
+          },
+          {
+            "teacherTip": "Handle the topic of slavery honestly and sensitively, being clear it was a widespread and significant part of Ancient Greek society, not a minor detail."
+          }
+        ],
+        "contentGuidance": null,
+        "supervisionLevel": null,
+        "canonicalUrl": "https://example-fixture.invalid/lessons/daily-life-in-ancient-greece",
+        "oakUrl": "https://example-fixture.invalid/lessons/daily-life-in-ancient-greece",
+        "downloadsAvailable": true
+      },
+      "quiz": {
+        "starterQuiz": [
+          {
+            "question": "What was a city state?",
+            "questionType": "multiple-choice",
+            "answers": [
+              {
+                "type": "text",
+                "content": "A small farming village",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "An independent city with its own government, laws and army",
+                "distractor": false
+              },
+              {
+                "type": "text",
+                "content": "A type of Greek temple",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "A Greek god",
+                "distractor": true
+              }
+            ]
+          },
+          {
+            "question": "Which city state was famous for its powerful army?",
+            "questionType": "multiple-choice",
+            "answers": [
+              {
+                "type": "text",
+                "content": "Athens",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "Sparta",
+                "distractor": false
+              },
+              {
+                "type": "text",
+                "content": "Corinth",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "Troy",
+                "distractor": true
+              }
+            ]
+          },
+          {
+            "question": "What is a citizen?",
+            "questionType": "short-answer",
+            "answers": [
+              {
+                "type": "text",
+                "content": "a free person with rights to take part in decisions about their city"
+              },
+              {
+                "type": "text",
+                "content": "a free person with political rights"
+              }
+            ]
+          }
+        ],
+        "exitQuiz": [
+          {
+            "question": "What was the agora?",
+            "questionType": "multiple-choice",
+            "answers": [
+              {
+                "type": "text",
+                "content": "A Greek temple",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "The central marketplace and meeting place of a Greek city",
+                "distractor": false
+              },
+              {
+                "type": "text",
+                "content": "A type of Greek ship",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "A Spartan military camp",
+                "distractor": true
+              }
+            ]
+          },
+          {
+            "question": "What was expected of most Greek women?",
+            "questionType": "multiple-choice",
+            "answers": [
+              {
+                "type": "text",
+                "content": "To vote in the assembly",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "To manage the household",
+                "distractor": false
+              },
+              {
+                "type": "text",
+                "content": "To lead the army",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "To rule the city state",
+                "distractor": true
+              }
+            ]
+          },
+          {
+            "question": "What group of people had no personal freedom in Ancient Greece and were forced to work?",
+            "questionType": "short-answer",
+            "answers": [
+              {
+                "type": "text",
+                "content": "enslaved people"
+              },
+              {
+                "type": "text",
+                "content": "slaves"
+              }
+            ]
+          },
+          {
+            "question": "Match each group to a typical part of their life in Ancient Greece.",
+            "questionType": "match",
+            "answers": [
+              {
+                "matchOption": {
+                  "type": "text",
+                  "content": "Male citizen"
+                },
+                "correctChoice": {
+                  "type": "text",
+                  "content": "took part in politics and visited the agora"
+                }
+              },
+              {
+                "matchOption": {
+                  "type": "text",
+                  "content": "Woman"
+                },
+                "correctChoice": {
+                  "type": "text",
+                  "content": "managed the household"
+                }
+              },
+              {
+                "matchOption": {
+                  "type": "text",
+                  "content": "Enslaved person"
+                },
+                "correctChoice": {
+                  "type": "text",
+                  "content": "had no personal freedom and was forced to work"
+                }
+              }
+            ]
+          },
+          {
+            "question": "Order these groups from most rights to fewest rights in Ancient Greek society.",
+            "questionType": "order",
+            "answers": [
+              {
+                "order": 1,
+                "type": "text",
+                "content": "free adult male citizens"
+              },
+              {
+                "order": 2,
+                "type": "text",
+                "content": "free women"
+              },
+              {
+                "order": 3,
+                "type": "text",
+                "content": "enslaved people"
+              }
+            ]
+          }
+        ]
+      },
+      "transcript": {
+        "transcript": "Hello! Today we're finding out what daily life was actually like for different people in Ancient Greece.\n\nIt's really important to understand that 'daily life in Ancient Greece' looked completely different depending on who you were. Being a man, a woman, a child, or an enslaved person meant very different daily experiences.\n\nLet's start with free male citizens. They took part in public life, spending time in the agora, the central marketplace and meeting place of the city, where people traded goods, discussed politics, and socialised. Male citizens could also take part in politics, sport, and religious festivals.\n\nWomen's lives looked very different. Greek women, especially in Athens, were expected to manage the household, running the home, raising children, weaving cloth, and organising food and supplies. Women had far fewer rights than men; they could not vote, could not own much property independently, and rarely left the house without a reason, especially in wealthier families.\n\nChildren's lives depended heavily on whether they were boys or girls, and how wealthy their family was. Boys from wealthier families often received an education, learning reading, writing, maths and sport, preparing them for public life as adults. Girls were usually taught skills needed to run a household, like weaving, rather than attending formal lessons.\n\nNow, an important and often overlooked part of Ancient Greek society: enslaved people. Slavery was widespread across Ancient Greece, and enslaved people made up a significant part of the population in many city states. They had no personal freedom and were forced to work, often doing hard physical labour, farming, or domestic work inside people's homes. Ancient Greek society and its economy relied heavily on their unpaid labour.\n\nA common mistake is imagining that everyone in Ancient Greece lived a similar life. In reality, your daily experience depended enormously on whether you were free or enslaved, male or female, rich or poor.\n\nNow you'll explore evidence about daily life for different groups of people in Ancient Greece."
+      },
+      "assets": {
+        "assets": [
+          {
+            "type": "worksheet",
+            "label": "Worksheet",
+            "url": "fixture://worksheet/daily-life-in-ancient-greece.pdf"
+          },
+          {
+            "type": "video",
+            "label": "Video",
+            "url": "fixture://video/daily-life-in-ancient-greece"
+          }
+        ],
+        "attribution": []
+      },
+      "worksheet": {
+        "questions": [
+          {
+            "number": "1",
+            "text": "What was the agora used for?",
+            "type": "short",
+            "answer": "trade, politics and public life (the marketplace and meeting place)"
+          },
+          {
+            "number": "2",
+            "text": "Describe one way daily life for a Greek woman differed from daily life for a male citizen.",
+            "type": "short",
+            "answer": "women could not vote and mostly managed the household, unlike male citizens who took part in politics"
+          },
+          {
+            "number": "3",
+            "text": "Explain why it would be inaccurate to say that everyone in Ancient Greece had a similar daily life.",
+            "type": "extended",
+            "answer": "A good answer explains that daily life varied hugely depending on whether someone was a free male citizen, a woman, a child, or enslaved, each having very different rights, responsibilities and freedoms."
+          },
+          {
+            "number": "4",
+            "text": "Explain the role enslaved people played in Ancient Greek society.",
+            "type": "extended",
+            "answer": "A good answer explains that enslaved people made up a significant part of the population, had no personal freedom, and were forced to do hard labour and domestic work that Greek society and its economy relied upon."
+          }
+        ]
+      }
+    },
+    "the-legacy-of-ancient-greece": {
+      "summary": {
+        "lessonTitle": "The legacy of Ancient Greece",
+        "pupilLessonOutcome": "I can explain why Ancient Greece is considered important to the modern world.",
+        "keyLearningPoints": [
+          {
+            "keyLearningPoint": "The word 'legacy' means something that is passed down and continues to have an effect long after it began."
+          },
+          {
+            "keyLearningPoint": "Ancient Greece gave the world an early form of democracy, an idea that has influenced how many modern countries, including the UK, are governed today."
+          },
+          {
+            "keyLearningPoint": "Ancient Greek thinkers, called philosophers, such as Socrates, Plato and Aristotle, developed ideas about knowledge, ethics and science that are still studied today."
+          },
+          {
+            "keyLearningPoint": "Many things from Ancient Greece continue today, including the Olympic Games, elements of theatre, and words in the English language that come from Ancient Greek."
+          }
+        ],
+        "lessonKeywords": [
+          {
+            "keyword": "legacy",
+            "description": "Something that is passed down from the past and continues to have an effect on the present."
+          },
+          {
+            "keyword": "philosopher",
+            "description": "A person who studies deep questions about knowledge, existence, right and wrong, and how to live."
+          },
+          {
+            "keyword": "influence",
+            "description": "To have an effect on how something develops or is thought about."
+          }
+        ],
+        "misconceptionsAndCommonMistakes": [
+          {
+            "misconception": "Pupils think Ancient Greece's influence ended when Ancient Greek civilisation itself ended, rather than continuing today.",
+            "response": "Show specific, concrete modern examples, like the Olympic Games or English words with Greek origins, to demonstrate that Ancient Greek ideas and traditions are still actively part of life today, not just historical facts."
+          },
+          {
+            "misconception": "Pupils think democracy today works in exactly the same way as it did in Ancient Athens.",
+            "response": "Remind pupils of the earlier lesson: only free adult male citizens could vote in Athens, while modern democracies allow all adult citizens to vote; the core idea of citizens having a say was inherited from Greece, but the system itself has changed a great deal."
+          }
+        ],
+        "teacherTips": [
+          {
+            "teacherTip": "Build a simple 'then and now' table linking specific Ancient Greek achievements (democracy, Olympic Games, philosophy, theatre) to their modern equivalents, to make the idea of legacy concrete."
+          },
+          {
+            "teacherTip": "Point out everyday English words with Greek origins (e.g. 'democracy', 'philosophy', 'marathon', 'theatre') to show pupils that Ancient Greek influence is embedded even in the language they use."
+          }
+        ],
+        "contentGuidance": null,
+        "supervisionLevel": null,
+        "canonicalUrl": "https://example-fixture.invalid/lessons/the-legacy-of-ancient-greece",
+        "oakUrl": "https://example-fixture.invalid/lessons/the-legacy-of-ancient-greece",
+        "downloadsAvailable": true
+      },
+      "quiz": {
+        "starterQuiz": [
+          {
+            "question": "What was the agora?",
+            "questionType": "multiple-choice",
+            "answers": [
+              {
+                "type": "text",
+                "content": "A Greek warship",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "The central marketplace and meeting place of a Greek city",
+                "distractor": false
+              },
+              {
+                "type": "text",
+                "content": "A type of temple",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "A Spartan training camp",
+                "distractor": true
+              }
+            ]
+          },
+          {
+            "question": "Who could vote in Athenian democracy?",
+            "questionType": "multiple-choice",
+            "answers": [
+              {
+                "type": "text",
+                "content": "All adults",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "Free adult male citizens",
+                "distractor": false
+              },
+              {
+                "type": "text",
+                "content": "Only women",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "Only enslaved people",
+                "distractor": true
+              }
+            ]
+          },
+          {
+            "question": "What is a philosopher?",
+            "questionType": "short-answer",
+            "answers": [
+              {
+                "type": "text",
+                "content": "a person who studies deep questions about knowledge and how to live"
+              },
+              {
+                "type": "text",
+                "content": "someone who thinks deeply about knowledge and ethics"
+              }
+            ]
+          }
+        ],
+        "exitQuiz": [
+          {
+            "question": "What does 'legacy' mean?",
+            "questionType": "multiple-choice",
+            "answers": [
+              {
+                "type": "text",
+                "content": "A type of Ancient Greek government",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "Something passed down from the past that still has an effect today",
+                "distractor": false
+              },
+              {
+                "type": "text",
+                "content": "A Greek soldier",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "An ancient building",
+                "distractor": true
+              }
+            ]
+          },
+          {
+            "question": "Which modern sporting event began in Ancient Greece?",
+            "questionType": "multiple-choice",
+            "answers": [
+              {
+                "type": "text",
+                "content": "The football World Cup",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "The Olympic Games",
+                "distractor": false
+              },
+              {
+                "type": "text",
+                "content": "The Tour de France",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "The Rugby World Cup",
+                "distractor": true
+              }
+            ]
+          },
+          {
+            "question": "Name one Ancient Greek philosopher.",
+            "questionType": "short-answer",
+            "answers": [
+              {
+                "type": "text",
+                "content": "Socrates"
+              },
+              {
+                "type": "text",
+                "content": "Plato"
+              },
+              {
+                "type": "text",
+                "content": "Aristotle"
+              }
+            ]
+          },
+          {
+            "question": "Match each Ancient Greek achievement to its modern legacy.",
+            "questionType": "match",
+            "answers": [
+              {
+                "matchOption": {
+                  "type": "text",
+                  "content": "Athenian democracy"
+                },
+                "correctChoice": {
+                  "type": "text",
+                  "content": "modern systems of government where citizens vote"
+                }
+              },
+              {
+                "matchOption": {
+                  "type": "text",
+                  "content": "Ancient Olympic Games"
+                },
+                "correctChoice": {
+                  "type": "text",
+                  "content": "the modern Olympic Games"
+                }
+              },
+              {
+                "matchOption": {
+                  "type": "text",
+                  "content": "Greek philosophers"
+                },
+                "correctChoice": {
+                  "type": "text",
+                  "content": "ideas about knowledge and ethics still studied today"
+                }
+              }
+            ]
+          },
+          {
+            "question": "Order these events chronologically.",
+            "questionType": "order",
+            "answers": [
+              {
+                "order": 1,
+                "type": "text",
+                "content": "the first Ancient Olympic Games take place"
+              },
+              {
+                "order": 2,
+                "type": "text",
+                "content": "Ancient Greek philosophers develop new ideas"
+              },
+              {
+                "order": 3,
+                "type": "text",
+                "content": "the modern Olympic Games begin"
+              }
+            ]
+          }
+        ]
+      },
+      "transcript": {
+        "transcript": "Hello! Today we're asking a big question: why do people still talk about Ancient Greece, thousands of years after it existed?\n\nThe answer has a lot to do with something called legacy. A legacy is something passed down from the past that keeps having an effect long after it began. Ancient Greece left behind an enormous legacy that still shapes the world today.\n\nLet's start with democracy. We learned earlier that Athens developed an early form of democracy, where citizens could vote on decisions. That idea, citizens having a say in how they are governed, was hugely influential. Many modern countries, including the UK, base their system of government on the idea that citizens should have a voice, an idea that can be traced back to Ancient Greece, even though modern democracy works quite differently and is much fairer, allowing all adults to vote, not just free men.\n\nAncient Greece also gave the world philosophy, deep thinking about questions like: what is knowledge? What is right and wrong? How should people live? Famous Greek philosophers like Socrates, Plato and Aristotle developed ideas that are still studied by students today, thousands of years later.\n\nYou've probably heard of the Olympic Games. They began in Ancient Greece, as a sporting competition held in honour of the god Zeus. The modern Olympic Games, held every four years, are directly inspired by this ancient tradition.\n\nEven our language carries Ancient Greek influence. Words like 'democracy', 'philosophy', 'theatre' and 'marathon' all come from Ancient Greek. In fact, the word 'marathon' comes from a Greek soldier's legendary run to deliver news of a battle victory.\n\nA common mistake is thinking Ancient Greece's influence simply stopped when their civilisation ended. Actually, their ideas, words and traditions are still very much part of our lives today, we just don't always notice it.\n\nNow you'll investigate specific examples of Ancient Greek legacy and explain how they connect to the modern world."
+      },
+      "assets": {
+        "assets": [
+          {
+            "type": "worksheet",
+            "label": "Worksheet",
+            "url": "fixture://worksheet/the-legacy-of-ancient-greece.pdf"
+          },
+          {
+            "type": "video",
+            "label": "Video",
+            "url": "fixture://video/the-legacy-of-ancient-greece"
+          }
+        ],
+        "attribution": []
+      },
+      "worksheet": {
+        "questions": [
+          {
+            "number": "1",
+            "text": "What does the word 'legacy' mean?",
+            "type": "short",
+            "answer": "something passed down from the past that still has an effect today"
+          },
+          {
+            "number": "2",
+            "text": "Name one modern thing that has its origins in Ancient Greece.",
+            "type": "short",
+            "answer": "the Olympic Games, democracy, philosophy, theatre, or a Greek-origin word"
+          },
+          {
+            "number": "3",
+            "text": "Explain how the idea of democracy from Ancient Greece has influenced government in the UK today.",
+            "type": "extended",
+            "answer": "A good answer explains that Ancient Athens introduced the idea of citizens voting on decisions, and this idea of citizens having a voice in government has influenced modern democracies like the UK, even though the modern system allows all adults to vote, unlike ancient Athens."
+          },
+          {
+            "number": "4",
+            "text": "Explain why it would be a mistake to think Ancient Greece's influence ended when the civilisation itself ended.",
+            "type": "extended",
+            "answer": "A good answer gives concrete evidence that Ancient Greek influence continues today, such as the modern Olympic Games, philosophical ideas still studied, and English words like 'democracy' and 'marathon' that come from Ancient Greek."
+          }
+        ]
+      }
+    }
+  },
+  "licences": {
+    "anglo-saxon-settlement-of-britain": "ogl-compatible",
+    "anglo-saxon-daily-life-and-beliefs": "ogl-compatible",
+    "viking-raids-and-invasion": "ogl-compatible",
+    "ancient-greek-city-states": "ogl-compatible",
+    "daily-life-in-ancient-greece": "ogl-compatible",
+    "the-legacy-of-ancient-greece": "ogl-compatible"
+  }
+}

@@ -1,0 +1,1900 @@
+{
+  "subject": {
+    "slug": "geography",
+    "title": "Geography"
+  },
+  "programme": {
+    "sequenceSlug": "geography-primary",
+    "yearGroup": 5,
+    "keyStage": "ks2",
+    "phase": "primary",
+    "title": "Geography — Year 5"
+  },
+  "units": [
+    {
+      "unitSlug": "rivers-and-the-water-cycle",
+      "unitTitle": "Rivers and the water cycle",
+      "unitOrder": 1,
+      "description": "Pupils learn how the water cycle works, identify the main features of a river from source to mouth, and explore the causes and effects of flooding.",
+      "whyThisWhyNow": "This unit builds pupils' understanding of a key physical geography process, connecting the water cycle to real river systems and preparing them to explain natural hazards like flooding.",
+      "priorKnowledgeRequirements": [
+        "Pupils know that water exists as a solid, liquid and gas, and can change between these states.",
+        "Pupils have observed everyday examples of evaporation and condensation, e.g. a puddle drying up, condensation on a window.",
+        "Pupils can locate rivers on a map and know that rivers flow into the sea."
+      ],
+      "nationalCurriculumContent": [
+        "Describe and understand key aspects of physical geography, including the water cycle and rivers."
+      ],
+      "threads": [],
+      "categories": [],
+      "unitLessons": [
+        {
+          "lessonSlug": "the-water-cycle-explained",
+          "lessonTitle": "The water cycle explained",
+          "lessonOrder": 1,
+          "state": "published"
+        },
+        {
+          "lessonSlug": "river-features-source-to-mouth",
+          "lessonTitle": "River features: source to mouth",
+          "lessonOrder": 2,
+          "state": "published"
+        },
+        {
+          "lessonSlug": "causes-and-effects-of-flooding",
+          "lessonTitle": "Causes and effects of flooding",
+          "lessonOrder": 3,
+          "state": "published"
+        }
+      ]
+    },
+    {
+      "unitSlug": "biomes-and-climate-zones",
+      "unitTitle": "Biomes and climate zones",
+      "unitOrder": 2,
+      "description": "Pupils learn about the world's major climate zones, explore the characteristics of rainforest biomes, and investigate the characteristics of desert biomes.",
+      "whyThisWhyNow": "This unit develops pupils' understanding of how climate shapes different environments around the world, building geographical knowledge that connects to their work on rivers and the water cycle.",
+      "priorKnowledgeRequirements": [
+        "Pupils know that different parts of the world have different weather and climates.",
+        "Pupils can identify hot and cold regions of the world on a map, such as the Equator and the Poles.",
+        "Pupils understand that plants and animals are suited (adapted) to the environments they live in."
+      ],
+      "nationalCurriculumContent": [
+        "Describe and understand key aspects of physical geography, including climate zones, biomes and vegetation belts.",
+        "Locate the world's countries, using maps to focus on environmental regions, including hot and cold areas of the world."
+      ],
+      "threads": [],
+      "categories": [],
+      "unitLessons": [
+        {
+          "lessonSlug": "world-climate-zones",
+          "lessonTitle": "World climate zones",
+          "lessonOrder": 1,
+          "state": "published"
+        },
+        {
+          "lessonSlug": "rainforest-biomes",
+          "lessonTitle": "Rainforest biomes",
+          "lessonOrder": 2,
+          "state": "published"
+        },
+        {
+          "lessonSlug": "desert-biomes",
+          "lessonTitle": "Desert biomes",
+          "lessonOrder": 3,
+          "state": "published"
+        }
+      ]
+    }
+  ],
+  "lessons": {
+    "the-water-cycle-explained": {
+      "summary": {
+        "lessonTitle": "The water cycle explained",
+        "pupilLessonOutcome": "I can describe the water cycle using the correct scientific vocabulary.",
+        "keyLearningPoints": [
+          {
+            "keyLearningPoint": "The water cycle is the continuous journey water takes as it moves between the sea, the air and the land."
+          },
+          {
+            "keyLearningPoint": "Evaporation is when the Sun heats water and turns it from a liquid into water vapour, a gas, which rises into the air."
+          },
+          {
+            "keyLearningPoint": "Condensation is when water vapour cools high in the sky and turns back into tiny liquid droplets, forming clouds."
+          },
+          {
+            "keyLearningPoint": "Precipitation is when water falls from clouds back to the Earth's surface, as rain, snow, sleet or hail, and then collects and flows back towards the sea, continuing the cycle."
+          }
+        ],
+        "lessonKeywords": [
+          {
+            "keyword": "evaporation",
+            "description": "The process of a liquid turning into a gas, e.g. when the Sun heats water and it rises into the air as water vapour."
+          },
+          {
+            "keyword": "condensation",
+            "description": "The process of a gas cooling and turning back into a liquid, e.g. water vapour forming clouds or droplets."
+          },
+          {
+            "keyword": "precipitation",
+            "description": "Water falling from clouds to the ground as rain, snow, sleet or hail."
+          }
+        ],
+        "misconceptionsAndCommonMistakes": [
+          {
+            "misconception": "Pupils think the water cycle has a clear beginning and end, rather than being a continuous, repeating process.",
+            "response": "Explain that the water cycle has no true starting point; water is constantly moving between the sea, air and land in an endless loop, so we can start describing it from any stage and it will always lead back to where we began."
+          },
+          {
+            "misconception": "Pupils confuse evaporation and condensation, or think they are the same process.",
+            "response": "Contrast the two directly: evaporation is a liquid turning into a gas (heating), while condensation is a gas turning back into a liquid (cooling) — they are opposite processes."
+          }
+        ],
+        "teacherTips": [
+          {
+            "teacherTip": "Use a simple diagram with arrows showing the cycle, and get pupils to trace the path of a single water droplet through evaporation, condensation, precipitation and collection."
+          },
+          {
+            "teacherTip": "Link evaporation and condensation to everyday, observable examples, like water disappearing from a puddle, or condensation appearing on a cold window or mirror."
+          }
+        ],
+        "contentGuidance": null,
+        "supervisionLevel": null,
+        "canonicalUrl": "https://example-fixture.invalid/lessons/the-water-cycle-explained",
+        "oakUrl": "https://example-fixture.invalid/lessons/the-water-cycle-explained",
+        "downloadsAvailable": true
+      },
+      "quiz": {
+        "starterQuiz": [
+          {
+            "question": "What are the three states that water can exist in?",
+            "questionType": "multiple-choice",
+            "answers": [
+              {
+                "type": "text",
+                "content": "Hot, warm and cold",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "Solid, liquid and gas",
+                "distractor": false
+              },
+              {
+                "type": "text",
+                "content": "Rain, snow and hail",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "Sea, river and lake",
+                "distractor": true
+              }
+            ]
+          },
+          {
+            "question": "What happens to water when it is heated enough?",
+            "questionType": "multiple-choice",
+            "answers": [
+              {
+                "type": "text",
+                "content": "It turns into a solid",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "It turns into a gas",
+                "distractor": false
+              },
+              {
+                "type": "text",
+                "content": "It disappears completely",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "It becomes heavier",
+                "distractor": true
+              }
+            ]
+          },
+          {
+            "question": "Give an example of water as a solid.",
+            "questionType": "short-answer",
+            "answers": [
+              {
+                "type": "text",
+                "content": "ice"
+              },
+              {
+                "type": "text",
+                "content": "snow"
+              }
+            ]
+          }
+        ],
+        "exitQuiz": [
+          {
+            "question": "What is evaporation?",
+            "questionType": "multiple-choice",
+            "answers": [
+              {
+                "type": "text",
+                "content": "A gas turning into a liquid because of cooling",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "A liquid turning into a gas because of heat",
+                "distractor": false
+              },
+              {
+                "type": "text",
+                "content": "Water falling from clouds",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "Water flowing downhill",
+                "distractor": true
+              }
+            ]
+          },
+          {
+            "question": "What is condensation?",
+            "questionType": "multiple-choice",
+            "answers": [
+              {
+                "type": "text",
+                "content": "A liquid heating and turning into a gas",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "A gas cooling and turning back into a liquid",
+                "distractor": false
+              },
+              {
+                "type": "text",
+                "content": "Water falling as rain",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "Water freezing into ice",
+                "distractor": true
+              }
+            ]
+          },
+          {
+            "question": "What is the name for water falling from clouds as rain, snow, sleet or hail?",
+            "questionType": "short-answer",
+            "answers": [
+              {
+                "type": "text",
+                "content": "precipitation"
+              }
+            ]
+          },
+          {
+            "question": "Match each stage of the water cycle to its correct description.",
+            "questionType": "match",
+            "answers": [
+              {
+                "matchOption": {
+                  "type": "text",
+                  "content": "Evaporation"
+                },
+                "correctChoice": {
+                  "type": "text",
+                  "content": "water heats up and turns into a gas"
+                }
+              },
+              {
+                "matchOption": {
+                  "type": "text",
+                  "content": "Condensation"
+                },
+                "correctChoice": {
+                  "type": "text",
+                  "content": "water vapour cools and forms clouds"
+                }
+              },
+              {
+                "matchOption": {
+                  "type": "text",
+                  "content": "Precipitation"
+                },
+                "correctChoice": {
+                  "type": "text",
+                  "content": "water falls from clouds to the ground"
+                }
+              }
+            ]
+          },
+          {
+            "question": "Order these stages of the water cycle.",
+            "questionType": "order",
+            "answers": [
+              {
+                "order": 1,
+                "type": "text",
+                "content": "evaporation"
+              },
+              {
+                "order": 2,
+                "type": "text",
+                "content": "condensation"
+              },
+              {
+                "order": 3,
+                "type": "text",
+                "content": "precipitation"
+              },
+              {
+                "order": 4,
+                "type": "text",
+                "content": "collection"
+              }
+            ]
+          }
+        ]
+      },
+      "transcript": {
+        "transcript": "Hello! Today we're learning about the water cycle, the amazing, never-ending journey water takes around our planet.\n\nLet's imagine a drop of water sitting in the sea. The Sun heats the surface of the sea, warming that water. As it warms, it changes from a liquid into a gas called water vapour, and rises up into the air. This process, a liquid turning into a gas because of heat, is called evaporation.\n\nAs the water vapour rises higher into the sky, it reaches cooler air. When something cools down, the opposite of evaporation happens: the water vapour turns back from a gas into tiny liquid water droplets. This process is called condensation. Millions of these tiny droplets clump together in the sky, forming what we see as clouds.\n\nInside a cloud, the water droplets keep bumping into each other and joining up, growing bigger and heavier. Eventually, they become too heavy to stay floating in the air, and they fall back down to Earth. We call this precipitation, and it can fall as rain, snow, sleet or hail, depending on the temperature.\n\nOnce precipitation reaches the ground, the water doesn't just stop there. It collects in rivers, lakes and streams, and gradually flows downhill, eventually making its way back to the sea. And once it's back in the sea, the whole process can begin again: evaporation, condensation, precipitation, collection.\n\nHere's something important to understand: the water cycle doesn't really have a beginning or an end. It's a continuous loop, water keeps moving round and round between the sea, the air and the land, forever.\n\nA common mistake is mixing up evaporation and condensation. Remember: evaporation is heating, a liquid becoming a gas, rising up. Condensation is cooling, a gas becoming a liquid again, forming clouds. They're exact opposites of each other.\n\nNow you'll practise describing the water cycle in the correct order, using all the key vocabulary."
+      },
+      "assets": {
+        "assets": [
+          {
+            "type": "worksheet",
+            "label": "Worksheet",
+            "url": "fixture://worksheet/the-water-cycle-explained.pdf"
+          },
+          {
+            "type": "video",
+            "label": "Video",
+            "url": "fixture://video/the-water-cycle-explained"
+          }
+        ],
+        "attribution": []
+      },
+      "worksheet": {
+        "questions": [
+          {
+            "number": "1",
+            "text": "What is evaporation?",
+            "type": "short",
+            "answer": "a liquid turning into a gas because of heat"
+          },
+          {
+            "number": "2",
+            "text": "What is condensation?",
+            "type": "short",
+            "answer": "a gas cooling and turning back into a liquid"
+          },
+          {
+            "number": "3",
+            "text": "Explain why the water cycle is described as a continuous cycle rather than having a clear beginning and end.",
+            "type": "extended",
+            "answer": "A good answer explains that water is constantly moving between the sea, air and land through evaporation, condensation, precipitation and collection, in an endless loop with no true starting point."
+          },
+          {
+            "number": "4",
+            "text": "Describe, in order, what happens to a drop of water from the moment it evaporates from the sea to the moment it returns to the sea.",
+            "type": "extended",
+            "answer": "A good answer describes the sequence: the water evaporates from the sea into water vapour, rises and cools to condense into clouds, falls as precipitation, and then collects and flows through rivers back to the sea."
+          }
+        ]
+      }
+    },
+    "river-features-source-to-mouth": {
+      "summary": {
+        "lessonTitle": "River features: source to mouth",
+        "pupilLessonOutcome": "I can name and describe the key features of a river from its source to its mouth.",
+        "keyLearningPoints": [
+          {
+            "keyLearningPoint": "A river's source is where it begins, often high up in hills or mountains, fed by rainfall or melting snow."
+          },
+          {
+            "keyLearningPoint": "A river's mouth is where it finally flows into the sea, a lake, or another river."
+          },
+          {
+            "keyLearningPoint": "As a river travels from its source to its mouth, it usually gets wider, deeper and slower, and is joined by smaller rivers called tributaries."
+          },
+          {
+            "keyLearningPoint": "A meander is a bend or curve in a river, usually found in the middle or lower course, where the river flows across flatter land."
+          }
+        ],
+        "lessonKeywords": [
+          {
+            "keyword": "source",
+            "description": "The place where a river begins, often in hills or mountains."
+          },
+          {
+            "keyword": "mouth",
+            "description": "The place where a river flows into the sea, a lake, or another river."
+          },
+          {
+            "keyword": "tributary",
+            "description": "A smaller river or stream that joins and flows into a larger river."
+          }
+        ],
+        "misconceptionsAndCommonMistakes": [
+          {
+            "misconception": "Pupils think a river flows at the same speed and width along its whole length.",
+            "response": "Explain that a river typically starts narrow, fast and shallow near its source in the hills, and becomes wider, slower and deeper as it travels towards its mouth, picking up water from tributaries along the way."
+          },
+          {
+            "misconception": "Pupils confuse the words 'source' and 'mouth', or think the mouth is where a river begins.",
+            "response": "Use the memorable phrase 'source starts it, mouth finishes it' and trace a real river on a map from its beginning in the hills to where it meets the sea, to fix the two terms firmly in the right order."
+          }
+        ],
+        "teacherTips": [
+          {
+            "teacherTip": "Trace a real, well-known river (such as the Thames or the Severn) on a map from source to mouth, pointing out tributaries joining along the way, to make the abstract vocabulary concrete."
+          },
+          {
+            "teacherTip": "Use the analogy of a river's journey being a bit like a person's life story, starting small in the hills and 'growing up' as it heads towards the sea, to help pupils remember the general pattern of change."
+          }
+        ],
+        "contentGuidance": null,
+        "supervisionLevel": null,
+        "canonicalUrl": "https://example-fixture.invalid/lessons/river-features-source-to-mouth",
+        "oakUrl": "https://example-fixture.invalid/lessons/river-features-source-to-mouth",
+        "downloadsAvailable": true
+      },
+      "quiz": {
+        "starterQuiz": [
+          {
+            "question": "What is evaporation?",
+            "questionType": "multiple-choice",
+            "answers": [
+              {
+                "type": "text",
+                "content": "A gas turning into a liquid",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "A liquid turning into a gas because of heat",
+                "distractor": false
+              },
+              {
+                "type": "text",
+                "content": "Water falling as rain",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "Water freezing",
+                "distractor": true
+              }
+            ]
+          },
+          {
+            "question": "What is precipitation?",
+            "questionType": "multiple-choice",
+            "answers": [
+              {
+                "type": "text",
+                "content": "Water rising into the air",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "Water falling from clouds as rain, snow, sleet or hail",
+                "distractor": false
+              },
+              {
+                "type": "text",
+                "content": "Water flowing into rivers",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "Water freezing into ice",
+                "distractor": true
+              }
+            ]
+          },
+          {
+            "question": "Name a UK river you have heard of.",
+            "questionType": "short-answer",
+            "answers": [
+              {
+                "type": "text",
+                "content": "Thames"
+              },
+              {
+                "type": "text",
+                "content": "Severn"
+              },
+              {
+                "type": "text",
+                "content": "Trent"
+              },
+              {
+                "type": "text",
+                "content": "Mersey"
+              },
+              {
+                "type": "text",
+                "content": "Avon"
+              }
+            ]
+          }
+        ],
+        "exitQuiz": [
+          {
+            "question": "What is the source of a river?",
+            "questionType": "multiple-choice",
+            "answers": [
+              {
+                "type": "text",
+                "content": "The place where a river ends",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "The place where a river begins",
+                "distractor": false
+              },
+              {
+                "type": "text",
+                "content": "A bend in a river",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "A smaller river joining a larger one",
+                "distractor": true
+              }
+            ]
+          },
+          {
+            "question": "What is a tributary?",
+            "questionType": "multiple-choice",
+            "answers": [
+              {
+                "type": "text",
+                "content": "The end of a river",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "A smaller river or stream that joins a larger river",
+                "distractor": false
+              },
+              {
+                "type": "text",
+                "content": "The start of a river",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "A type of meander",
+                "distractor": true
+              }
+            ]
+          },
+          {
+            "question": "What is the name for the place where a river flows into the sea?",
+            "questionType": "short-answer",
+            "answers": [
+              {
+                "type": "text",
+                "content": "the mouth"
+              },
+              {
+                "type": "text",
+                "content": "mouth"
+              }
+            ]
+          },
+          {
+            "question": "Match each term to its correct meaning.",
+            "questionType": "match",
+            "answers": [
+              {
+                "matchOption": {
+                  "type": "text",
+                  "content": "Source"
+                },
+                "correctChoice": {
+                  "type": "text",
+                  "content": "where a river begins"
+                }
+              },
+              {
+                "matchOption": {
+                  "type": "text",
+                  "content": "Mouth"
+                },
+                "correctChoice": {
+                  "type": "text",
+                  "content": "where a river ends, meeting the sea"
+                }
+              },
+              {
+                "matchOption": {
+                  "type": "text",
+                  "content": "Meander"
+                },
+                "correctChoice": {
+                  "type": "text",
+                  "content": "a bend or curve in a river"
+                }
+              }
+            ]
+          },
+          {
+            "question": "Order these features as they would typically appear along a river's journey from source to mouth.",
+            "questionType": "order",
+            "answers": [
+              {
+                "order": 1,
+                "type": "text",
+                "content": "source"
+              },
+              {
+                "order": 2,
+                "type": "text",
+                "content": "tributary joining"
+              },
+              {
+                "order": 3,
+                "type": "text",
+                "content": "meander"
+              },
+              {
+                "order": 4,
+                "type": "text",
+                "content": "mouth"
+              }
+            ]
+          }
+        ]
+      },
+      "transcript": {
+        "transcript": "Hello! Today we're following the journey of a river, from where it begins to where it ends, and learning the names for its key features along the way.\n\nEvery river has to start somewhere. This starting point is called the source. A river's source is often high up in hills or mountains, where rainfall collects, or where melting snow feeds a small stream trickling downhill.\n\nFrom its source, the river begins its journey, and gradually, other smaller rivers and streams join it along the way. We call these smaller rivers tributaries. Each time a tributary joins, it adds more water to the main river.\n\nAs a river flows from its source towards the sea, it usually changes quite a lot. Near the source, in the hills, a river tends to be narrow, shallow and fast-flowing, often tumbling over rocks. As it travels further, picking up water from tributaries, it usually becomes wider, deeper and slower. By the time it reaches flatter land, the river often develops big, sweeping bends called meanders, curving gently across the landscape instead of rushing in a straight line.\n\nEventually, every river reaches its final destination. This ending point is called the mouth, the place where the river flows into the sea, a lake, or sometimes another larger river. At the mouth, a river is usually at its widest, deepest and slowest.\n\nA useful way to remember the difference between these two important terms is: 'source starts it, mouth finishes it.'\n\nA common mistake is thinking a river stays the same width and speed throughout its whole journey. In reality, rivers change dramatically, starting fast, narrow and shallow near the source, and becoming wide, deep and slow by the time they reach the mouth.\n\nAnother mistake is muddling up source and mouth, sometimes thinking the mouth is where a river begins.\n\nNow you'll trace a river on a map, labelling its source, tributaries, meanders and mouth."
+      },
+      "assets": {
+        "assets": [
+          {
+            "type": "worksheet",
+            "label": "Worksheet",
+            "url": "fixture://worksheet/river-features-source-to-mouth.pdf"
+          },
+          {
+            "type": "video",
+            "label": "Video",
+            "url": "fixture://video/river-features-source-to-mouth"
+          }
+        ],
+        "attribution": []
+      },
+      "worksheet": {
+        "questions": [
+          {
+            "number": "1",
+            "text": "What is the source of a river?",
+            "type": "short",
+            "answer": "the place where a river begins"
+          },
+          {
+            "number": "2",
+            "text": "What is a meander?",
+            "type": "short",
+            "answer": "a bend or curve in a river"
+          },
+          {
+            "number": "3",
+            "text": "Explain how a river typically changes as it travels from its source to its mouth.",
+            "type": "extended",
+            "answer": "A good answer explains that a river usually starts narrow, shallow and fast near its source in the hills, and becomes wider, deeper and slower as it is joined by tributaries and travels towards its mouth."
+          },
+          {
+            "number": "4",
+            "text": "Explain the difference between a river's source and a river's mouth.",
+            "type": "extended",
+            "answer": "A good answer explains that the source is where a river begins, often in hills or mountains, while the mouth is where the river ends, flowing into the sea, a lake, or another river."
+          }
+        ]
+      }
+    },
+    "causes-and-effects-of-flooding": {
+      "summary": {
+        "lessonTitle": "Causes and effects of flooding",
+        "pupilLessonOutcome": "I can explain some common causes of flooding and describe its effects on people and places.",
+        "keyLearningPoints": [
+          {
+            "keyLearningPoint": "A flood happens when a river receives more water than its channel can hold, causing water to spill over onto the surrounding land."
+          },
+          {
+            "keyLearningPoint": "Common causes of flooding include heavy or prolonged rainfall, snow melting quickly, and land that cannot absorb water well, such as concrete surfaces in towns and cities."
+          },
+          {
+            "keyLearningPoint": "Flooding can affect people by damaging homes and belongings, disrupting travel, and in serious cases putting lives at risk."
+          },
+          {
+            "keyLearningPoint": "Flooding can affect the land by depositing fertile silt (which can help farming), but also by eroding riverbanks and damaging habitats."
+          }
+        ],
+        "lessonKeywords": [
+          {
+            "keyword": "flood",
+            "description": "When water spills out of a river's normal channel and covers the surrounding land."
+          },
+          {
+            "keyword": "absorb",
+            "description": "To soak up or take in a liquid, e.g. soil absorbing rainwater."
+          },
+          {
+            "keyword": "silt",
+            "description": "Fine particles of soil and rock, often left behind by floodwater as it recedes."
+          }
+        ],
+        "misconceptionsAndCommonMistakes": [
+          {
+            "misconception": "Pupils think flooding is always caused directly and only by heavy rain falling in that exact location at that time.",
+            "response": "Explain that flooding can also be caused by heavy rain or melting snow further upstream arriving later, or by land nearby being unable to absorb water well, such as concrete and tarmac in towns, so the cause isn't always local, immediate rainfall."
+          },
+          {
+            "misconception": "Pupils think flooding is entirely bad, with no positive effects at all.",
+            "response": "Point out that floodwater can deposit fertile silt onto farmland as it recedes, which can actually improve the soil for growing crops, alongside its more serious and damaging effects on homes and safety."
+          }
+        ],
+        "teacherTips": [
+          {
+            "teacherTip": "Use a real, age-appropriate case study of a UK flood event to make causes and effects concrete, focusing on factual impact rather than distressing detail."
+          },
+          {
+            "teacherTip": "Discuss how towns and cities, with lots of concrete and tarmac, can make flooding worse because rainwater cannot soak into the ground as it would in fields or woodland."
+          }
+        ],
+        "contentGuidance": null,
+        "supervisionLevel": null,
+        "canonicalUrl": "https://example-fixture.invalid/lessons/causes-and-effects-of-flooding",
+        "oakUrl": "https://example-fixture.invalid/lessons/causes-and-effects-of-flooding",
+        "downloadsAvailable": true
+      },
+      "quiz": {
+        "starterQuiz": [
+          {
+            "question": "What is the source of a river?",
+            "questionType": "multiple-choice",
+            "answers": [
+              {
+                "type": "text",
+                "content": "The place where a river ends",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "The place where a river begins",
+                "distractor": false
+              },
+              {
+                "type": "text",
+                "content": "A bend in a river",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "The middle of a river",
+                "distractor": true
+              }
+            ]
+          },
+          {
+            "question": "What is a tributary?",
+            "questionType": "multiple-choice",
+            "answers": [
+              {
+                "type": "text",
+                "content": "The end of a river",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "A smaller river that joins a larger river",
+                "distractor": false
+              },
+              {
+                "type": "text",
+                "content": "A type of flood",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "A type of cloud",
+                "distractor": true
+              }
+            ]
+          },
+          {
+            "question": "What is the name for water falling from clouds?",
+            "questionType": "short-answer",
+            "answers": [
+              {
+                "type": "text",
+                "content": "precipitation"
+              }
+            ]
+          }
+        ],
+        "exitQuiz": [
+          {
+            "question": "What is a flood?",
+            "questionType": "multiple-choice",
+            "answers": [
+              {
+                "type": "text",
+                "content": "When a river dries up completely",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "When water spills out of a river's channel onto the surrounding land",
+                "distractor": false
+              },
+              {
+                "type": "text",
+                "content": "When a river changes direction",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "When a river freezes over",
+                "distractor": true
+              }
+            ]
+          },
+          {
+            "question": "Which of these can make flooding worse in towns and cities?",
+            "questionType": "multiple-choice",
+            "answers": [
+              {
+                "type": "text",
+                "content": "Grassy fields, which absorb water well",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "Concrete and tarmac, which do not absorb water",
+                "distractor": false
+              },
+              {
+                "type": "text",
+                "content": "Trees, which absorb water well",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "Soil, which absorbs water well",
+                "distractor": true
+              }
+            ]
+          },
+          {
+            "question": "What is silt?",
+            "questionType": "short-answer",
+            "answers": [
+              {
+                "type": "text",
+                "content": "fine particles of soil and rock left behind by floodwater"
+              }
+            ]
+          },
+          {
+            "question": "Match each cause to how it can lead to flooding.",
+            "questionType": "match",
+            "answers": [
+              {
+                "matchOption": {
+                  "type": "text",
+                  "content": "Heavy, prolonged rainfall"
+                },
+                "correctChoice": {
+                  "type": "text",
+                  "content": "adds more water than a river channel can hold"
+                }
+              },
+              {
+                "matchOption": {
+                  "type": "text",
+                  "content": "Snow melting quickly"
+                },
+                "correctChoice": {
+                  "type": "text",
+                  "content": "sends a large amount of water into rivers at once"
+                }
+              },
+              {
+                "matchOption": {
+                  "type": "text",
+                  "content": "Concrete and tarmac surfaces"
+                },
+                "correctChoice": {
+                  "type": "text",
+                  "content": "stop rainwater soaking into the ground"
+                }
+              }
+            ]
+          },
+          {
+            "question": "Order these events in a flood.",
+            "questionType": "order",
+            "answers": [
+              {
+                "order": 1,
+                "type": "text",
+                "content": "heavy rainfall falls over several days"
+              },
+              {
+                "order": 2,
+                "type": "text",
+                "content": "the river channel fills beyond capacity"
+              },
+              {
+                "order": 3,
+                "type": "text",
+                "content": "water spills onto the floodplain"
+              },
+              {
+                "order": 4,
+                "type": "text",
+                "content": "floodwater eventually recedes leaving silt behind"
+              }
+            ]
+          }
+        ]
+      },
+      "transcript": {
+        "transcript": "Hello! Today we're learning about flooding, what causes it, and how it affects people and places.\n\nA river normally flows within its channel, the path cut into the land that the water travels along. A flood happens when a river receives more water than its channel can hold, so the water spills out over the surrounding land, called a floodplain.\n\nWhat causes this extra water? The most common cause is heavy or prolonged rainfall, lots of rain falling over a short time, or rain that keeps falling for days. Sometimes flooding is caused by snow melting quickly, especially after a sudden rise in temperature, sending a large amount of water into rivers all at once. Flooding doesn't always come from rain falling in the exact place that floods, either, heavy rainfall further upstream can travel down a river and cause flooding somewhere else entirely.\n\nThe type of land nearby matters too. Soil and grassy fields can absorb, or soak up, a good amount of rainwater. But hard surfaces, like the concrete and tarmac found in towns and cities, cannot absorb water at all, so rain runs straight off these surfaces into drains and rivers very quickly, making flooding more likely in built-up areas.\n\nFlooding can have serious effects on people. Floodwater can damage homes, destroying belongings and furniture, and forcing families to leave until it's safe to return. Roads can become impassable, disrupting travel and daily life, and in severe cases, flooding can put people's safety at risk.\n\nFlooding isn't only damaging, though. As floodwater eventually recedes, it often leaves behind silt, fine particles of soil and rock carried by the water. This silt can actually make farmland more fertile, helping crops grow well in the following season.\n\nA common mistake is assuming flooding is always caused by rain falling in that exact spot, when it can also result from rainfall or snowmelt much further upstream. Another mistake is thinking flooding is entirely negative, when it can also bring benefits like fertile soil, alongside its very real risks and damage.\n\nNow you'll investigate a real example of flooding and consider its causes and effects."
+      },
+      "assets": {
+        "assets": [
+          {
+            "type": "worksheet",
+            "label": "Worksheet",
+            "url": "fixture://worksheet/causes-and-effects-of-flooding.pdf"
+          },
+          {
+            "type": "video",
+            "label": "Video",
+            "url": "fixture://video/causes-and-effects-of-flooding"
+          }
+        ],
+        "attribution": []
+      },
+      "worksheet": {
+        "questions": [
+          {
+            "number": "1",
+            "text": "Name one cause of flooding.",
+            "type": "short",
+            "answer": "heavy or prolonged rainfall, or rapidly melting snow"
+          },
+          {
+            "number": "2",
+            "text": "Why can concrete and tarmac in towns and cities make flooding worse?",
+            "type": "short",
+            "answer": "they do not absorb water, so rain runs off quickly into rivers and drains"
+          },
+          {
+            "number": "3",
+            "text": "Explain one negative and one positive effect of flooding.",
+            "type": "extended",
+            "answer": "A good answer names a negative effect such as damage to homes, belongings or safety risk, and a positive effect such as fertile silt being deposited on farmland, improving the soil for growing crops."
+          },
+          {
+            "number": "4",
+            "text": "Explain why flooding in one place can sometimes be caused by rainfall that fell somewhere else entirely.",
+            "type": "extended",
+            "answer": "A good answer explains that heavy rain or melting snow falling further upstream flows down the river system and adds extra water downstream, which can cause flooding in a location even if it did not rain heavily there."
+          }
+        ]
+      }
+    },
+    "world-climate-zones": {
+      "summary": {
+        "lessonTitle": "World climate zones",
+        "pupilLessonOutcome": "I can describe the world's major climate zones and explain what causes them.",
+        "keyLearningPoints": [
+          {
+            "keyLearningPoint": "A climate zone is a large area of the world with a similar pattern of weather over many years."
+          },
+          {
+            "keyLearningPoint": "The world's main climate zones include polar (very cold), temperate (mild, with four seasons), and tropical (hot, near the Equator)."
+          },
+          {
+            "keyLearningPoint": "Climate zones are mainly caused by how directly the Sun's heat hits different parts of the Earth's curved surface."
+          },
+          {
+            "keyLearningPoint": "Places near the Equator receive more direct, concentrated sunlight all year round, making them hot, while places near the Poles receive weaker, more spread-out sunlight, making them cold."
+          }
+        ],
+        "lessonKeywords": [
+          {
+            "keyword": "climate",
+            "description": "The usual pattern of weather in a place over a long period of time, such as many years."
+          },
+          {
+            "keyword": "Equator",
+            "description": "An imaginary line around the middle of the Earth, halfway between the North and South Poles."
+          },
+          {
+            "keyword": "climate zone",
+            "description": "A large region of the world with a broadly similar climate."
+          }
+        ],
+        "misconceptionsAndCommonMistakes": [
+          {
+            "misconception": "Pupils confuse 'weather' and 'climate', thinking they mean the same thing.",
+            "response": "Explain the key difference: weather is what is happening outside right now or on a particular day, while climate is the usual, long-term pattern of weather in a place over many years; one cold day doesn't change a region's climate."
+          },
+          {
+            "misconception": "Pupils think temperature only depends on how close a place is to the Sun in space, rather than the angle sunlight hits the Earth's surface.",
+            "response": "Clarify that every place on Earth is roughly the same distance from the Sun; what changes is the angle sunlight strikes the curved surface of the Earth — direct, concentrated sunlight near the Equator makes it hot, while weaker, more spread-out sunlight near the Poles makes it cold."
+          }
+        ],
+        "teacherTips": [
+          {
+            "teacherTip": "Use a torch and a globe to physically demonstrate how sunlight spreads out more when it hits the curved surface near the Poles compared with hitting it directly near the Equator, making the abstract idea visible."
+          },
+          {
+            "teacherTip": "Keep reinforcing the weather versus climate distinction throughout the unit, since pupils often revert to using the words interchangeably."
+          }
+        ],
+        "contentGuidance": null,
+        "supervisionLevel": null,
+        "canonicalUrl": "https://example-fixture.invalid/lessons/world-climate-zones",
+        "oakUrl": "https://example-fixture.invalid/lessons/world-climate-zones",
+        "downloadsAvailable": true
+      },
+      "quiz": {
+        "starterQuiz": [
+          {
+            "question": "What is the Equator?",
+            "questionType": "multiple-choice",
+            "answers": [
+              {
+                "type": "text",
+                "content": "A line around the top of the Earth",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "An imaginary line around the middle of the Earth",
+                "distractor": false
+              },
+              {
+                "type": "text",
+                "content": "A line marking a country's border",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "The path the Moon takes around the Earth",
+                "distractor": true
+              }
+            ]
+          },
+          {
+            "question": "Which of these is an example of weather?",
+            "questionType": "multiple-choice",
+            "answers": [
+              {
+                "type": "text",
+                "content": "The Sahara is usually hot and dry",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "It is raining today",
+                "distractor": false
+              },
+              {
+                "type": "text",
+                "content": "The UK has four seasons",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "The Arctic is usually very cold",
+                "distractor": true
+              }
+            ]
+          },
+          {
+            "question": "What season comes after winter in the UK?",
+            "questionType": "short-answer",
+            "answers": [
+              {
+                "type": "text",
+                "content": "spring"
+              }
+            ]
+          }
+        ],
+        "exitQuiz": [
+          {
+            "question": "What is climate?",
+            "questionType": "multiple-choice",
+            "answers": [
+              {
+                "type": "text",
+                "content": "What is happening outside today",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "The usual pattern of weather in a place over many years",
+                "distractor": false
+              },
+              {
+                "type": "text",
+                "content": "A type of map",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "The temperature right now",
+                "distractor": true
+              }
+            ]
+          },
+          {
+            "question": "Why is it hot near the Equator?",
+            "questionType": "multiple-choice",
+            "answers": [
+              {
+                "type": "text",
+                "content": "The Equator is closer to the Sun",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "Sunlight hits the Earth's surface there almost directly",
+                "distractor": false
+              },
+              {
+                "type": "text",
+                "content": "There are no clouds at the Equator",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "The Equator has no seasons",
+                "distractor": true
+              }
+            ]
+          },
+          {
+            "question": "Name the three main climate zones described in this lesson.",
+            "questionType": "short-answer",
+            "answers": [
+              {
+                "type": "text",
+                "content": "polar, temperate, tropical"
+              },
+              {
+                "type": "text",
+                "content": "tropical, temperate, polar"
+              }
+            ]
+          },
+          {
+            "question": "Match each climate zone to its typical description.",
+            "questionType": "match",
+            "answers": [
+              {
+                "matchOption": {
+                  "type": "text",
+                  "content": "Polar"
+                },
+                "correctChoice": {
+                  "type": "text",
+                  "content": "very cold for most or all of the year"
+                }
+              },
+              {
+                "matchOption": {
+                  "type": "text",
+                  "content": "Temperate"
+                },
+                "correctChoice": {
+                  "type": "text",
+                  "content": "mild with four distinct seasons"
+                }
+              },
+              {
+                "matchOption": {
+                  "type": "text",
+                  "content": "Tropical"
+                },
+                "correctChoice": {
+                  "type": "text",
+                  "content": "hot all year round"
+                }
+              }
+            ]
+          },
+          {
+            "question": "Order these climate zones from coldest to hottest.",
+            "questionType": "order",
+            "answers": [
+              {
+                "order": 1,
+                "type": "text",
+                "content": "polar"
+              },
+              {
+                "order": 2,
+                "type": "text",
+                "content": "temperate"
+              },
+              {
+                "order": 3,
+                "type": "text",
+                "content": "tropical"
+              }
+            ]
+          }
+        ]
+      },
+      "transcript": {
+        "transcript": "Hello! Today we're learning about the world's climate zones, and finding out what actually causes them.\n\nFirst, let's clear up an important difference: weather and climate are not the same thing. Weather is what's happening outside right now, or on one particular day, sunny, rainy, cold, windy. Climate is the usual pattern of weather in a place over a very long time, many years. A single cold, rainy day in a normally hot country doesn't change that country's climate at all.\n\nDifferent parts of the world have very different climates, and we can group areas with similar climates into climate zones. Near the Equator, an imaginary line running around the middle of the Earth, the climate is tropical, meaning hot all year round. Nearer the North and South Poles, the climate is polar, extremely cold for most or all of the year. In between, many places, including the UK, have a temperate climate, with four distinct seasons and generally mild temperatures.\n\nSo what actually causes these different climate zones? It's all about the angle sunlight hits the Earth's curved surface. Near the Equator, sunlight hits the Earth almost directly, straight on, concentrating its heat into a smaller area, which makes it hot. Near the Poles, sunlight hits the Earth at a much more slanted angle, spreading the same amount of heat over a much larger area, which makes it far weaker and colder.\n\nHere's a common mistake. Some people think places are hotter or colder depending on how close they are to the Sun in space, but actually, every part of the Earth is roughly the same distance from the Sun. What really matters is the angle sunlight strikes the surface at, not the distance travelled.\n\nAnother mistake is muddling weather and climate. Remember: weather changes day to day, climate describes the usual pattern over many years.\n\nNow you'll locate different climate zones on a world map and describe their typical characteristics."
+      },
+      "assets": {
+        "assets": [
+          {
+            "type": "worksheet",
+            "label": "Worksheet",
+            "url": "fixture://worksheet/world-climate-zones.pdf"
+          },
+          {
+            "type": "video",
+            "label": "Video",
+            "url": "fixture://video/world-climate-zones"
+          }
+        ],
+        "attribution": []
+      },
+      "worksheet": {
+        "questions": [
+          {
+            "number": "1",
+            "text": "What is the difference between weather and climate?",
+            "type": "short",
+            "answer": "weather is the day-to-day conditions, climate is the usual pattern over many years"
+          },
+          {
+            "number": "2",
+            "text": "Name the climate zone that the UK is mostly located in.",
+            "type": "short",
+            "answer": "temperate"
+          },
+          {
+            "number": "3",
+            "text": "Explain why places near the Equator are hotter than places near the Poles.",
+            "type": "extended",
+            "answer": "A good answer explains that sunlight hits the Earth's surface almost directly near the Equator, concentrating its heat into a smaller area, while near the Poles sunlight hits at a slanted angle, spreading the same heat over a larger area and making it weaker."
+          },
+          {
+            "number": "4",
+            "text": "Explain why 'the Equator is closer to the Sun' is not a correct explanation for why it is hot there.",
+            "type": "extended",
+            "answer": "A good answer explains that every part of the Earth is roughly the same distance from the Sun; the real reason the Equator is hotter is the angle at which sunlight strikes the Earth's curved surface, not the distance to the Sun."
+          }
+        ]
+      }
+    },
+    "rainforest-biomes": {
+      "summary": {
+        "lessonTitle": "Rainforest biomes",
+        "pupilLessonOutcome": "I can describe the key characteristics of a rainforest biome and explain why it supports so much life.",
+        "keyLearningPoints": [
+          {
+            "keyLearningPoint": "A biome is a large natural area with a particular climate, and plants and animals adapted to live there."
+          },
+          {
+            "keyLearningPoint": "Tropical rainforests are found near the Equator, and are characterised by high temperatures and very heavy rainfall all year round."
+          },
+          {
+            "keyLearningPoint": "A rainforest has distinct layers: the emergent layer (tallest trees), the canopy (a dense layer of treetops), the understory (smaller plants that get little light), and the forest floor."
+          },
+          {
+            "keyLearningPoint": "Rainforests cover a small percentage of the Earth's land but are home to an extraordinary proportion of the world's plant and animal species."
+          }
+        ],
+        "lessonKeywords": [
+          {
+            "keyword": "biome",
+            "description": "A large natural area of the world with a particular climate and plants and animals suited to living there."
+          },
+          {
+            "keyword": "canopy",
+            "description": "The dense layer of leaves and branches formed by the tops of rainforest trees, high above the ground."
+          },
+          {
+            "keyword": "adapted",
+            "description": "Having features or behaviours suited to survive well in a particular environment."
+          }
+        ],
+        "misconceptionsAndCommonMistakes": [
+          {
+            "misconception": "Pupils think all of a rainforest looks the same throughout, without distinct layers.",
+            "response": "Show a labelled cross-section diagram of a rainforest, and explain that different layers (emergent, canopy, understory, forest floor) receive very different amounts of light and support different types of plants and animals."
+          },
+          {
+            "misconception": "Pupils think rainforests are found all over the world in any hot country, rather than specifically near the Equator.",
+            "response": "Clarify that tropical rainforests need both high temperatures and very heavy rainfall all year round, a combination mostly found in a band of countries close to the Equator, not simply any hot place; some hot places, like deserts, are actually very dry."
+          }
+        ],
+        "teacherTips": [
+          {
+            "teacherTip": "Use a labelled diagram of rainforest layers alongside real examples of animals found at each layer (e.g. eagles in the emergent layer, monkeys in the canopy, jaguars on the forest floor) to make the structure memorable."
+          },
+          {
+            "teacherTip": "Emphasise the huge proportion of the world's species found in rainforests despite their relatively small land coverage, to help pupils appreciate their ecological importance."
+          }
+        ],
+        "contentGuidance": null,
+        "supervisionLevel": null,
+        "canonicalUrl": "https://example-fixture.invalid/lessons/rainforest-biomes",
+        "oakUrl": "https://example-fixture.invalid/lessons/rainforest-biomes",
+        "downloadsAvailable": true
+      },
+      "quiz": {
+        "starterQuiz": [
+          {
+            "question": "What is climate?",
+            "questionType": "multiple-choice",
+            "answers": [
+              {
+                "type": "text",
+                "content": "The weather on one particular day",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "The usual pattern of weather in a place over many years",
+                "distractor": false
+              },
+              {
+                "type": "text",
+                "content": "A type of map",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "A season of the year",
+                "distractor": true
+              }
+            ]
+          },
+          {
+            "question": "Which climate zone is closest to the Equator?",
+            "questionType": "multiple-choice",
+            "answers": [
+              {
+                "type": "text",
+                "content": "Polar",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "Tropical",
+                "distractor": false
+              },
+              {
+                "type": "text",
+                "content": "Temperate",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "Arctic",
+                "distractor": true
+              }
+            ]
+          },
+          {
+            "question": "What does 'adapted' mean?",
+            "questionType": "short-answer",
+            "answers": [
+              {
+                "type": "text",
+                "content": "having features suited to survive in a particular environment"
+              },
+              {
+                "type": "text",
+                "content": "suited to living somewhere"
+              }
+            ]
+          }
+        ],
+        "exitQuiz": [
+          {
+            "question": "What is a biome?",
+            "questionType": "multiple-choice",
+            "answers": [
+              {
+                "type": "text",
+                "content": "A type of weather forecast",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "A large natural area with a particular climate and its own plants and animals",
+                "distractor": false
+              },
+              {
+                "type": "text",
+                "content": "A single type of tree",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "A country's government",
+                "distractor": true
+              }
+            ]
+          },
+          {
+            "question": "What two things does a tropical rainforest need?",
+            "questionType": "multiple-choice",
+            "answers": [
+              {
+                "type": "text",
+                "content": "Low temperatures and little rainfall",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "High temperatures and very heavy rainfall",
+                "distractor": false
+              },
+              {
+                "type": "text",
+                "content": "High temperatures and little rainfall",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "Low temperatures and heavy rainfall",
+                "distractor": true
+              }
+            ]
+          },
+          {
+            "question": "Name the layer of the rainforest made up of the very tallest trees.",
+            "questionType": "short-answer",
+            "answers": [
+              {
+                "type": "text",
+                "content": "the emergent layer"
+              },
+              {
+                "type": "text",
+                "content": "emergent layer"
+              }
+            ]
+          },
+          {
+            "question": "Match each rainforest layer to its description.",
+            "questionType": "match",
+            "answers": [
+              {
+                "matchOption": {
+                  "type": "text",
+                  "content": "Emergent layer"
+                },
+                "correctChoice": {
+                  "type": "text",
+                  "content": "the very tallest trees, above everything else"
+                }
+              },
+              {
+                "matchOption": {
+                  "type": "text",
+                  "content": "Canopy"
+                },
+                "correctChoice": {
+                  "type": "text",
+                  "content": "a dense layer of treetops that blocks most sunlight"
+                }
+              },
+              {
+                "matchOption": {
+                  "type": "text",
+                  "content": "Forest floor"
+                },
+                "correctChoice": {
+                  "type": "text",
+                  "content": "the dark ground layer, with little sunlight"
+                }
+              }
+            ]
+          },
+          {
+            "question": "Order these rainforest layers from top to bottom.",
+            "questionType": "order",
+            "answers": [
+              {
+                "order": 1,
+                "type": "text",
+                "content": "emergent layer"
+              },
+              {
+                "order": 2,
+                "type": "text",
+                "content": "canopy"
+              },
+              {
+                "order": 3,
+                "type": "text",
+                "content": "understory"
+              },
+              {
+                "order": 4,
+                "type": "text",
+                "content": "forest floor"
+              }
+            ]
+          }
+        ]
+      },
+      "transcript": {
+        "transcript": "Hello! Today we're exploring one of the most amazing biomes on Earth: the tropical rainforest.\n\nA biome is a large natural area of the world with its own particular climate, and its own plants and animals that are adapted, meaning suited, to living there. Tropical rainforests are one of the most famous biomes, found mainly in a band of countries close to the Equator, including parts of Brazil, the Democratic Republic of Congo, and Indonesia.\n\nWhat makes a rainforest a rainforest? Two things, mainly: very high temperatures, staying warm all year round, and enormous amounts of rainfall, spread fairly evenly throughout the year rather than in just one season.\n\nBecause of this warmth and rainfall, an incredible amount of plant life grows in a rainforest, and it organises itself into distinct layers. Right at the top is the emergent layer, made up of the very tallest trees, poking up above everything else. Below that is the canopy, a thick, leafy layer formed by the tops of most rainforest trees, so dense that it blocks a huge amount of sunlight from reaching the ground. Beneath the canopy is the understory, home to smaller plants that have adapted to survive with much less light. Finally, right at the bottom, is the forest floor, dark and often surprisingly clear of plants, because so little sunlight makes it all the way down.\n\nRainforests only cover a small percentage of the Earth's total land area, yet they are home to an extraordinary proportion of the world's plant and animal species; scientists estimate rainforests contain more than half of all species on Earth, despite their limited size.\n\nA common mistake is imagining a rainforest as one uniform, tangled mass of plants throughout. Actually, it has clear layers, each with very different light levels and different animals adapted to live there.\n\nAnother mistake is thinking any hot country automatically has a rainforest. Rainforests specifically need very heavy rainfall as well as heat, some hot places, like deserts, are actually extremely dry.\n\nNow you'll explore the layers of a rainforest and the animals that live in each one."
+      },
+      "assets": {
+        "assets": [
+          {
+            "type": "worksheet",
+            "label": "Worksheet",
+            "url": "fixture://worksheet/rainforest-biomes.pdf"
+          },
+          {
+            "type": "video",
+            "label": "Video",
+            "url": "fixture://video/rainforest-biomes"
+          }
+        ],
+        "attribution": []
+      },
+      "worksheet": {
+        "questions": [
+          {
+            "number": "1",
+            "text": "Name the two main conditions a tropical rainforest needs.",
+            "type": "short",
+            "answer": "high temperatures and very heavy rainfall"
+          },
+          {
+            "number": "2",
+            "text": "Name the rainforest layer directly below the emergent layer.",
+            "type": "short",
+            "answer": "the canopy"
+          },
+          {
+            "number": "3",
+            "text": "Explain why the forest floor of a rainforest often has few plants growing on it.",
+            "type": "extended",
+            "answer": "A good answer explains that the dense canopy above blocks most of the sunlight from reaching the forest floor, so very little light is left for plants to grow there."
+          },
+          {
+            "number": "4",
+            "text": "Explain why rainforests are considered so important, even though they cover only a small percentage of the Earth's land.",
+            "type": "extended",
+            "answer": "A good answer explains that despite their relatively small land area, rainforests are home to an extraordinary proportion of the world's plant and animal species, making them extremely important for biodiversity."
+          }
+        ]
+      }
+    },
+    "desert-biomes": {
+      "summary": {
+        "lessonTitle": "Desert biomes",
+        "pupilLessonOutcome": "I can describe the key characteristics of a desert biome and explain how living things survive there.",
+        "keyLearningPoints": [
+          {
+            "keyLearningPoint": "A desert is a biome that receives very little rainfall, usually less than 250mm per year, making it a very dry environment."
+          },
+          {
+            "keyLearningPoint": "Not all deserts are hot; some, like the Gobi Desert and Antarctica, are cold deserts, because 'desert' is defined by low rainfall, not temperature."
+          },
+          {
+            "keyLearningPoint": "Hot deserts, like the Sahara, can have huge temperature swings, extremely hot during the day and surprisingly cold at night, because dry air and lack of cloud cover let heat escape quickly after sunset."
+          },
+          {
+            "keyLearningPoint": "Plants and animals in deserts have adapted to survive with very little water, such as cacti storing water in thick stems, and animals being active at night to avoid daytime heat."
+          }
+        ],
+        "lessonKeywords": [
+          {
+            "keyword": "desert",
+            "description": "A biome that receives very little rainfall, making it a very dry environment."
+          },
+          {
+            "keyword": "adaptation",
+            "description": "A feature or behaviour that helps a living thing survive in its particular environment."
+          },
+          {
+            "keyword": "nocturnal",
+            "description": "Active mainly at night, and resting during the day."
+          }
+        ],
+        "misconceptionsAndCommonMistakes": [
+          {
+            "misconception": "Pupils think all deserts are hot, sandy places.",
+            "response": "Explain that a desert is defined by very low rainfall, not by temperature or sand; some deserts, like the Gobi Desert in Asia or even Antarctica, are extremely cold, because 'desert' just means very dry."
+          },
+          {
+            "misconception": "Pupils think deserts are always hot, even at night, because they imagine constant scorching heat.",
+            "response": "Explain that hot deserts often have huge temperature swings; dry air and clear skies let heat escape quickly once the Sun sets, so nights in a hot desert can actually become very cold."
+          }
+        ],
+        "teacherTips": [
+          {
+            "teacherTip": "Introduce the Gobi Desert or Antarctica early to challenge the assumption that all deserts are hot and sandy, since this is one of the most common and persistent misconceptions about deserts."
+          },
+          {
+            "teacherTip": "Use specific, memorable animal and plant adaptations (camels' humps storing fat, cacti storing water, nocturnal animals like foxes) to make the idea of adaptation concrete and vivid."
+          }
+        ],
+        "contentGuidance": null,
+        "supervisionLevel": null,
+        "canonicalUrl": "https://example-fixture.invalid/lessons/desert-biomes",
+        "oakUrl": "https://example-fixture.invalid/lessons/desert-biomes",
+        "downloadsAvailable": true
+      },
+      "quiz": {
+        "starterQuiz": [
+          {
+            "question": "What is a biome?",
+            "questionType": "multiple-choice",
+            "answers": [
+              {
+                "type": "text",
+                "content": "A type of soil",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "A large natural area with a particular climate and its own plants and animals",
+                "distractor": false
+              },
+              {
+                "type": "text",
+                "content": "A country",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "A season",
+                "distractor": true
+              }
+            ]
+          },
+          {
+            "question": "Which biome is found near the Equator with heavy rainfall all year round?",
+            "questionType": "multiple-choice",
+            "answers": [
+              {
+                "type": "text",
+                "content": "Desert",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "Tropical rainforest",
+                "distractor": false
+              },
+              {
+                "type": "text",
+                "content": "Polar",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "Temperate",
+                "distractor": true
+              }
+            ]
+          },
+          {
+            "question": "What does 'adapted' mean?",
+            "questionType": "short-answer",
+            "answers": [
+              {
+                "type": "text",
+                "content": "having features suited to survive in a particular environment"
+              },
+              {
+                "type": "text",
+                "content": "suited to living somewhere"
+              }
+            ]
+          }
+        ],
+        "exitQuiz": [
+          {
+            "question": "What defines a desert biome?",
+            "questionType": "multiple-choice",
+            "answers": [
+              {
+                "type": "text",
+                "content": "High temperature",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "Very low rainfall",
+                "distractor": false
+              },
+              {
+                "type": "text",
+                "content": "Sandy ground",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "Lack of animals",
+                "distractor": true
+              }
+            ]
+          },
+          {
+            "question": "Which of these is a cold desert?",
+            "questionType": "multiple-choice",
+            "answers": [
+              {
+                "type": "text",
+                "content": "The Sahara Desert",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "The Gobi Desert",
+                "distractor": false
+              },
+              {
+                "type": "text",
+                "content": "The Amazon rainforest",
+                "distractor": true
+              },
+              {
+                "type": "text",
+                "content": "A tropical rainforest",
+                "distractor": true
+              }
+            ]
+          },
+          {
+            "question": "What does 'nocturnal' mean?",
+            "questionType": "short-answer",
+            "answers": [
+              {
+                "type": "text",
+                "content": "active mainly at night, resting during the day"
+              }
+            ]
+          },
+          {
+            "question": "Match each desert adaptation to the reason it helps survival.",
+            "questionType": "match",
+            "answers": [
+              {
+                "matchOption": {
+                  "type": "text",
+                  "content": "A cactus's thick, fleshy stem"
+                },
+                "correctChoice": {
+                  "type": "text",
+                  "content": "stores water for long periods between rainfall"
+                }
+              },
+              {
+                "matchOption": {
+                  "type": "text",
+                  "content": "An animal being nocturnal"
+                },
+                "correctChoice": {
+                  "type": "text",
+                  "content": "avoids the extreme heat of the day"
+                }
+              },
+              {
+                "matchOption": {
+                  "type": "text",
+                  "content": "A cactus's spines instead of leaves"
+                },
+                "correctChoice": {
+                  "type": "text",
+                  "content": "reduces water loss"
+                }
+              }
+            ]
+          },
+          {
+            "question": "Order these temperatures across one day in a hot desert, from lowest to highest.",
+            "questionType": "order",
+            "answers": [
+              {
+                "order": 1,
+                "type": "text",
+                "content": "night temperature"
+              },
+              {
+                "order": 2,
+                "type": "text",
+                "content": "sunrise temperature"
+              },
+              {
+                "order": 3,
+                "type": "text",
+                "content": "midday temperature"
+              }
+            ]
+          }
+        ]
+      },
+      "transcript": {
+        "transcript": "Hello! Today we're exploring desert biomes, and finding out how plants and animals manage to survive in such a challenging environment.\n\nWhat actually makes a desert a desert? It's not sand, and it's not heat. A desert is defined simply by how little rain it gets, usually less than 250 millimetres of rainfall a year, an extremely small amount compared with most other places. A desert is simply a very dry place.\n\nThis means not all deserts are hot. Most people picture the Sahara Desert in Africa, which is indeed hot and sandy. But some deserts are actually cold, the Gobi Desert in Asia has freezing winters, and even Antarctica, covered in ice, technically counts as a desert, because it receives so little precipitation.\n\nLet's focus on hot deserts, like the Sahara, for a moment. You might assume they stay scorching hot all the time, day and night. But actually, hot deserts often have huge swings in temperature between day and night. During the day, temperatures can soar incredibly high, with barely any cloud cover to block the Sun's heat. But once the Sun sets, that same lack of cloud cover means heat escapes back into the sky very quickly, and temperatures can drop dramatically, sometimes even close to freezing overnight.\n\nLiving in a desert, whether hot or cold, is a huge challenge, especially finding enough water. Plants and animals that live there have developed remarkable adaptations, special features or behaviours, that help them survive. Cacti, for example, have thick, fleshy stems that store water for long periods between rare rainfalls, and sharp spines instead of leaves to reduce water loss. Many desert animals, like foxes and owls, are nocturnal, meaning they rest during the hot day and become active at night, when temperatures are cooler and safer to move around in.\n\nA common mistake is assuming all deserts are hot and sandy. Remember, the defining feature of a desert is low rainfall, not temperature.\n\nNow you'll investigate some remarkable plant and animal adaptations found in desert environments."
+      },
+      "assets": {
+        "assets": [
+          {
+            "type": "worksheet",
+            "label": "Worksheet",
+            "url": "fixture://worksheet/desert-biomes.pdf"
+          },
+          {
+            "type": "video",
+            "label": "Video",
+            "url": "fixture://video/desert-biomes"
+          }
+        ],
+        "attribution": []
+      },
+      "worksheet": {
+        "questions": [
+          {
+            "number": "1",
+            "text": "What is the definition of a desert, in terms of rainfall?",
+            "type": "short",
+            "answer": "a biome that receives very little rainfall, usually less than 250mm a year"
+          },
+          {
+            "number": "2",
+            "text": "Name one cold desert.",
+            "type": "short",
+            "answer": "the Gobi Desert, or Antarctica"
+          },
+          {
+            "number": "3",
+            "text": "Explain why hot deserts can become very cold at night.",
+            "type": "extended",
+            "answer": "A good answer explains that dry air and lack of cloud cover let the day's heat escape quickly into the sky once the Sun sets, causing temperatures to drop sharply overnight."
+          },
+          {
+            "number": "4",
+            "text": "Describe one adaptation that helps a desert plant or animal survive, and explain how it helps.",
+            "type": "extended",
+            "answer": "A good answer describes a specific adaptation, such as a cactus storing water in its stem to survive long dry periods, or an animal being nocturnal to avoid the extreme heat of the day, and explains how that adaptation helps it survive with little water or extreme temperatures."
+          }
+        ]
+      }
+    }
+  },
+  "licences": {
+    "the-water-cycle-explained": "ogl-compatible",
+    "river-features-source-to-mouth": "ogl-compatible",
+    "causes-and-effects-of-flooding": "ogl-compatible",
+    "world-climate-zones": "ogl-compatible",
+    "rainforest-biomes": "ogl-compatible",
+    "desert-biomes": "ogl-compatible"
+  }
+}
