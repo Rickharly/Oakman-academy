@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { BookOpen, CheckCircle2, MessageCircle, Sparkles, TrendingUp } from "lucide-react";
+import { BookMarked, BookOpen, CheckCircle2, MessageCircle, Sparkles, TrendingUp } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { LogoMark } from "@/components/ui/Logo";
 import { Confetti } from "./Confetti";
@@ -31,6 +31,11 @@ const STEPS = [
     icon: CheckCircle2,
     title: "Each lesson has five steps",
     body: "A warm-up, the teaching, some practice, a quiz, then your feedback. The bar at the top shows how far along you are.",
+  },
+  {
+    icon: BookMarked,
+    title: "Reading finishes the day",
+    body: "After the lessons there's something to read and a few sentences to write about it. Your teacher writes back every time.",
   },
   {
     icon: MessageCircle,

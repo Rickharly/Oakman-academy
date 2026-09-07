@@ -69,7 +69,7 @@ fixtures/curriculum/         sample curriculum in Oak response shapes (used when
 
 ## 3. Route map
 
-### Student (`(student)` group, layout = top/bottom nav: Today · Subjects · Progress · Teacher)
+### Student (`(student)` group, layout = top/bottom nav: Today · Subjects · Reading · Progress · Teacher)
 
 | Route | Purpose |
 |---|---|
@@ -78,6 +78,7 @@ fixtures/curriculum/         sample curriculum in Oak response shapes (used when
 | `/subjects/[subjectSlug]` | Units in sequence order, per-unit progress. |
 | `/subjects/[subjectSlug]/units/[unitId]` | Lessons in unit with status chips. |
 | `/lessons/[lessonId]` | Lesson player. Starts/continues a `LessonAttempt`; `?stage=` optional. Persistent teacher panel (desktop right column, mobile bottom sheet). |
+| `/reading` | Reading room. The passage on screen beside the response box; `?assignmentId=` ties it to the day's reading slot, `?textId=` opens a specific passage. |
 | `/progress` | Week strip calendar (Mon–Fri ✓●○), subject bars, "things to review". |
 | `/progress/[date]` | What happened that day. |
 | `/teacher` | Standalone teacher chat (no lesson context; mode LEARN). |
@@ -202,9 +203,16 @@ generatePractice(...)        3 short AI_GENERATED questions for a misconception
   the week honouring `preferredDays`; deterministic given the same inputs (so re-planning is stable).
 - Each slot picks the **next incomplete lesson in sequence order** for the student's enrolled
   programme in that subject (skips COMPLETED/MASTERED, includes NEEDS_REVIEW only via review items).
-- Review items become short REVIEW assignments (15 min) placed first.
-- If the day's estimate exceeds `maxDailyMinutes`, trailing lessons are marked `optional`
-  and the last one moved to the next planning day (`status = MOVED`, `movedToDate`).
+- Review items become short REVIEW assignments (15 min) placed first, at most 2 a day.
+- The timetable is fixed, not budgeted: every weekday gets `lessonsPerDay` periods of
+  `lessonMinutes` each (defaults 5 × 45), whatever the lesson content estimates. A top-up loop
+  fills any short day, preferring a subject not already on that day. A day is only short when
+  a subject has genuinely run out of lessons.
+- One short READING assignment (20 min) closes each day, after the periods — but only when the
+  library holds a passage for the student's year group. The passage itself is chosen when the
+  child opens `/reading`, not at planning time.
+- `src/lib/scheduling/timetable.ts` turns the day into clock times from `schoolStartTime`,
+  separated by `breakMinutes`. The times are a guide, never a gate.
 - Idempotent: planning the same day twice does not duplicate; existing IN_PROGRESS/COMPLETED
   rows are never touched; PARENT-sourced rows are never removed.
 - `ensureTodayPlanned(studentId, date)` is called lazily from `/today` and by `scripts/plan.ts`.
@@ -218,6 +226,21 @@ generatePractice(...)        3 short AI_GENERATED questions for a misconception
   (from AI grading), REPEATED_MISTAKE (same misconception topic ≥ 2 attempts), PARENT_ASSIGNED,
   SPACED (1 → 7 → 30 days after a successful review). A REVIEW assignment re-runs the lesson's
   CHECK questions (new `ActivityAttempt`, stage CHECK). ≥ 80 % → step up; else back to step 0.
+
+## 8a. Reading & literacy
+
+- Passages are original writing bundled as `fixtures/reading/year-*.json` and upserted into
+  `ReadingText` by `src/lib/reading/library.ts` on every seed — adding a passage to a fixture
+  file and redeploying is the whole workflow. Nothing is fetched from a provider.
+- `src/lib/reading/service.ts` picks the next unread passage for the year group, records what
+  the child writes, then asks the teacher to reply. **The write happens first**: if the model
+  call fails the writing is still saved and can be replied to later.
+- Short responses are *answered*, not scored — a reply that names something they wrote and asks
+  one question that sends them back to the text. Passages with an `essayPrompt` are marked out
+  of 8 by the strong model. `reasoning` is a note for the parent and is never returned to the
+  child by `/api/reading/respond`.
+- Entries are append-only like the rest of the learning history; the parent sees every one on
+  the student overview.
 
 ## 9. Oak integration plan
 

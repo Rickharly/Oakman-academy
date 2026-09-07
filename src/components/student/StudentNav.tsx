@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, BookOpen, TrendingUp, MessageCircle, LogOut, type LucideIcon } from "lucide-react";
+import { Home, BookOpen, BookMarked, TrendingUp, MessageCircle, LogOut, type LucideIcon } from "lucide-react";
 import { Avatar } from "@/components/ui/Avatar";
 import { LogoMark } from "@/components/ui/Logo";
 import { cn } from "@/lib/cn";
@@ -22,6 +22,7 @@ type NavItem = {
 const items: NavItem[] = [
   { href: "/today", label: "Today", icon: Home },
   { href: "/subjects", label: "Subjects", icon: BookOpen },
+  { href: "/reading", label: "Reading", icon: BookMarked },
   { href: "/progress", label: "Progress", icon: TrendingUp },
   { href: "/teacher", label: "Teacher", icon: MessageCircle },
 ];
