@@ -45,7 +45,7 @@ export default async function SubjectPage({ params }: { params: Promise<{ subjec
                 <div className="min-w-0 flex-1 space-y-2">
                   <p className="font-medium text-ink">{unit.title}</p>
                   <div className="flex items-center gap-3">
-                    <ProgressBar size="sm" value={pct} barClassName={theme.stroke.replace("stroke-", "bg-")} className="max-w-xs" />
+                    <ProgressBar size="sm" value={pct} barClassName={theme.bg} className="max-w-xs" />
                     <span className="shrink-0 text-xs text-ink-muted">
                       {lessonsDone} / {lessonsTotal}
                     </span>
