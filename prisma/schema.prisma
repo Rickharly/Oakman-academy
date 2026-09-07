@@ -72,7 +72,7 @@ model StudentProfile {
   lessonMinutes      Int      @default(45)
   breakMinutes       Int      @default(10)
   /// When the school day starts, in the family's timezone, as "HH:MM".
-  schoolStartTime    String   @default("09:00")
+  schoolStartTime    String   @default("13:00")
   preferences        Json     @default("{}") // { gamification: "calm" | "playful", theme … }
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt

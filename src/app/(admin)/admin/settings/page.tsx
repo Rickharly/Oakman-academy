@@ -4,6 +4,7 @@ import { PageHeader } from "@/components/ui/PageHeader";
 import { Card } from "@/components/ui/Card";
 import { Avatar, isPhotoAvatar } from "@/components/ui/Avatar";
 import { PhotoUpload } from "@/components/admin/PhotoUpload";
+import { dayEndsAt } from "@/lib/scheduling/timetable";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
 import { requireParent, requireParentOfStudent } from "@/lib/auth/session";
@@ -13,6 +14,19 @@ import { SCHOOL_TIMEZONE } from "@/lib/dates";
 
 function fieldClass() {
   return "block text-xs font-medium text-ink-muted mb-1";
+}
+
+/** "3h45 of lessons, 13:00–17:25" — so the shape of the day is visible before saving. */
+function formatDayLength(p: {
+  lessonsPerDay: number;
+  lessonMinutes: number;
+  breakMinutes: number;
+  schoolStartTime: string;
+}) {
+  const teaching = p.lessonsPerDay * p.lessonMinutes;
+  const items = Array.from({ length: p.lessonsPerDay }, () => ({ estimatedMinutes: p.lessonMinutes }));
+  const ends = dayEndsAt(items, p.schoolStartTime, p.breakMinutes);
+  return `${Math.floor(teaching / 60)}h${String(teaching % 60).padStart(2, "0")} of lessons, ${p.schoolStartTime}–${ends}`;
 }
 
 export default async function AdminSettingsPage({
@@ -61,6 +75,13 @@ export default async function AdminSettingsPage({
     const yearGroup = Number(formData.get("yearGroup"));
     const keyStage = String(formData.get("keyStage") ?? "").trim();
 
+    // Timetable. Bounded so a slip cannot produce a 30-lesson day or a zero-minute period.
+    const lessonsPerDay = Number(formData.get("lessonsPerDay"));
+    const lessonMinutes = Number(formData.get("lessonMinutes"));
+    const breakMinutes = Number(formData.get("breakMinutes"));
+    const schoolStartTime = String(formData.get("schoolStartTime") ?? "").trim();
+    const validTime = /^([01]\d|2[0-3]):[0-5]\d$/.test(schoolStartTime);
+
     await prisma.$transaction([
       prisma.user.update({
         where: { id: student.userId },
@@ -72,6 +93,16 @@ export default async function AdminSettingsPage({
         data: {
           ...(Number.isFinite(yearGroup) && yearGroup > 0 ? { yearGroup } : {}),
           ...(keyStage ? { keyStage } : {}),
+          ...(Number.isFinite(lessonsPerDay) && lessonsPerDay >= 1 && lessonsPerDay <= 10
+            ? { lessonsPerDay }
+            : {}),
+          ...(Number.isFinite(lessonMinutes) && lessonMinutes >= 10 && lessonMinutes <= 120
+            ? { lessonMinutes }
+            : {}),
+          ...(Number.isFinite(breakMinutes) && breakMinutes >= 0 && breakMinutes <= 60
+            ? { breakMinutes }
+            : {}),
+          ...(validTime ? { schoolStartTime } : {}),
         },
       }),
     ]);
@@ -100,6 +131,13 @@ export default async function AdminSettingsPage({
     const pin = String(formData.get("pin") ?? "");
     const yearGroup = Number(formData.get("yearGroup"));
     const keyStage = String(formData.get("keyStage") ?? "").trim();
+
+    // Timetable. Bounded so a slip cannot produce a 30-lesson day or a zero-minute period.
+    const lessonsPerDay = Number(formData.get("lessonsPerDay"));
+    const lessonMinutes = Number(formData.get("lessonMinutes"));
+    const breakMinutes = Number(formData.get("breakMinutes"));
+    const schoolStartTime = String(formData.get("schoolStartTime") ?? "").trim();
+    const validTime = /^([01]\d|2[0-3]):[0-5]\d$/.test(schoolStartTime);
     const avatar = String(formData.get("avatar") ?? "").trim();
 
     if (!displayName || !username || pin.length < 4 || pin.length > 6 || !Number.isFinite(yearGroup) || !keyStage) {
@@ -194,6 +232,33 @@ export default async function AdminSettingsPage({
                       <label className={fieldClass()}>Key stage</label>
                       <Input name="keyStage" defaultValue={profile.keyStage} />
                     </div>
+
+                    <div className="sm:col-span-4 border-t border-line pt-3">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-ink-muted">
+                        Timetable
+                      </p>
+                      <p className="mt-1 text-xs text-ink-faint">
+                        {profile.lessonsPerDay} × {profile.lessonMinutes} min from {profile.schoolStartTime}, with{" "}
+                        {profile.breakMinutes} min breaks — {formatDayLength(profile)}.
+                      </p>
+                    </div>
+                    <div>
+                      <label className={fieldClass()}>Starts at</label>
+                      <Input name="schoolStartTime" type="time" defaultValue={profile.schoolStartTime} />
+                    </div>
+                    <div>
+                      <label className={fieldClass()}>Lessons a day</label>
+                      <Input type="number" name="lessonsPerDay" defaultValue={profile.lessonsPerDay} min={1} max={10} />
+                    </div>
+                    <div>
+                      <label className={fieldClass()}>Minutes each</label>
+                      <Input type="number" name="lessonMinutes" defaultValue={profile.lessonMinutes} min={10} max={120} step={5} />
+                    </div>
+                    <div>
+                      <label className={fieldClass()}>Break minutes</label>
+                      <Input type="number" name="breakMinutes" defaultValue={profile.breakMinutes} min={0} max={60} step={5} />
+                    </div>
+
                     <div className="sm:col-span-4">
                       <Button type="submit" variant="secondary">
                         Save changes
