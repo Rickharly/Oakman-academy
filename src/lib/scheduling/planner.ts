@@ -357,10 +357,39 @@ export async function ensureDayPlanned(studentId: string, dateKey: string): Prom
   if (!student) return existing;
 
   const lessonsToday = existing.filter((a) => a.kind === "LESSON" && a.status !== "MOVED").length;
+
+  // Too many periods is as wrong as too few, and happens the same way — two plans racing pick
+  // different lessons, so the day comes out doubled rather than duplicated.
+  if (lessonsToday > student.lessonsPerDay) {
+    await trimDayToTimetable(studentId, dayDate, student.lessonsPerDay);
+    return read();
+  }
+
   if (lessonsToday >= student.lessonsPerDay) return existing;
 
   await planWeek(studentId, dateKey);
+  await trimDayToTimetable(studentId, dayDate, student.lessonsPerDay);
   return read();
+}
+
+/**
+ * Cuts a day back to the number of periods the timetable promises.
+ *
+ * The earliest-created periods are kept, so a child sees the same day they saw a minute ago.
+ * Only PLANNED lessons are removed: work already started or finished is a child's own and is
+ * never deleted, even when that leaves the day long.
+ */
+async function trimDayToTimetable(studentId: string, dayDate: Date, cap: number): Promise<void> {
+  const lessons = await prisma.dailyAssignment.findMany({
+    where: { studentId, date: dayDate, kind: "LESSON", status: { not: "MOVED" } },
+    orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+  });
+  if (lessons.length <= cap) return;
+
+  const surplus = lessons.slice(cap).filter((a) => a.status === "PLANNED");
+  if (surplus.length === 0) return;
+
+  await prisma.dailyAssignment.deleteMany({ where: { id: { in: surplus.map((a) => a.id) } } });
 }
 
 export async function getTodayView(studentId: string, dateKey: string): Promise<TodayView> {

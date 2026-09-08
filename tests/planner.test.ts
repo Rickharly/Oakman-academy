@@ -183,3 +183,52 @@ describe("planner: a day left short", () => {
     expect(after.some((a) => a.id === first.id && a.status === "IN_PROGRESS")).toBe(true);
   });
 });
+
+describe("planner: a day that came out doubled", () => {
+  beforeAll(async () => {
+    await resetDb();
+    studentId = await buildStudentWithCurriculum(12);
+  });
+
+  it("cuts a doubled day back to the timetable", async () => {
+    // Exactly how it happens in production: two plans racing, each picking different lessons.
+    await Promise.all([planWeek(studentId, MONDAY), planWeek(studentId, MONDAY)]);
+    const doubled = await lessonsOn(MONDAY);
+    // Whatever the race produced, opening Today must leave a normal day.
+    await ensureDayPlanned(studentId, MONDAY);
+
+    const after = await lessonsOn(MONDAY);
+    expect(after).toHaveLength(5);
+    expect(after.length).toBeLessThanOrEqual(doubled.length);
+  });
+
+  it("never deletes a lesson the child has already started", async () => {
+    await prisma.dailyAssignment.deleteMany({ where: { studentId } });
+    await planWeek(studentId, MONDAY);
+    const [first, second] = await lessonsOn(MONDAY);
+    await prisma.dailyAssignment.update({ where: { id: first.id }, data: { status: "IN_PROGRESS" } });
+    await prisma.dailyAssignment.update({ where: { id: second.id }, data: { status: "COMPLETED" } });
+
+    // Force the day over the cap with extra planned lessons.
+    const spare = await prisma.lesson.findMany({ take: 4, orderBy: { providerSlug: "desc" } });
+    for (const [i, lesson] of spare.entries()) {
+      await prisma.dailyAssignment.create({
+        data: {
+          studentId,
+          date: toDateOnly(MONDAY),
+          order: 50 + i,
+          kind: "LESSON",
+          source: "AUTO",
+          lessonId: lesson.id,
+          subjectId: first.subjectId,
+          estimatedMinutes: 45,
+        },
+      });
+    }
+
+    await ensureDayPlanned(studentId, MONDAY);
+    const after = await lessonsOn(MONDAY);
+    expect(after.some((a) => a.id === first.id)).toBe(true);
+    expect(after.some((a) => a.id === second.id)).toBe(true);
+  });
+});
