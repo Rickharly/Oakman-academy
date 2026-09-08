@@ -27,6 +27,8 @@ export interface SyncStats extends Record<string, number> {
   lessons: number;
   questions: number;
   resources: number;
+  /** Lessons whose assets we went back for, having failed to read them at import. */
+  backfilled: number;
   skipped: number;
   failed: number;
 }
@@ -130,6 +132,56 @@ async function downloadAsset(
   }
 }
 
+
+/**
+ * Writes a lesson's assets as `LessonResource` rows.
+ *
+ * Shared by the full import and the assets-only backfill, so the two cannot drift — a video
+ * that appears through one path and not the other is exactly the sort of bug that leaves a
+ * child looking at a lesson with no video in it.
+ */
+async function writeResources(
+  lessonId: string,
+  lessonSlug: string,
+  assetList: ProviderAsset[],
+  attribution: unknown,
+  includeAssets: boolean,
+  log: (line: string) => void,
+): Promise<number> {
+  let written = 0;
+  for (const asset of assetList) {
+    const type = RESOURCE_TYPE_BY_ASSET[asset.type];
+    if (!type) continue;
+    const storedPath = includeAssets ? await downloadAsset(lessonSlug, asset, log) : null;
+    const existing = await prisma.lessonResource.findFirst({ where: { lessonId, type } });
+    if (existing) {
+      await prisma.lessonResource.update({
+        where: { id: existing.id },
+        data: {
+          label: asset.label,
+          providerUrl: asset.url,
+          storedPath: storedPath ?? existing.storedPath,
+          syncedAt: new Date(),
+        },
+      });
+    } else {
+      await prisma.lessonResource.create({
+        data: {
+          lessonId,
+          type,
+          label: asset.label,
+          providerUrl: asset.url,
+          storedPath,
+          metadata: { attribution: attribution ?? [] } as Prisma.InputJsonValue,
+          syncedAt: new Date(),
+        },
+      });
+    }
+    written += 1;
+  }
+  return written;
+}
+
 /** Upserts the mapped questions for one lesson. Existing rows are updated in place by providerRef. */
 async function upsertQuestions(lessonId: string, mapped: MappedQuestion[], sourceOf: (m: MappedQuestion) => string) {
   let count = 0;
@@ -173,7 +225,7 @@ export async function syncProgramme(scope: SyncScope, opts: SyncOptions = {}): P
     opts.log?.(line);
   };
 
-  const stats: SyncStats = { units: 0, lessons: 0, questions: 0, resources: 0, skipped: 0, failed: 0 };
+  const stats: SyncStats = { units: 0, lessons: 0, questions: 0, resources: 0, backfilled: 0, skipped: 0, failed: 0 };
 
   const job = await prisma.curriculumSyncJob.create({
     data: {
@@ -281,8 +333,13 @@ export async function syncProgramme(scope: SyncScope, opts: SyncOptions = {}): P
         : unitDetail.lessons;
 
       for (const lessonRef of wanted) {
-        if (opts.maxLessons != null && stats.lessons >= opts.maxLessons) {
-          log(`Reached the ${opts.maxLessons}-lesson limit for this run — stopping here.`);
+        // Two budgets, because the two jobs cost different amounts. A full import is four or
+        // five provider requests; going back for a lesson's assets is one. Sharing a single
+        // budget would let ten backfills use up the room for forty.
+        const importBudgetSpent = opts.maxLessons != null && stats.lessons >= opts.maxLessons;
+        const backfillBudgetSpent = opts.maxLessons != null && stats.backfilled >= opts.maxLessons * 4;
+        if (importBudgetSpent && backfillBudgetSpent) {
+          log(`Reached this run's limit (${stats.lessons} imported, ${stats.backfilled} backfilled) — stopping here.`);
           break;
         }
 
@@ -299,6 +356,50 @@ export async function syncProgramme(scope: SyncScope, opts: SyncOptions = {}): P
         // is set only when the asset call succeeds — including when it succeeds with nothing,
         // so a lesson that genuinely has no video does not cost budget on every run.
         if (already?.syncedAt && already._count.questions > 0 && already.assetsSyncedAt) {
+          stats.skipped += 1;
+          continue;
+        }
+
+        // Assets-only backfill: this lesson is already imported, it is only its assets we never
+        // managed to read. Re-importing the whole thing would cost four provider requests to
+        // fetch three things we already have — and with a few hundred lessons to backfill, that
+        // is the difference between one quota window and four.
+        if (already?.syncedAt && already._count.questions > 0 && !already.assetsSyncedAt) {
+          if (backfillBudgetSpent) {
+            stats.skipped += 1;
+            continue;
+          }
+          const backfill = await provider.getAssets(lessonRef.slug).catch(() => null);
+          if (!backfill) {
+            // Still cannot ask. Leave the stamp null so a later run tries again.
+            log(`  Lesson ${lessonRef.slug}: assets still unavailable, will retry next run`);
+            stats.failed += 1;
+            continue;
+          }
+          stats.resources += await writeResources(
+            already.id,
+            lessonRef.slug,
+            backfill.assets,
+            backfill.attribution,
+            Boolean(scope.includeAssets),
+            log,
+          );
+          await prisma.lesson.update({
+            where: { id: already.id },
+            data: {
+              assetsSyncedAt: new Date(),
+              estimatedMinutes: estimateMinutes(
+                backfill.assets.some((a) => a.type === "video"),
+                backfill.assets.some((a) => a.type === "worksheet"),
+              ),
+            },
+          });
+          log(`  Lesson ${lessonRef.slug}: backfilled ${backfill.assets.length} asset(s)`);
+          stats.backfilled += 1;
+          continue;
+        }
+
+        if (importBudgetSpent) {
           stats.skipped += 1;
           continue;
         }
@@ -401,36 +502,14 @@ export async function syncProgramme(scope: SyncScope, opts: SyncOptions = {}): P
           }
 
           // Resources.
-          for (const asset of assetList) {
-            const type = RESOURCE_TYPE_BY_ASSET[asset.type];
-            if (!type) continue;
-            const storedPath = scope.includeAssets ? await downloadAsset(lessonRef.slug, asset, log) : null;
-            const existing = await prisma.lessonResource.findFirst({ where: { lessonId: lesson.id, type } });
-            if (existing) {
-              await prisma.lessonResource.update({
-                where: { id: existing.id },
-                data: {
-                  label: asset.label,
-                  providerUrl: asset.url,
-                  storedPath: storedPath ?? existing.storedPath,
-                  syncedAt: new Date(),
-                },
-              });
-            } else {
-              await prisma.lessonResource.create({
-                data: {
-                  lessonId: lesson.id,
-                  type,
-                  label: asset.label,
-                  providerUrl: asset.url,
-                  storedPath,
-                  metadata: { attribution: assets?.attribution ?? [] } as Prisma.InputJsonValue,
-                  syncedAt: new Date(),
-                },
-              });
-            }
-            stats.resources += 1;
-          }
+          stats.resources += await writeResources(
+            lesson.id,
+            lessonRef.slug,
+            assetList,
+            assets?.attribution,
+            Boolean(scope.includeAssets),
+            log,
+          );
         } catch (err) {
           stats.failed += 1;
           log(`  Lesson ${lessonRef.slug} FAILED: ${(err as Error).message}`);
