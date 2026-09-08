@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState, type SyntheticEvent } from "react";
-import { Check, FileText, Lock, MessageCircle, PartyPopper } from "lucide-react";
+import { Check, FileText, Loader2, Lock, MessageCircle, PartyPopper } from "lucide-react";
 import type { LessonStage } from "@/generated/prisma/client";
 import { nextStage, stageIndex } from "@/lib/lessons/stages";
 import { Card } from "@/components/ui/Card";
@@ -199,6 +199,9 @@ export function LessonPlayer(props: LessonPlayerProps) {
   const [teacherSheetOpen, setTeacherSheetOpen] = useState(false);
 
   const lastVideoSent = useRef(0);
+  const [generatingPractice, setGeneratingPractice] = useState(false);
+  const [practiceError, setPracticeError] = useState<string | null>(null);
+  const [extraPractice, setExtraPractice] = useState<LessonPlayerQuestion[]>([]);
 
   const theme = subjectTheme(subjectSlug);
 
@@ -419,7 +422,10 @@ export function LessonPlayer(props: LessonPlayerProps) {
   // ───────────────────────────── stage renderers ─────────────────────────────
 
   function renderQuizStage(stage: "STARTER" | "PRACTICE" | "CHECK") {
-    const qs = questionsByStage[stage];
+    const qs =
+      stage === "PRACTICE" && questionsByStage.PRACTICE.length === 0
+        ? extraPractice
+        : questionsByStage[stage];
     const submitted = submittedStage[stage];
 
     if (qs.length === 0) {
@@ -464,11 +470,22 @@ export function LessonPlayer(props: LessonPlayerProps) {
         ))}
 
         {!submitted ? (
-          <div className="flex flex-wrap items-center gap-3">
-            <Button onClick={() => void submitGraded(stage)} disabled={submitting}>
-              {submitting ? "Submitting…" : "Submit"}
-            </Button>
-            {submitError ? <p className="text-sm text-danger">{submitError}</p> : null}
+          <div className="space-y-3">
+            <div className="flex flex-wrap items-center gap-3">
+              <Button onClick={() => void submitGraded(stage)} disabled={submitting}>
+                {submitting ? "Checking…" : "Submit"}
+              </Button>
+              {submitError ? <p className="text-sm text-danger">{submitError}</p> : null}
+            </div>
+            {submitting ? (
+              <div className="flex items-center gap-2.5 rounded-2xl bg-accent-soft px-4 py-3">
+                <Loader2 className="h-4 w-4 shrink-0 animate-spin text-accent" />
+                <p className="text-sm text-accent-ink">
+                  Your teacher is reading your answers. Written answers take a few seconds — she
+                  reads them properly rather than just looking for keywords.
+                </p>
+              </div>
+            ) : null}
           </div>
         ) : stage !== "CHECK" ? (
           <div className="flex flex-wrap items-center gap-3">
@@ -484,27 +501,94 @@ export function LessonPlayer(props: LessonPlayerProps) {
     );
   }
 
-  function renderPractice() {
-    const qs = questionsByStage.PRACTICE;
-    const submitted = submittedStage.PRACTICE;
-    const worksheetUrl = worksheetFallback?.providerUrl ?? worksheetFallback?.storedPath ?? null;
+  /** Asks the teacher to turn a worksheet-only lesson into questions they can do here. */
+  async function generatePractice() {
+    if (generatingPractice) return;
+    setGeneratingPractice(true);
+    setPracticeError(null);
+    try {
+      const res = await fetch(`/api/lessons/${lesson.id}/practice`, { method: "POST" });
+      const data = (await res.json()) as { questions?: LessonPlayerQuestion[]; error?: string };
+      if (!res.ok || !data.questions?.length) {
+        throw new Error(data.error ?? "Couldn't write the questions. Try again in a moment.");
+      }
+      setExtraPractice(data.questions);
+    } catch (err) {
+      setPracticeError(err instanceof Error ? err.message : "Couldn't write the questions.");
+    } finally {
+      setGeneratingPractice(false);
+    }
+  }
 
+  /** Practice aimed at the questions they actually got wrong, not the same quiz again. */
+  async function practiseWeakSpots() {
+    if (generatingPractice) return;
+    setGeneratingPractice(true);
+    setPracticeError(null);
+    try {
+      const missed = questionsByStage.CHECK.filter((q) => results[q.id]?.isCorrect === false).map(
+        (q) => q.prompt,
+      );
+      const res = await fetch(`/api/lessons/${lesson.id}/practice`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ missedPrompts: missed }),
+      });
+      const data = (await res.json()) as { questions?: LessonPlayerQuestion[]; error?: string };
+      if (!res.ok || !data.questions?.length) {
+        throw new Error(data.error ?? "Couldn't write the questions. Try again in a moment.");
+      }
+      setExtraPractice(data.questions);
+      setViewStage("PRACTICE");
+    } catch (err) {
+      setPracticeError(err instanceof Error ? err.message : "Couldn't write the questions.");
+    } finally {
+      setGeneratingPractice(false);
+    }
+  }
+
+  function renderPractice() {
+    const qs = questionsByStage.PRACTICE.length ? questionsByStage.PRACTICE : extraPractice;
+    const submitted = submittedStage.PRACTICE;
+    const worksheetUrl = worksheetFallback
+      ? (worksheetFallback.storedPath ?? `/api/curriculum/resources/${worksheetFallback.id}`)
+      : null;
+
+    // Some Oak lessons ship their practice as a worksheet PDF. A PDF cannot be marked and
+    // teaches us nothing about what they got wrong, so the teacher writes practice from the
+    // lesson instead and the worksheet stays as an optional extra.
     if (qs.length === 0) {
       return (
         <Card padding="lg" className="space-y-4">
-          <p className="text-ink">This lesson&apos;s practice is a worksheet.</p>
-          {worksheetUrl ? (
-            <Button variant="secondary" href={worksheetUrl} target="_blank" rel="noreferrer">
-              <FileText className="h-4 w-4" /> Open worksheet (PDF)
-            </Button>
+          {generatingPractice ? (
+            <div className="flex items-center gap-3">
+              <Loader2 className="h-5 w-5 animate-spin text-accent" />
+              <p className="text-ink">Your teacher is writing your practice questions…</p>
+            </div>
           ) : (
-            <p className="text-sm text-ink-muted">No worksheet is available for this lesson.</p>
+            <>
+              <p className="text-ink">
+                This lesson came with a worksheet instead of questions. Your teacher can turn it
+                into practice you can do right here.
+              </p>
+              <div className="flex flex-wrap gap-2">
+                <Button onClick={() => void generatePractice()} disabled={submitting}>
+                  Give me some practice
+                </Button>
+                {worksheetUrl ? (
+                  <Button variant="secondary" href={worksheetUrl} target="_blank" rel="noreferrer">
+                    <FileText className="h-4 w-4" /> Open the worksheet instead
+                  </Button>
+                ) : null}
+                {!submitted ? (
+                  <Button variant="ghost" onClick={() => void submitGraded("PRACTICE")} disabled={submitting}>
+                    Skip practice
+                  </Button>
+                ) : null}
+              </div>
+            </>
           )}
-          {!submitted ? (
-            <Button onClick={() => void submitGraded("PRACTICE")} disabled={submitting}>
-              {submitting ? "Continuing…" : "Done"}
-            </Button>
-          ) : null}
+          {practiceError ? <p className="text-sm text-danger">{practiceError}</p> : null}
           {submitError ? <p className="text-sm text-danger">{submitError}</p> : null}
         </Card>
       );
@@ -513,17 +597,21 @@ export function LessonPlayer(props: LessonPlayerProps) {
   }
 
   function renderLearn() {
-    const video = lesson.resources.find((r) => r.type === "VIDEO" && Boolean(r.providerUrl?.startsWith("http")));
+    // Served through our own route: Oak's URLs need the API key, which the browser must
+    // never have. `storedPath` wins when the asset was downloaded at sync time.
+    const video = lesson.resources.find((r) => r.type === "VIDEO" && Boolean(r.providerUrl || r.storedPath));
     const learnDone = stageIndex(currentStage) > stageIndex("LEARN");
 
     return (
-      <div className="grid gap-6 md:grid-cols-[minmax(0,1fr)_260px]">
+      <div className="space-y-6">
         <Card padding="lg" className="space-y-4">
           {video ? (
             <video
               controls
-              className="w-full rounded-xl bg-stone-900"
-              src={video.providerUrl ?? undefined}
+              playsInline
+              preload="metadata"
+              className="aspect-video w-full rounded-xl bg-stone-900"
+              src={video.storedPath ?? `/api/curriculum/resources/${video.id}`}
               onTimeUpdate={handleVideoTimeUpdate}
               onEnded={handleVideoEnded}
             />
@@ -546,7 +634,7 @@ export function LessonPlayer(props: LessonPlayerProps) {
           {submitError ? <p className="text-sm text-danger">{submitError}</p> : null}
         </Card>
 
-        <div className="space-y-4">
+        <div className="grid gap-4 sm:grid-cols-2">
           {lesson.keyLearningPoints.length > 0 ? (
             <Card padding="md">
               <p className="mb-2 text-sm font-semibold text-ink">Key learning points</p>
@@ -578,6 +666,14 @@ export function LessonPlayer(props: LessonPlayerProps) {
   function renderFeedback() {
     const checkQs = questionsByStage.CHECK;
     const pct = scorePct(checkScore);
+    // Below 70% the lesson has not landed. Mastery is preferred when we have it, because it
+    // accounts for how they answered as well as what they scored.
+    const secure = masteryEstimate != null ? masteryEstimate >= 0.7 : pct == null || pct >= 70;
+    const wrongTopics = checkQs
+      .filter((q) => results[q.id] && results[q.id]?.isCorrect === false)
+      .map((q) => q.prompt.replace(/\s+/g, " ").trim())
+      .map((prompt) => (prompt.length > 60 ? `${prompt.slice(0, 57)}…` : prompt))
+      .slice(0, 3);
     const masteryBadge: BadgeStatus | null =
       masteryEstimate == null ? null : masteryEstimate >= 0.9 ? "mastered" : masteryEstimate < 0.7 ? "needs-review" : "completed";
 
@@ -635,16 +731,50 @@ export function LessonPlayer(props: LessonPlayerProps) {
             })
           : null}
 
+        {/*
+          A score is not teaching. Below the bar, finishing is not the next step — practising
+          what they actually got wrong is, and the questions are written from those specific
+          mistakes rather than being the same quiz again. They can still choose to stop: this
+          is a nudge with a reason, not a lock on the door.
+        */}
+        {!secure ? (
+          <Card padding="lg" className="space-y-3 border-warning/30 bg-warning-soft/40">
+            <h3 className="text-base font-semibold text-ink">
+              Let&apos;s make this stick before you move on.
+            </h3>
+            <p className="text-sm text-ink">
+              {wrongTopics.length > 0
+                ? `The bit that tripped you up was ${wrongTopics.join(", ")}. A few questions on just that will sort it.`
+                : "A few more questions on the parts you missed will sort this out."}
+            </p>
+            {extraPractice.length > 0 ? (
+              <p className="text-sm font-medium text-ink">
+                Your practice is ready — it&apos;s in the Practice step above.
+              </p>
+            ) : (
+              <div className="flex flex-wrap items-center gap-3">
+                <Button onClick={() => void practiseWeakSpots()} disabled={generatingPractice}>
+                  {generatingPractice ? "Writing your questions…" : "Practise what I missed"}
+                </Button>
+                <Button variant="ghost" onClick={() => void finishLesson()} disabled={submitting}>
+                  Finish anyway
+                </Button>
+              </div>
+            )}
+            {practiceError ? <p className="text-sm text-danger">{practiceError}</p> : null}
+          </Card>
+        ) : null}
+
         <div className="flex flex-wrap items-center gap-3">
           {retryingIds.size > 0 ? (
             <Button onClick={() => void submitRetries()} disabled={submitting}>
-              {submitting ? "Checking…" : "Submit answer"}
+              {submitting ? "Your teacher is checking…" : "Submit answer"}
             </Button>
-          ) : (
+          ) : secure ? (
             <Button onClick={() => void finishLesson()} disabled={submitting}>
               {submitting ? "Finishing…" : "Finish"}
             </Button>
-          )}
+          ) : null}
           {submitError ? <p className="text-sm text-danger">{submitError}</p> : null}
         </div>
       </div>

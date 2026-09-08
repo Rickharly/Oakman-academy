@@ -539,10 +539,23 @@ async function generatePractice(args: {
     messages: [{ role: "user", content: `Misconception: ${args.misconception}` }],
   });
 
-  const created: Question[] = [];
-  const baseOrder = 1000;
+  return persistGeneratedQuestions(data.questions.slice(0, count), {
+    lessonId: args.lessonId,
+    studentId: args.studentId,
+    context: { misconception: args.misconception, lessonId: args.lessonId },
+    baseOrder: 1000,
+  });
+}
 
-  for (const [i, q] of data.questions.slice(0, count).entries()) {
+/** Turns the model's questions into stored, gradable `Question` rows. */
+async function persistGeneratedQuestions(
+  questions: z.infer<typeof practiceSchema>["questions"],
+  opts: { lessonId: string; studentId: string; context: object; baseOrder: number },
+): Promise<Question[]> {
+  const created: Question[] = [];
+  const baseOrder = opts.baseOrder;
+
+  for (const [i, q] of questions.entries()) {
     let options: unknown = null;
     let answerKey: unknown;
 
@@ -569,7 +582,7 @@ async function generatePractice(args: {
 
     const question = await prisma.question.create({
       data: {
-        lessonId: args.lessonId,
+        lessonId: opts.lessonId,
         source: "AI_GENERATED",
         stage: "PRACTICE",
         order: baseOrder + i,
@@ -580,15 +593,134 @@ async function generatePractice(args: {
         explanation: q.explanation,
         maxScore: 1,
         gradingMode: "DETERMINISTIC",
-        generatedForStudentId: args.studentId,
-        generationContext: { misconception: args.misconception, lessonId: args.lessonId },
-        providerRef: `ai:${args.studentId}:${Date.now()}:${i}`,
+        generatedForStudentId: opts.studentId,
+        generationContext: opts.context,
+        providerRef: `ai:${opts.studentId}:${Date.now()}:${i}`,
       },
     });
     created.push(question);
   }
 
   return created;
+}
+
+/**
+ * Writes practice questions for a lesson that arrived without any.
+ *
+ * Some Oak lessons ship their practice as a worksheet PDF. Sending a child off to a PDF is the
+ * opposite of what this app is for: nothing they write there can be marked, and nobody learns
+ * what they got wrong. So the lesson's own content — its learning points, keywords and the
+ * misconceptions Oak itself flags — becomes practice they can actually do here.
+ *
+ * Generated once per lesson and stored, so a child who reloads sees the same questions and the
+ * answers can be marked against a stable key.
+ */
+async function generateLessonPractice(args: {
+  studentId: string;
+  lessonId: string;
+  count?: number;
+  /** Questions they got wrong, when this is practice aimed at a specific gap. */
+  missedPrompts?: string[];
+}): Promise<Question[]> {
+  const count = args.count ?? 5;
+
+  const lesson = await prisma.lesson.findUnique({
+    where: { id: args.lessonId },
+    include: { unit: { include: { programme: { include: { subject: true } } } } },
+  });
+  if (!lesson) throw new AiError(`Lesson ${args.lessonId} not found`);
+
+  const student = await prisma.studentProfile.findUnique({ where: { id: args.studentId } });
+  if (!student) throw new AiError(`Student ${args.studentId} not found`);
+
+  // Reuse general practice already written for this lesson. Practice aimed at a specific
+  // mistake is always written fresh: handing back questions they have already answered
+  // would teach nothing.
+  const aimed = (args.missedPrompts ?? []).filter((p) => p.trim().length > 0);
+  if (aimed.length === 0) {
+    const existing = await prisma.question.findMany({
+      where: { lessonId: lesson.id, stage: "PRACTICE", source: "AI_GENERATED" },
+      orderBy: { order: "asc" },
+    });
+    if (existing.length >= count) return existing;
+  }
+
+  const asStrings = (value: unknown): string[] =>
+    Array.isArray(value) ? value.filter((v): v is string => typeof v === "string") : [];
+  const asPairs = (value: unknown, a: string, b: string): string[] =>
+    Array.isArray(value)
+      ? value
+          .filter((v): v is Record<string, unknown> => typeof v === "object" && v !== null)
+          .map((v) => `${String(v[a] ?? "")}: ${String(v[b] ?? "")}`)
+          .filter((line) => line.length > 2)
+      : [];
+
+  const ai = getAiProvider();
+  const { data } = await ai.structured({
+    model: "fast",
+    schemaName: "practice",
+    schema: practiceSchema,
+    system: [
+      `Write ${count} practice questions on the lesson "${lesson.title}" for a Year`,
+      `${student.yearGroup} child studying ${lesson.unit.programme.subject.title}.`,
+      "",
+      aimed.length > 0
+        ? [
+            "This child has just got some questions wrong, listed below. Every question you write",
+            "must target what those mistakes reveal they have not understood — approach the same",
+            "idea from a different angle, do not simply reword the questions they failed. Start",
+            "easier than the question they missed and build back up to it.",
+          ].join(" ")
+        : [
+            "These replace a worksheet, so they should work like one: start with the straightforward",
+            "recall and build to something that needs the idea applied. Every question must be",
+            "answerable from this lesson alone — never assume anything taught later.",
+          ].join(" "),
+      "",
+      "Use only SHORT_ANSWER, NUMERIC or MULTIPLE_CHOICE. For MULTIPLE_CHOICE give 3 or 4 choices",
+      "with the correct one first and wrong ones that a child who half-understood would pick.",
+      "For SHORT_ANSWER and NUMERIC list every acceptable answer, including spellings and forms a",
+      "child would reasonably write.",
+      "",
+      "explanation: why the answer is right, in one or two sentences, addressed to the child.",
+      "UK English.",
+    ].join("\n"),
+    messages: [
+      {
+        role: "user",
+        content: [
+          `Lesson: ${lesson.title}`,
+          `Unit: ${lesson.unit.title}`,
+          lesson.pupilOutcome ? `What they should be able to do: ${lesson.pupilOutcome}` : "",
+          "",
+          "Key learning points:",
+          ...asStrings(lesson.keyLearningPoints).map((p) => `- ${p}`),
+          "",
+          "Keywords:",
+          ...asPairs(lesson.keywords, "keyword", "description").map((k) => `- ${k}`),
+          "",
+          "Common misconceptions to write distractors around:",
+          ...asPairs(lesson.misconceptions, "misconception", "response").map((m) => `- ${m}`),
+          "",
+          aimed.length > 0 ? `\nThey got these wrong:\n${aimed.map((p) => `- ${p}`).join("\n")}` : "",
+          lesson.transcript ? `Transcript extract:\n${lesson.transcript.slice(0, 6000)}` : "",
+        ]
+          .filter(Boolean)
+          .join("\n"),
+      },
+    ],
+  });
+
+  return persistGeneratedQuestions(data.questions.slice(0, count), {
+    lessonId: lesson.id,
+    studentId: args.studentId,
+    context: {
+      lessonId: lesson.id,
+      reason: aimed.length > 0 ? "missed_questions" : "no_practice_questions",
+      ...(aimed.length > 0 ? { missedPrompts: aimed } : {}),
+    },
+    baseOrder: 900,
+  });
 }
 
 // ───────────────────────────── observations ─────────────────────────────
@@ -697,6 +829,7 @@ export const teacherAgent = {
   summarizeLesson,
   summarizeDay,
   generatePractice,
+  generateLessonPractice,
   identifyMisconceptions,
 };
 
