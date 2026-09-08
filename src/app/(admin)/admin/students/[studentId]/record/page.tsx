@@ -1,6 +1,6 @@
 import { requireParentOfStudent } from "@/lib/auth/session";
 import { buildAcademicRecord } from "@/lib/records/academic-record";
-import { CrestSvg } from "@/components/ui/crest";
+import { LogoLockup } from "@/components/ui/Logo";
 import { GenerateNotesButton } from "@/components/admin/GenerateNotesButton";
 import { prisma } from "@/lib/db";
 import type { AcademicRecord } from "@/lib/records/academic-record";
@@ -60,7 +60,7 @@ export default async function AcademicRecordPage({
 
       {/* Letterhead */}
       <header className="flex items-start gap-4 border-b-2 border-brand-navy pb-4">
-        <CrestSvg width={56} height={56} />
+        <LogoLockup size={64} />
         <div className="flex-1">
           <h1 className="text-xl font-semibold tracking-tight text-brand-navy">Oakman Academy</h1>
           <p className="text-sm text-ink-muted">Home education · Academic record</p>
