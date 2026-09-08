@@ -30,7 +30,42 @@ export const dynamic = "force-dynamic";
 
 const CACHE_DIR = process.env.MEDIA_CACHE_DIR ?? path.join(os.tmpdir(), "oakman-media");
 /** Anything larger than this is streamed through rather than cached, to protect the disk. */
-const MAX_CACHE_BYTES = 512 * 1024 * 1024;
+const MAX_CACHE_BYTES = 64 * 1024 * 1024;
+/**
+ * The whole cache stays under this.
+ *
+ * A container's disk is small and shared with everything else running in it. An unbounded
+ * cache of lesson videos will eventually fill it, and a full disk does not degrade a service —
+ * it kills it. Better to re-fetch a video occasionally than to take the school offline.
+ */
+const MAX_CACHE_TOTAL_BYTES = Number(process.env.MEDIA_CACHE_MAX_BYTES ?? 256 * 1024 * 1024);
+
+/** Deletes the least recently used files until the cache fits in its budget again. */
+async function evictTo(budget: number): Promise<void> {
+  try {
+    const names = await fsp.readdir(CACHE_DIR);
+    const files = await Promise.all(
+      names.map(async (name) => {
+        const full = path.join(CACHE_DIR, name);
+        const stat = await fsp.stat(full).catch(() => null);
+        return stat?.isFile() ? { full, size: stat.size, atime: stat.atimeMs } : null;
+      }),
+    );
+
+    const present = files.filter((f): f is { full: string; size: number; atime: number } => f !== null);
+    let total = present.reduce((n, f) => n + f.size, 0);
+    if (total <= budget) return;
+
+    present.sort((a, b) => a.atime - b.atime); // oldest touched goes first
+    for (const file of present) {
+      if (total <= budget) break;
+      await fsp.rm(file.full, { force: true }).catch(() => undefined);
+      total -= file.size;
+    }
+  } catch {
+    // A cache we cannot tidy is not a reason to fail the request.
+  }
+}
 
 function cachePathFor(resourceId: string, url: string): string {
   const digest = createHash("sha256").update(`${resourceId}:${url}`).digest("hex").slice(0, 32);
@@ -118,6 +153,8 @@ export async function GET(req: Request, ctx: { params: Promise<{ resourceId: str
     const upstreamType = upstream.headers.get("content-type") ?? contentType;
     const declared = Number(upstream.headers.get("content-length") ?? "0");
 
+    const bytesExpected = declared > 0 ? declared : MAX_CACHE_BYTES;
+
     if (declared > MAX_CACHE_BYTES) {
       // Too big to keep. Pass it straight through and accept the cost.
       return new Response(upstream.body, {
@@ -129,6 +166,8 @@ export async function GET(req: Request, ctx: { params: Promise<{ resourceId: str
     // Download to a temporary name and rename into place, so a half-written file is never
     // served and two simultaneous requests cannot corrupt each other's copy.
     await fsp.mkdir(CACHE_DIR, { recursive: true });
+    // Make room before writing, not after: the disk has to hold this file either way.
+    await evictTo(Math.max(0, MAX_CACHE_TOTAL_BYTES - bytesExpected));
     const temp = `${file}.${process.pid}.${Date.now()}.part`;
     const bytes = Buffer.from(await upstream.arrayBuffer());
     await fsp.writeFile(temp, bytes);
