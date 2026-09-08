@@ -55,11 +55,13 @@ export default async function AdminCurriculumPage() {
     }
   }
 
-  const [programmes, units, lessonsByLicence, jobs, quota] = await Promise.all([
+  const [programmes, units, lessonsByLicence, jobs, lessonsByProvider, quota] = await Promise.all([
     prisma.programme.findMany({ include: { subject: true, _count: { select: { units: true } } }, orderBy: [{ yearGroup: "asc" }] }),
     prisma.unit.findMany({ select: { id: true, programmeId: true, _count: { select: { lessons: true } } } }),
     prisma.lesson.groupBy({ by: ["licence"], _count: { _all: true } }),
     prisma.curriculumSyncJob.findMany({ orderBy: { createdAt: "desc" }, take: 10 }),
+    // What is actually stored, which is not the same as what the provider is configured to be.
+    prisma.lesson.groupBy({ by: ["provider"], _count: { _all: true } }),
     // Free to ask — Oak does not count this endpoint against the quota.
     readOakQuota(),
   ]);
@@ -71,6 +73,18 @@ export default async function AdminCurriculumPage() {
 
   const usingOak = process.env.CURRICULUM_PROVIDER?.toLowerCase() === "oak";
   const oakKeySet = Boolean(process.env.OAK_API_KEY);
+
+  const totalLessons = lessonsByProvider.reduce((n, row) => n + row._count._all, 0);
+  const placeholderLessons = lessonsByProvider
+    .filter((row) => row.provider !== "oak")
+    .reduce((n, row) => n + row._count._all, 0);
+  const placeholderSubjects = [
+    ...new Set(
+      programmes
+        .filter((p) => p.provider !== "oak")
+        .map((p) => `${p.subject.title} year ${p.yearGroup}`),
+    ),
+  ].sort();
 
   return (
     <>
@@ -86,9 +100,46 @@ export default async function AdminCurriculumPage() {
           </p>
         </Card>
       ) : (
-        <Card padding="md" className="mb-6 flex items-center gap-3">
-          <Info className="h-4 w-4 shrink-0 text-accent" />
-          <p className="text-sm text-ink">Synced from Oak National Academy.</p>
+        <Card
+          padding="md"
+          className={
+            placeholderLessons > 0
+              ? "mb-6 flex items-start gap-3 border-warning-soft bg-warning-soft/40"
+              : "mb-6 flex items-center gap-3"
+          }
+        >
+          <Info
+            className={`mt-0.5 h-4 w-4 shrink-0 ${placeholderLessons > 0 ? "text-warning" : "text-accent"}`}
+          />
+          {/*
+            What matters is what the children are actually being taught, not which provider the
+            server is configured to use. Saying "synced from Oak" while every lesson in the
+            database is a placeholder is how a parent ends up asking why their son is doing the
+            Anglo-Saxons when Oak teaches Ancient Greece.
+          */}
+          {placeholderLessons > 0 ? (
+            <div className="space-y-1 text-sm text-ink">
+              <p className="font-medium">
+                {placeholderLessons} of {totalLessons} lessons are still placeholder content, not
+                Oak&apos;s.
+              </p>
+              <p className="text-ink-muted">
+                Placeholder lessons were written to build the app before the Oak key arrived.
+                They are short, have no video, and do not follow Oak&apos;s curriculum — so a
+                topic here may not be the topic Oak actually teaches for that year. Sync a
+                subject below to replace them.
+              </p>
+              {placeholderSubjects.length > 0 ? (
+                <p className="text-ink-muted">
+                  Still on placeholders: {placeholderSubjects.join(", ")}.
+                </p>
+              ) : null}
+            </div>
+          ) : (
+            <p className="text-sm text-ink">
+              All {totalLessons} lessons come from Oak National Academy.
+            </p>
+          )}
         </Card>
       )}
 

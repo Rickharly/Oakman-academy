@@ -220,3 +220,21 @@ describe("reading pace", () => {
     expect(entry.readingSeconds).toBe(4 * 60 * 60);
   });
 });
+
+describe("a year group with no passages of its own", () => {
+  it("falls back to the nearest year rather than showing nothing", async () => {
+    await resetDb();
+    await seedReadingLibrary(); // the library holds years 5 and 7 only
+    const user = await prisma.user.create({
+      data: { role: "STUDENT", username: "year-four", passwordHash: "x", displayName: "Y4" },
+    });
+    const profile = await prisma.studentProfile.create({
+      data: { userId: user.id, yearGroup: 4, keyStage: "ks2" },
+    });
+
+    const next = await getNextReadingText(profile.id);
+    expect(next).not.toBeNull();
+    // Year 5 is nearer to Year 4 than Year 7 is.
+    expect(next!.yearGroup).toBe(5);
+  });
+});

@@ -49,7 +49,7 @@ const STUDENTS: {
     displayName: "Mikhael",
     avatar: "🐻",
     pin: "5678",
-    yearGroup: 5,
+    yearGroup: 4,
     keyStage: "ks2",
     previousUsernames: ["mikhail"],
   },

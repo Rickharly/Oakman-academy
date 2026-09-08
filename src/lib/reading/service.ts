@@ -46,10 +46,27 @@ export async function getNextReadingText(studentId: string): Promise<ReadingText
     if (chapter) return ensurePrompts(chapter, book.title);
   }
 
-  return prisma.readingText.findFirst({
+  const forYear = await prisma.readingText.findFirst({
     where: { yearGroup: student.yearGroup, bookId: null, id: notDone },
     orderBy: { order: "asc" },
   });
+  if (forYear) return forYear;
+
+  // Nothing written for this exact year. Rather than leave a child with no reading at all,
+  // fall back to the nearest year we do have — a Year 4 reader is far better served by a
+  // Year 5 passage than by an empty page.
+  const candidates = await prisma.readingText.findMany({
+    where: { bookId: null, id: notDone },
+    orderBy: { order: "asc" },
+  });
+  if (candidates.length === 0) return null;
+
+  const nearest = candidates.reduce((best, text) =>
+    Math.abs(text.yearGroup - student.yearGroup) < Math.abs(best.yearGroup - student.yearGroup)
+      ? text
+      : best,
+  );
+  return candidates.find((t) => t.yearGroup === nearest.yearGroup) ?? null;
 }
 
 const chapterPromptsSchema = z.object({
