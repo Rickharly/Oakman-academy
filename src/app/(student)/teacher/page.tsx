@@ -7,7 +7,7 @@ export default async function TeacherPage() {
   await requireStudent();
 
   return (
-    <div className="flex h-[calc(100vh-8rem)] flex-col md:h-[calc(100vh-9rem)]">
+    <div className="flex h-[calc(100dvh-10.5rem)] flex-col md:h-[calc(100dvh-8.5rem)]">
       <PageHeader title="Teacher" description="Ask about anything you're learning." />
       <Card padding="lg" className="flex min-h-0 flex-1 flex-col">
         <TeacherPanel />

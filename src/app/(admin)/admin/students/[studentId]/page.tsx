@@ -250,6 +250,14 @@ export default async function AdminStudentOverviewPage({ params }: { params: Pro
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="text-sm font-medium text-ink">{entry.readingText.title}</span>
                   {entry.kind === "ESSAY" ? <Badge tone="warning">Essay</Badge> : null}
+                  {entry.readingPace === "rushed" ? (
+                    <Badge tone="warning">Read very fast</Badge>
+                  ) : null}
+                  {entry.readingSeconds ? (
+                    <span className="text-xs text-ink-muted">
+                      {Math.max(1, Math.round(entry.readingSeconds / 60))} min reading
+                    </span>
+                  ) : null}
                   {entry.score != null && entry.maxScore != null ? (
                     <Badge tone="neutral">
                       {entry.score} / {entry.maxScore}

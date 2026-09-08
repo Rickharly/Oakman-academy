@@ -503,6 +503,12 @@ model ReadingEntry {
   assignmentId  String?
   assignment    DailyAssignment? @relation(fields: [assignmentId], references: [id])
   kind          ReadingEntryKind @default(RESPONSE)
+  /// Seconds spent on the passage before answering, measured on the reading screen.
+  /// Null for entries recorded before this was tracked.
+  readingSeconds Int?
+  /// How the pace compared with what the passage should take: "rushed" | "steady" | "slow".
+  /// A judgement for the parent, not a mark — a child may reread, or be interrupted.
+  readingPace   String?
   /// The prompt they were answering, copied in so the record stands alone.
   prompt        String
   response      String

@@ -8,6 +8,8 @@ const bodySchema = z.object({
   promptIndex: z.number().int().min(0).max(20).nullable(),
   response: z.string().min(1).max(20_000),
   assignmentId: z.string().min(1).optional(),
+  /** Seconds spent on the passage before answering. */
+  readingSeconds: z.number().min(0).max(60 * 60 * 8).optional(),
 });
 
 export async function POST(req: Request) {
@@ -21,6 +23,7 @@ export async function POST(req: Request) {
       promptIndex: input.promptIndex,
       response: input.response,
       assignmentId: input.assignmentId,
+      readingSeconds: input.readingSeconds,
     });
 
     // Only what the child is allowed to see: the parent-facing reasoning stays server-side.
