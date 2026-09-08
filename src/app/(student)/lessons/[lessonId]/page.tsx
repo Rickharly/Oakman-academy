@@ -109,6 +109,8 @@ export default async function LessonPage({
         keywords: (lesson.keywords as { keyword: string; description: string }[] | null) ?? [],
         transcript: lesson.transcript,
         estimatedMinutes: lesson.estimatedMinutes,
+        // Where this lesson lives on Oak's own site. The fallback when we have no video file.
+        oakUrl: lesson.canonicalUrl ?? lesson.providerUrl,
         resources: lesson.resources.map((r) => ({
           id: r.id,
           type: r.type,

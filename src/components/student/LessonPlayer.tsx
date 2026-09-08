@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState, type SyntheticEvent } from "react";
-import { Check, FileText, Loader2, Lock, MessageCircle, PartyPopper } from "lucide-react";
+import { Check, ExternalLink, FileText, Loader2, Lock, MessageCircle, PartyPopper } from "lucide-react";
 import type { LessonStage } from "@/generated/prisma/client";
 import { nextStage, stageIndex } from "@/lib/lessons/stages";
 import { Card } from "@/components/ui/Card";
@@ -59,6 +59,8 @@ export type LessonPlayerProps = {
     keywords: { keyword: string; description: string }[];
     transcript: string | null;
     estimatedMinutes: number;
+    /** The lesson on Oak National Academy's own site — the fallback when we have no video. */
+    oakUrl?: string | null;
     resources: LessonPlayerResource[];
   };
   subjectTitle: string;
@@ -579,6 +581,11 @@ export function LessonPlayer(props: LessonPlayerProps) {
                   <Button variant="secondary" href={worksheetUrl} target="_blank" rel="noreferrer">
                     <FileText className="h-4 w-4" /> Open the worksheet instead
                   </Button>
+                ) : lesson.oakUrl ? (
+                  // No worksheet file of our own, but Oak has one on their lesson page.
+                  <Button variant="secondary" href={lesson.oakUrl} target="_blank" rel="noreferrer">
+                    <ExternalLink className="h-4 w-4" /> Get the worksheet from Oak
+                  </Button>
                 ) : null}
                 {!submitted ? (
                   <Button variant="ghost" onClick={() => void submitGraded("PRACTICE")} disabled={submitting}>
@@ -615,17 +622,47 @@ export function LessonPlayer(props: LessonPlayerProps) {
               onTimeUpdate={handleVideoTimeUpdate}
               onEnded={handleVideoEnded}
             />
-          ) : lesson.transcript ? (
-            <div className="space-y-3 text-[15px] leading-relaxed text-ink">
-              {lesson.transcript
-                .split(/\n{2,}/)
-                .filter((p) => p.trim().length > 0)
-                .map((para, i) => (
-                  <p key={i}>{para}</p>
-                ))}
-            </div>
           ) : (
-            <p className="text-ink-muted">No content is available for this lesson yet.</p>
+            <>
+              {/*
+                No video file for this lesson. Oak has one on their own site, so send them
+                there rather than pretending the lesson has no teaching in it — a transcript
+                is a poor substitute for being taught something.
+              */}
+              {lesson.oakUrl ? (
+                <div className="space-y-3 rounded-2xl bg-accent-soft p-5">
+                  <p className="text-base font-medium text-ink">
+                    The video for this lesson is on Oak National Academy&apos;s own site.
+                  </p>
+                  <p className="text-sm text-ink-muted">
+                    Watch it there, then come straight back to this page — your place is saved,
+                    and the timer is paused while you are away.
+                  </p>
+                  <Button href={lesson.oakUrl} target="_blank" rel="noreferrer">
+                    <ExternalLink className="mr-1.5 h-4 w-4" />
+                    Watch the lesson on Oak
+                  </Button>
+                </div>
+              ) : null}
+
+              {lesson.transcript ? (
+                <div className="space-y-3 text-[15px] leading-relaxed text-ink">
+                  {lesson.oakUrl ? (
+                    <p className="text-xs font-semibold uppercase tracking-wide text-ink-muted">
+                      What the teacher says, in words
+                    </p>
+                  ) : null}
+                  {lesson.transcript
+                    .split(/\n{2,}/)
+                    .filter((p) => p.trim().length > 0)
+                    .map((para, i) => (
+                      <p key={i}>{para}</p>
+                    ))}
+                </div>
+              ) : lesson.oakUrl ? null : (
+                <p className="text-ink-muted">No content is available for this lesson yet.</p>
+              )}
+            </>
           )}
 
           <Button onClick={() => void completeLearn()} disabled={submitting || learnDone}>
