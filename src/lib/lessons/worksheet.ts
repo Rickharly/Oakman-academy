@@ -22,6 +22,7 @@ import { prisma } from "@/lib/db";
 import { getAiProvider } from "@/lib/ai/provider";
 import type { Question } from "@/generated/prisma/client";
 import { extractWorksheetText, splitWorksheetQuestions } from "@/lib/questions/worksheet-pipeline";
+import { fetchProviderAsset } from "@/lib/curriculum/asset-fetch";
 
 /** More than this and it is a booklet, not a period's practice. */
 const MAX_TASKS = 8;
@@ -64,12 +65,10 @@ async function readResourceBytes(resource: {
   const url = resource.providerUrl;
   if (!url || !/^https:\/\//i.test(url)) return null;
 
-  // The key stays here. It is never sent to the browser, and the PDF is read server-side.
-  const apiKey = process.env.OAK_API_KEY;
-  const res = await fetch(url, {
-    headers: apiKey ? { Authorization: `Bearer ${apiKey}` } : {},
-    cache: "no-store",
-  }).catch(() => null);
+  // Through the shared fetcher: the stored URL is the provider's asset endpoint, which answers
+  // with a signed link rather than the PDF. Reading that JSON as a PDF is why worksheets came
+  // back empty. The key stays server-side either way.
+  const res = await fetchProviderAsset(url).catch(() => null);
   if (!res?.ok) return null;
   return Buffer.from(await res.arrayBuffer());
 }

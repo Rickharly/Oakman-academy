@@ -1,6 +1,4 @@
 import { notFound } from "next/navigation";
-import { headers } from "next/headers";
-import { canEmbed } from "@/lib/curriculum/embed";
 import { requireStudent } from "@/lib/auth/session";
 import { prisma } from "@/lib/db";
 import { getAttemptView, startOrResumeAttempt } from "@/lib/lessons/service";
@@ -32,17 +30,6 @@ function mapQuestion(q: RawQuestion): LessonPlayerQuestion {
     options: q.options,
     maxScore: q.maxScore,
   };
-}
-
-/** Asks Oak whether their lesson pages may be framed by us. Never throws; false means link. */
-async function resolveOakEmbedding(oakUrl: string | null): Promise<boolean> {
-  if (!oakUrl) return false;
-  if (process.env.OAK_EMBED_LESSONS === "off") return false;
-  const requestHeaders = await headers();
-  const host = requestHeaders.get("host");
-  const proto = requestHeaders.get("x-forwarded-proto") ?? "https";
-  if (!host) return false;
-  return canEmbed(oakUrl, `${proto}://${host}`);
 }
 
 export default async function LessonPage({
@@ -88,7 +75,6 @@ export default async function LessonPage({
   }
 
   const oakUrl = lesson.canonicalUrl ?? lesson.providerUrl;
-  const oakEmbeddable = await resolveOakEmbedding(oakUrl);
 
   const questionsByStage: Record<"STARTER" | "PRACTICE" | "CHECK", LessonPlayerQuestion[]> = {
     STARTER: view.questionsByStage.STARTER.map(mapQuestion),
@@ -132,9 +118,6 @@ export default async function LessonPage({
         explainer: parseExplainer(lesson.explainer),
         // Where this lesson lives on Oak's own site, for when we have no video file.
         oakUrl,
-        // Whether their site permits being shown inside ours. Decided by their own headers,
-        // asked once per host and cached — a blank frame would be worse than a link.
-        oakEmbeddable,
         resources: lesson.resources.map((r) => ({
           id: r.id,
           type: r.type,

@@ -1050,33 +1050,15 @@ export function LessonPlayer(props: LessonPlayerProps) {
           ) : (
             <>
               {/*
-                No video file for this lesson. Oak has one on their own site, so send them
-                there rather than pretending the lesson has no teaching in it — a transcript
-                is a poor substitute for being taught something.
+                No video file for this lesson, so send them to Oak's own page rather than
+                pretending the lesson has no teaching in it.
+
+                Deliberately a link and not an iframe. Embedding their lesson page put a whole
+                website inside the lesson — navigation, cookie banner, their menus — and it did
+                not even open on the video. A page pretending to be a player is worse than a
+                link that admits it is one: the child taps it, watches, and comes back.
               */}
-              {lesson.oakUrl && lesson.oakEmbeddable ? (
-                // Oak's headers allow it, so the lesson plays here and the child never leaves.
-                // The link stays underneath: if the frame is empty for any reason, there is
-                // always a way through rather than a dead end.
-                <div className="space-y-2">
-                  <iframe
-                    src={lesson.oakUrl}
-                    title={`${lesson.title} on Oak National Academy`}
-                    className="aspect-video w-full rounded-xl border border-line bg-stone-900"
-                    allow="fullscreen; picture-in-picture; encrypted-media"
-                    referrerPolicy="no-referrer-when-downgrade"
-                  />
-                  <a
-                    href={lesson.oakUrl}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="inline-flex items-center gap-1 text-xs text-ink-muted underline-offset-4 hover:underline"
-                  >
-                    <ExternalLink className="h-3 w-3" />
-                    Not loading? Open it on Oak
-                  </a>
-                </div>
-              ) : lesson.oakUrl ? (
+              {lesson.oakUrl ? (
                 <div className="space-y-3 rounded-2xl bg-accent-soft p-5">
                   <p className="text-base font-medium text-ink">
                     The video for this lesson is on Oak National Academy&apos;s own site.

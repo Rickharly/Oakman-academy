@@ -8,6 +8,7 @@ import { pipeline } from "node:stream/promises";
 import type { ReadableStream as WebReadableStream } from "node:stream/web";
 import { requireUserApi, jsonError, ApiError } from "@/lib/auth/api";
 import { prisma } from "@/lib/db";
+import { fetchProviderAsset } from "@/lib/curriculum/asset-fetch";
 
 /**
  * Serves a lesson's video or worksheet.
@@ -65,8 +66,14 @@ function contentTypeFor(resource: { type: string; mimeType: string | null }, ups
   for (const candidate of [upstream, resource.mimeType]) {
     if (!candidate) continue;
     const clean = candidate.split(";")[0]!.trim().toLowerCase();
-    // Generic types tell the browser nothing; prefer what we know the row to be.
-    if (clean && clean !== "application/octet-stream" && clean !== "binary/octet-stream") return candidate;
+    if (!clean) continue;
+    // Generic types tell the browser nothing.
+    if (clean === "application/octet-stream" || clean === "binary/octet-stream") continue;
+    // A type that contradicts the row is worse than none — rows were stamped
+    // "application/json" back when the signed-link response was mistaken for the file, and a
+    // video labelled as JSON is a video that will not play.
+    if (fallback && clean.split("/")[0] !== fallback.split("/")[0]) continue;
+    return candidate;
   }
   return fallback ?? "application/octet-stream";
 }
@@ -165,21 +172,7 @@ export async function GET(req: Request, ctx: { params: Promise<{ resourceId: str
       return serveFromDisk(file, cached.size, contentType, req, resource.label);
     }
 
-    const apiKey = process.env.OAK_API_KEY;
-    const upstream = await fetch(url, {
-      headers: apiKey ? { Authorization: `Bearer ${apiKey}` } : {},
-      cache: "no-store",
-    });
-
-    if (!upstream.ok || !upstream.body) {
-      const denied = upstream.status === 401 || upstream.status === 403;
-      throw new ApiError(
-        denied ? 502 : upstream.status,
-        denied
-          ? "The curriculum provider refused the request. Check OAK_API_KEY is set on the server."
-          : `The provider returned ${upstream.status}.`,
-      );
-    }
+    const upstream = await fetchProviderAsset(url);
 
     const upstreamType = upstream.headers.get("content-type") ?? contentType;
     const declared = Number(upstream.headers.get("content-length") ?? "0");
@@ -205,6 +198,7 @@ export async function GET(req: Request, ctx: { params: Promise<{ resourceId: str
     // The stream is split: one half goes to the browser immediately, the other is written to
     // disk for the next request. Backpressure is bounded by the slower of the two, and if the
     // disk copy fails the child still gets their video.
+    if (!upstream.body) throw new ApiError(502, "The provider returned an empty file.");
     const [toClient, toDisk] = upstream.body.tee();
 
     if (declared <= MAX_CACHE_BYTES) {
