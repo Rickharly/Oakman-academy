@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState, type SyntheticEvent } from "react";
-import { Check, ExternalLink, FileText, Loader2, Lock, MessageCircle, PartyPopper } from "lucide-react";
+import { Check, ExternalLink, FileText, Loader2, Lock, MessageCircle, PartyPopper, Sparkles } from "lucide-react";
 import type { LessonStage } from "@/generated/prisma/client";
 import { nextStage, stageIndex } from "@/lib/lessons/stages";
 import { Card } from "@/components/ui/Card";
@@ -81,6 +81,11 @@ export type LessonPlayerProps = {
   breakMinutes: number;
   /** Seconds already spent in this lesson. */
   elapsedSeconds: number;
+  /**
+   * Whether to offer the "do you already know this?" check first. Only for a lesson not yet
+   * started — asking someone mid-lesson whether they need it makes no sense.
+   */
+  offerPreCheck?: boolean;
 };
 
 type FinalAttempt = {
@@ -173,6 +178,7 @@ export function LessonPlayer(props: LessonPlayerProps) {
     lessonMinutes,
     breakMinutes,
     elapsedSeconds,
+    offerPreCheck = false,
   } =
     props;
 
@@ -204,6 +210,11 @@ export function LessonPlayer(props: LessonPlayerProps) {
 
   const lastVideoSent = useRef(0);
   const [generatingPractice, setGeneratingPractice] = useState(false);
+  // The "do you already know this?" check, offered once before a lesson is started.
+  const [preCheckOpen, setPreCheckOpen] = useState(offerPreCheck);
+  const [preCheckAnswers, setPreCheckAnswers] = useState<Record<string, unknown>>({});
+  const [preCheckBusy, setPreCheckBusy] = useState(false);
+  const [preCheckResult, setPreCheckResult] = useState<{ passed: boolean; message: string } | null>(null);
   const [practiceError, setPracticeError] = useState<string | null>(null);
   const [extraPractice, setExtraPractice] = useState<LessonPlayerQuestion[]>([]);
 
@@ -925,7 +936,107 @@ export function LessonPlayer(props: LessonPlayerProps) {
     );
   }
 
+  /** Sends the pre-check to be marked on the server. Nothing is decided in the browser. */
+  async function submitPreCheck() {
+    setPreCheckBusy(true);
+    try {
+      const res = await fetch(`/api/lessons/${lesson.id}/pre-check`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ answers: preCheckAnswers }),
+      });
+      const data = (await res.json()) as { passed?: boolean; message?: string; error?: string };
+      if (!res.ok) throw new Error(data.error ?? "Could not check that.");
+      setPreCheckResult({ passed: Boolean(data.passed), message: data.message ?? "" });
+      if (!data.passed) setTimeout(() => setPreCheckOpen(false), 1800);
+    } catch {
+      // If the check cannot be marked, the lesson is the safe place to be.
+      setPreCheckOpen(false);
+    } finally {
+      setPreCheckBusy(false);
+    }
+  }
+
+  function renderPreCheck() {
+    const qs = questionsByStage.CHECK;
+    const answered = Object.keys(preCheckAnswers).length;
+
+    if (preCheckResult) {
+      return (
+        <Card padding="lg" className="mx-auto max-w-xl space-y-4 text-center">
+          {preCheckResult.passed ? (
+            <Check className="mx-auto h-10 w-10 text-success" />
+          ) : (
+            <Sparkles className="mx-auto h-10 w-10 text-accent" />
+          )}
+          <h2 className="text-xl font-semibold text-ink">{preCheckResult.message}</h2>
+          {preCheckResult.passed ? (
+            <Button href={nextLessonId ? `/lessons/${nextLessonId}` : "/today"} size="lg">
+              {nextLessonId ? "On to the next lesson" : "Back to Today"}
+            </Button>
+          ) : (
+            <p className="text-sm text-ink-muted">Starting the lesson…</p>
+          )}
+        </Card>
+      );
+    }
+
+    return (
+      <Card padding="lg" className="mx-auto max-w-2xl space-y-5">
+        <div className="space-y-1">
+          <h2 className="text-xl font-semibold text-ink">Do you already know this?</h2>
+          <p className="text-sm text-ink-muted">
+            A few questions from the end of the lesson. Get them right and you can skip
+            straight past it — no point being taught something you can already do.
+          </p>
+        </div>
+
+        {qs.map((q, i) => (
+          <div key={q.id} className="space-y-2">
+            <p className="text-xs font-medium uppercase tracking-wide text-ink-muted">
+              Question {i + 1} of {qs.length}
+            </p>
+            {/* The renderer draws the answer controls; the question itself is the caller's job. */}
+            <p className="text-base font-medium leading-relaxed text-ink">{q.prompt}</p>
+            <QuestionRenderer
+              question={q}
+              value={preCheckAnswers[q.id]}
+              onChange={(v) => setPreCheckAnswers((prev) => ({ ...prev, [q.id]: v }))}
+            />
+          </div>
+        ))}
+
+        <div className="flex flex-wrap items-center gap-3 border-t border-line pt-4">
+          <Button onClick={() => void submitPreCheck()} disabled={preCheckBusy || answered === 0}>
+            {preCheckBusy ? "Checking…" : "Check my answers"}
+          </Button>
+          <Button variant="ghost" onClick={() => setPreCheckOpen(false)}>
+            I don&apos;t know this topic
+          </Button>
+        </div>
+        <p className="text-xs text-ink-faint">
+          Not sure? Take the lesson. Skipping something you half-know leaves a gap that turns up
+          later.
+        </p>
+      </Card>
+    );
+  }
+
   // ───────────────────────────── layout ─────────────────────────────
+
+  if (preCheckOpen && questionsByStage.CHECK.length >= 3) {
+    return (
+      <div className="space-y-6">
+        <div className="space-y-1">
+          <span className={cn("text-xs font-semibold uppercase tracking-wide", theme.text)}>
+            {subjectTitle}
+          </span>
+          <h1 className="text-2xl font-semibold tracking-tight text-ink">{lesson.title}</h1>
+        </div>
+        {renderPreCheck()}
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">

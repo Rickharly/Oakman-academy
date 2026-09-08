@@ -142,6 +142,14 @@ export default async function LessonPage({
       subjectSlug={subject.slug}
       unitTitle={lesson.unit.title}
       questionsByStage={questionsByStage}
+      // Only for a lesson not yet begun: asking someone mid-lesson whether they need it makes
+      // no sense, and a lesson they have already worked on is not one to skip.
+      offerPreCheck={
+        view.attempt.currentStage === "STARTER" &&
+        // An activity row exists the moment the lesson is opened, so its presence proves
+        // nothing. Having answered a question does.
+        view.activities.every((a) => a.questionAttempts.length === 0 && a.status !== "GRADED")
+      }
       activities={activities}
       drafts={view.drafts}
       worksheetFallback={
