@@ -548,6 +548,19 @@ export async function completeStage(attemptId: string, studentId: string, stage:
   }
 
   // COMPLETE
+  return finaliseAttempt(attempt);
+}
+
+/**
+ * Marks an attempt finished: its status, its assignment, its progress row, its log line.
+ *
+ * Pulled out of `completeStage` because pressing Finish is not the only way a lesson ends. A
+ * child who answered every question and closed the tab has finished the lesson; the button is
+ * how they say so, not what makes it true. `settleFinishedLessons` uses this for the ones
+ * nobody pressed.
+ */
+export async function finaliseAttempt(attempt: LessonAttempt): Promise<LessonAttempt> {
+  const studentId = attempt.studentId;
   const assessedCount = await prisma.activityAttempt.count({
     where: { lessonAttemptId: attempt.id, stage: { in: ["PRACTICE", "CHECK"] }, status: "GRADED" },
   });
@@ -560,7 +573,7 @@ export async function completeStage(attemptId: string, studentId: string, stage:
 
   const updated = await prisma.lessonAttempt.update({
     where: { id: attempt.id },
-    data: { completedAt: new Date(), status },
+    data: { completedAt: attempt.completedAt ?? new Date(), status, currentStage: "COMPLETE" },
   });
 
   if (attempt.assignmentId) {
@@ -576,6 +589,50 @@ export async function completeStage(attemptId: string, studentId: string, stage:
   });
 
   return updated;
+}
+
+/**
+ * How long after the quiz is marked before an unfinished lesson counts as finished anyway.
+ *
+ * Long enough that a child reading their feedback, retrying a question, or doing the extra
+ * practice is not cut off mid-thought; short enough that a lesson done this morning is on the
+ * board as done by the next one.
+ */
+const SETTLE_AFTER_MINUTES = 15;
+
+/**
+ * Marks as done the lessons a child finished but never pressed Finish on.
+ *
+ * A child answered every question, scored full marks, and the lesson stayed "not started" on
+ * her board — because the only thing that completed a lesson was a button, and for a while
+ * that button was hidden whenever there was time left in the period. Bookkeeping should not be
+ * able to un-do a lesson someone did.
+ *
+ * The rule is deliberately narrow: the quiz must have been marked, and a quarter of an hour
+ * must have passed since. A lesson still being worked on is left alone.
+ */
+export async function settleFinishedLessons(studentId: string): Promise<number> {
+  const cutoff = new Date(Date.now() - SETTLE_AFTER_MINUTES * 60 * 1000);
+
+  const stale = await prisma.lessonAttempt.findMany({
+    where: {
+      studentId,
+      status: "IN_PROGRESS",
+      activities: { some: { stage: "CHECK", status: "GRADED", gradedAt: { lt: cutoff } } },
+    },
+    take: 20,
+  });
+
+  let settled = 0;
+  for (const attempt of stale) {
+    // Never fatal: a lesson that will not settle must not stop the board from rendering.
+    await finaliseAttempt(attempt)
+      .then(() => {
+        settled += 1;
+      })
+      .catch(() => undefined);
+  }
+  return settled;
 }
 
 export async function recordVideoProgress(

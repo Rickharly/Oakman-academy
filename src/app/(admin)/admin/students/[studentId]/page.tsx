@@ -15,6 +15,7 @@ import { getTodayView, getWeekStrip } from "@/lib/scheduling/planner";
 import { getDayEngagement } from "@/lib/engagement/service";
 import { DayEngagement } from "@/components/admin/DayEngagement";
 import { schoolDayKey } from "@/lib/dates";
+import { settleFinishedLessons } from "@/lib/lessons/service";
 
 const ASSIGNMENT_BADGE: Record<string, { status?: BadgeStatus; tone?: "neutral" | "warning" }> = {
   PLANNED: { tone: "neutral" },
@@ -37,6 +38,11 @@ const STRIP_DOT: Record<string, string> = {
 export default async function AdminStudentOverviewPage({ params }: { params: Promise<{ studentId: string }> }) {
   const { studentId } = await params;
   const { student } = await requireParentOfStudent(studentId);
+
+  // A lesson a child did but never pressed Finish on left its progress row unwritten, so the
+  // subject sat at 0% however much work had gone into it. Settle those before reading, or a
+  // parent is shown a number that is wrong in the direction that matters most.
+  await settleFinishedLessons(studentId).catch(() => undefined);
 
   const dateKey = schoolDayKey();
   const [overview, todayView, weekStrip, subjects, weakTopics, summaries, activity, engagement, readingEntries] =
@@ -152,7 +158,7 @@ export default async function AdminStudentOverviewPage({ params }: { params: Pro
               <thead>
                 <tr className="text-left text-xs uppercase tracking-wide text-ink-muted">
                   <th className="pb-2 font-medium">Subject</th>
-                  <th className="pb-2 font-medium">Completion</th>
+                  <th className="pb-2 font-medium">Through what&apos;s imported</th>
                   <th className="pb-2 pr-0 text-right font-medium">Mastery</th>
                   <th className="pb-2 pl-4 text-right font-medium">Lessons</th>
                   <th className="pb-2 pl-4" />
@@ -165,7 +171,11 @@ export default async function AdminStudentOverviewPage({ params }: { params: Pro
                     <td className="py-3 pr-6">
                       <div className="flex items-center gap-2">
                         <ProgressBar value={s.completionPct} size="sm" className="w-28" />
-                        <span className="text-xs text-ink-muted">{s.completionPct}%</span>
+                        {/* 1 of 61 is not 0%. Rounding a real lesson away to nothing is how a
+                            subject looks untouched the day after it was worked on. */}
+                        <span className="text-xs text-ink-muted">
+                          {s.lessonsDone > 0 && s.completionPct === 0 ? "<1%" : `${s.completionPct}%`}
+                        </span>
                       </div>
                     </td>
                     <td className="py-3 text-right tabular-nums text-ink">
@@ -186,6 +196,17 @@ export default async function AdminStudentOverviewPage({ params }: { params: Pro
                 ))}
               </tbody>
             </table>
+            {/*
+              The honest caveat. The bar is lessons done over lessons *imported*, and how much
+              of a year is imported differs by subject — a subject with eight lessons in the
+              database looks nearly finished next to one with sixty. Without saying so, the
+              column reads as "she has done nothing in maths", which is not what it means.
+            */}
+            <p className="mt-3 text-xs text-ink-muted">
+              Measured against the lessons imported so far, not the whole year — so a subject
+              with fewer lessons imported will look further along than it is. The Lessons column
+              is the number that does not move.
+            </p>
           </div>
         )}
       </Card>

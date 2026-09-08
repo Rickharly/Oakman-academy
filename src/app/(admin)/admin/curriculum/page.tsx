@@ -75,6 +75,17 @@ export default async function AdminCurriculumPage() {
     readOakQuota(),
   ]);
 
+  // Where the videos are, answered rather than guessed at.
+  //
+  // "Why are there no videos" has three different answers — we never managed to read the
+  // lesson's assets, we read them and the provider has no video for it, or the video is here
+  // and something else is wrong — and a parent cannot tell them apart by looking at a lesson.
+  const [lessonsWithVideo, lessonsAssetsRead, lessonsTotalAll] = await Promise.all([
+    prisma.lesson.count({ where: { resources: { some: { type: "VIDEO" } } } }),
+    prisma.lesson.count({ where: { assetsSyncedAt: { not: null } } }),
+    prisma.lesson.count(),
+  ]);
+
   const lessonCountByProgramme = new Map<string, number>();
   for (const u of units) {
     lessonCountByProgramme.set(u.programmeId, (lessonCountByProgramme.get(u.programmeId) ?? 0) + u._count.lessons);
@@ -98,6 +109,38 @@ export default async function AdminCurriculumPage() {
   return (
     <>
       <PageHeader title="Curriculum" description="Imported programmes, units, and lessons." />
+
+      {/*
+        The video answer, stated plainly. Three numbers, because "no videos" has three causes
+        and only one of them is something a parent can act on.
+      */}
+      {lessonsTotalAll > 0 ? (
+        <Card padding="md" className="mb-6 space-y-2">
+          <p className="text-sm font-semibold text-ink">Videos</p>
+          <p className="text-sm text-ink">
+            <span className="font-medium tabular-nums">{lessonsWithVideo}</span> of{" "}
+            <span className="tabular-nums">{lessonsTotalAll}</span> lessons have a video.
+          </p>
+          {lessonsAssetsRead < lessonsTotalAll ? (
+            <p className="text-sm text-ink-muted">
+              {lessonsTotalAll - lessonsAssetsRead} lesson(s) have never had their files read —
+              usually the provider&apos;s quota running out mid-import. Run an import and those
+              are the ones it goes back for.
+            </p>
+          ) : lessonsWithVideo === 0 ? (
+            <p className="text-sm text-ink-muted">
+              Every lesson&apos;s files have been read and none of them came with a video, so the
+              provider does not serve video for this content. Lessons fall back to the written
+              lesson and a link to the provider&apos;s own page.
+            </p>
+          ) : (
+            <p className="text-sm text-ink-muted">
+              All lesson files have been read. Lessons without a video genuinely do not have one;
+              those show the written lesson and a link to the provider&apos;s page instead.
+            </p>
+          )}
+        </Card>
+      ) : null}
 
       {!usingOak || !oakKeySet ? (
         <Card padding="md" className="mb-6 flex items-start gap-3 border-warning-soft bg-warning-soft/40">

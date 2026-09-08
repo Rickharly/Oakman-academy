@@ -11,7 +11,9 @@
  * an empty Wednesday. The second week is nearly free, because a lesson already imported costs
  * nothing to walk past.
  */
+import { Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/db";
+import { getOrCreateExplainer } from "@/lib/lessons/explainer";
 import { syncMany, type SyncScope } from "./sync";
 
 /** How far ahead to keep the curriculum stocked. */
@@ -167,5 +169,36 @@ export async function importLessonsAhead(
     log(`FAILED ${f.scope.subjectSlug} year ${f.scope.yearGroup}: ${f.error}`);
   }
 
+  const written = await writeExplainersFor(targets, log);
+  if (written > 0) log(`Wrote ${written} lesson(s) out in words, ready to open.`);
+
   return { targets, jobIds, failures, nothingToDo: false };
+}
+
+/**
+ * Writes out, ahead of time, the lessons that were just imported.
+ *
+ * A child opening Monday's lesson should not watch a spinner saying her teacher is writing it.
+ * The work is the same either way; doing it on Sunday means nobody waits for it. Failures are
+ * ignored on purpose — the lesson page writes it on demand if this did not get to it.
+ */
+async function writeExplainersFor(targets: AheadTarget[], log: (line: string) => void): Promise<number> {
+  const slugs = targets.flatMap((t) => t.lessonSlugs);
+  if (slugs.length === 0) return 0;
+
+  const lessons = await prisma.lesson.findMany({
+    where: { providerSlug: { in: slugs }, explainer: { equals: Prisma.DbNull } },
+    select: { id: true, title: true },
+  });
+
+  let written = 0;
+  for (const lesson of lessons) {
+    try {
+      const explainer = await getOrCreateExplainer(lesson.id);
+      if (explainer) written += 1;
+    } catch (err) {
+      log(`  Could not write out "${lesson.title}": ${(err as Error).message}`);
+    }
+  }
+  return written;
 }

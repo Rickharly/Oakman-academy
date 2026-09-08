@@ -972,7 +972,13 @@ export function LessonPlayer(props: LessonPlayerProps) {
         ) : teaching ? (
           <Card padding="lg" className="flex items-center gap-3">
             <Loader2 className="h-5 w-5 animate-spin text-accent" />
-            <p className="text-ink">Your teacher is writing this lesson out for you…</p>
+            <div>
+              <p className="text-ink">Getting your lesson ready — about twenty seconds.</p>
+              <p className="text-sm text-ink-muted">
+                This one hasn&apos;t been taught before, so I&apos;m writing it out for you. Next
+                time it&apos;ll be here waiting.
+              </p>
+            </div>
           </Card>
         ) : explainerState === "none" && !video && !lesson.oakUrl && !lesson.transcript ? (
           // Nothing to teach from, and we will not invent a lesson. Said plainly, because a

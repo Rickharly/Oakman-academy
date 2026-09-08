@@ -8,6 +8,7 @@ import type { DailyAssignment, Lesson, Programme, ReviewItem, StudentLessonProgr
 import { Prisma } from "@/generated/prisma/client";
 import { addDaysKey, dateOnlyKey, isoWeekday, schoolDayEnd, todayDateOnly, toDateOnly, weekStartKey } from "@/lib/dates";
 import { enrolStudentInYearGroup } from "@/lib/admin/enrol";
+import { settleFinishedLessons } from "@/lib/lessons/service";
 
 const REVIEW_MINUTES = 15;
 const MAX_REVIEWS_PER_DAY = 2;
@@ -406,6 +407,10 @@ async function trimDayToTimetable(studentId: string, dayDate: Date, cap: number)
 
 export async function getTodayView(studentId: string, dateKey: string): Promise<TodayView> {
   await ensureDayPlanned(studentId, dateKey);
+
+  // A lesson someone actually did should be on the board as done, whether or not they pressed
+  // the button that says so. Never fatal — the board renders either way.
+  await settleFinishedLessons(studentId).catch(() => undefined);
 
   const dayDate = toDateOnly(dateKey);
   const full = await prisma.dailyAssignment.findMany({
