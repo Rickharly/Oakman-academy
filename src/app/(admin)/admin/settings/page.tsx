@@ -5,6 +5,7 @@ import { PageHeader } from "@/components/ui/PageHeader";
 import { Card } from "@/components/ui/Card";
 import { Avatar, isPhotoAvatar } from "@/components/ui/Avatar";
 import { PhotoUpload } from "@/components/admin/PhotoUpload";
+import { ResetProgress } from "@/components/admin/ResetProgress";
 import { dayEndsAt } from "@/lib/scheduling/timetable";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
@@ -281,6 +282,10 @@ export default async function AdminSettingsPage({
                       </Button>
                     </div>
                   </form>
+
+                  <div className="mb-3">
+                    <ResetProgress studentId={profile.id} name={s.displayName} />
+                  </div>
 
                   <form action={replayWelcome} className="mb-3">
                     <input type="hidden" name="studentId" value={profile.id} />

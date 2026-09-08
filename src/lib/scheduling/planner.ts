@@ -334,15 +334,33 @@ export async function planWeek(studentId: string, weekStart: string, opts?: { re
   });
 }
 
+/**
+ * Makes sure the day in front of a child is a full timetable.
+ *
+ * The test is "does this day have its periods", not "does this day have anything". Those are
+ * not the same, and treating them as the same left a child looking at a single lesson with no
+ * way back: any row at all — a lone reading slot, a day left short by a half-finished plan —
+ * stopped the planner from ever running again for that day.
+ *
+ * Topping up is safe to call repeatedly. `planWeek` only adds what is missing, never touches
+ * work already started or set by a parent, and the database refuses a duplicate.
+ */
 export async function ensureDayPlanned(studentId: string, dateKey: string): Promise<DailyAssignment[]> {
   if (isoWeekday(dateKey) > 5) return []; // weekends: plan nothing
 
   const dayDate = toDateOnly(dateKey);
-  const existing = await prisma.dailyAssignment.findMany({ where: { studentId, date: dayDate }, orderBy: { order: "asc" } });
-  if (existing.length > 0) return existing;
+  const read = () =>
+    prisma.dailyAssignment.findMany({ where: { studentId, date: dayDate }, orderBy: { order: "asc" } });
+
+  const existing = await read();
+  const student = await prisma.studentProfile.findUnique({ where: { id: studentId } });
+  if (!student) return existing;
+
+  const lessonsToday = existing.filter((a) => a.kind === "LESSON" && a.status !== "MOVED").length;
+  if (lessonsToday >= student.lessonsPerDay) return existing;
 
   await planWeek(studentId, dateKey);
-  return prisma.dailyAssignment.findMany({ where: { studentId, date: dayDate }, orderBy: { order: "asc" } });
+  return read();
 }
 
 export async function getTodayView(studentId: string, dateKey: string): Promise<TodayView> {

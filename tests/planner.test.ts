@@ -141,3 +141,45 @@ describe("planner: when a subject runs out of lessons", () => {
     expect(new Set(all.map((a) => a.lessonId)).size).toBe(5);
   });
 });
+
+describe("planner: a day left short", () => {
+  beforeAll(async () => {
+    await resetDb();
+    studentId = await buildStudentWithCurriculum(12);
+  });
+
+  it("tops up a day that has only one lesson instead of leaving it broken", async () => {
+    await planWeek(studentId, MONDAY, { replace: true });
+    const before = await lessonsOn(MONDAY);
+    expect(before).toHaveLength(5);
+
+    // Simulate the state a child was actually left in: all but one period gone.
+    await prisma.dailyAssignment.deleteMany({
+      where: { studentId, id: { in: before.slice(1).map((a) => a.id) } },
+    });
+    expect(await lessonsOn(MONDAY)).toHaveLength(1);
+
+    // Opening Today must repair the day, not shrug at it.
+    await ensureDayPlanned(studentId, MONDAY);
+    expect(await lessonsOn(MONDAY)).toHaveLength(5);
+  });
+
+  it("does not add a sixth lesson to a day that is already full", async () => {
+    await ensureDayPlanned(studentId, MONDAY);
+    await ensureDayPlanned(studentId, MONDAY);
+    expect(await lessonsOn(MONDAY)).toHaveLength(5);
+  });
+
+  it("keeps the lesson they had already started", async () => {
+    const [first] = await lessonsOn(MONDAY);
+    await prisma.dailyAssignment.update({ where: { id: first.id }, data: { status: "IN_PROGRESS" } });
+    await prisma.dailyAssignment.deleteMany({
+      where: { studentId, date: toDateOnly(MONDAY), status: "PLANNED", kind: "LESSON" },
+    });
+
+    await ensureDayPlanned(studentId, MONDAY);
+    const after = await lessonsOn(MONDAY);
+    expect(after).toHaveLength(5);
+    expect(after.some((a) => a.id === first.id && a.status === "IN_PROGRESS")).toBe(true);
+  });
+});
