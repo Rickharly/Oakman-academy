@@ -81,6 +81,8 @@ export type LessonPlayerProps = {
   breakMinutes: number;
   /** Seconds already spent in this lesson. */
   elapsedSeconds: number;
+  /** Whether the teacher reads her replies aloud for this child. */
+  voiceEnabled?: boolean;
   /**
    * Whether to offer the "do you already know this?" check first. Only for a lesson not yet
    * started — asking someone mid-lesson whether they need it makes no sense.
@@ -179,6 +181,7 @@ export function LessonPlayer(props: LessonPlayerProps) {
     breakMinutes,
     elapsedSeconds,
     offerPreCheck = false,
+    voiceEnabled = false,
   } =
     props;
 
@@ -1112,7 +1115,7 @@ export function LessonPlayer(props: LessonPlayerProps) {
         {viewStage !== "COMPLETE" ? (
           <aside className="hidden lg:sticky lg:top-20 lg:block lg:max-h-[calc(100dvh-6rem)]">
             <Card padding="lg" className="flex h-[calc(100dvh-6rem)] flex-col">
-              <TeacherPanel lessonAttemptId={attemptId} questionId={currentQuestionId} stage={viewStage} />
+              <TeacherPanel lessonAttemptId={attemptId} questionId={currentQuestionId} stage={viewStage} voice={voiceEnabled} />
             </Card>
           </aside>
         ) : null}
@@ -1130,7 +1133,7 @@ export function LessonPlayer(props: LessonPlayerProps) {
           </button>
           <Sheet open={teacherSheetOpen} onClose={() => setTeacherSheetOpen(false)} side="bottom" title="Ask your teacher">
             <div className="flex h-[70dvh] flex-col">
-              <TeacherPanel lessonAttemptId={attemptId} questionId={currentQuestionId} stage={viewStage} />
+              <TeacherPanel lessonAttemptId={attemptId} questionId={currentQuestionId} stage={viewStage} voice={voiceEnabled} />
             </div>
           </Sheet>
         </>

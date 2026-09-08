@@ -9,6 +9,8 @@ import { ResetProgress } from "@/components/admin/ResetProgress";
 import { enrolStudentInYearGroup } from "@/lib/admin/enrol";
 import { dayEndsAt } from "@/lib/scheduling/timetable";
 import { Input } from "@/components/ui/Input";
+import { Textarea } from "@/components/ui/Textarea";
+import { VOICE_OPTIONS } from "@/lib/ai/voice";
 import { Button } from "@/components/ui/Button";
 import { requireParent, requireParentOfStudent } from "@/lib/auth/session";
 import { prisma } from "@/lib/db";
@@ -85,6 +87,18 @@ export default async function AdminSettingsPage({
     const schoolStartTime = String(formData.get("schoolStartTime") ?? "").trim();
     const validTime = /^([01]\d|2[0-3]):[0-5]\d$/.test(schoolStartTime);
 
+    // Personalisation. Interests are free text, one per line or comma separated — a parent
+    // should not have to learn a format to say their son likes football.
+    const age = Number(formData.get("age"));
+    const interests = String(formData.get("interests") ?? "")
+      .split(/[,\n]/)
+      .map((v) => v.trim())
+      .filter(Boolean)
+      .slice(0, 15);
+    const teacherNotes = String(formData.get("teacherNotes") ?? "").trim().slice(0, 600);
+    const voiceId = String(formData.get("voiceId") ?? "").trim();
+    const voiceEnabled = formData.get("voiceEnabled") === "on";
+
     await prisma.$transaction([
       prisma.user.update({
         where: { id: student.userId },
@@ -106,6 +120,11 @@ export default async function AdminSettingsPage({
             ? { breakMinutes }
             : {}),
           ...(validTime ? { schoolStartTime } : {}),
+          age: Number.isFinite(age) && age >= 3 && age <= 19 ? age : null,
+          interests,
+          teacherNotes: teacherNotes || null,
+          voiceId: voiceId || null,
+          voiceEnabled,
         },
       }),
     ]);
@@ -281,6 +300,67 @@ export default async function AdminSettingsPage({
                     <div>
                       <label className={fieldClass()}>Break minutes</label>
                       <Input type="number" name="breakMinutes" defaultValue={profile.breakMinutes} min={0} max={60} step={5} />
+                    </div>
+
+                    <div className="sm:col-span-4 border-t border-line pt-4">
+                      <p className="text-sm font-semibold text-ink">Making it theirs</p>
+                      <p className="text-xs text-ink-muted">
+                        The teacher uses this to pitch explanations and choose examples. A child
+                        who is told about fractions using their own football team is listening to
+                        something about them.
+                      </p>
+                    </div>
+
+                    <div>
+                      <label className={fieldClass()}>Age</label>
+                      <Input type="number" name="age" min={3} max={19} defaultValue={profile.age ?? ""} />
+                    </div>
+
+                    <div className="sm:col-span-3">
+                      <label className={fieldClass()}>What they&apos;re into</label>
+                      <Input
+                        name="interests"
+                        defaultValue={(Array.isArray(profile.interests) ? (profile.interests as string[]) : []).join(", ")}
+                        placeholder="football, Minecraft, horses, drawing"
+                      />
+                    </div>
+
+                    <div className="sm:col-span-4">
+                      <label className={fieldClass()}>Anything the teacher should know</label>
+                      <Textarea
+                        name="teacherNotes"
+                        rows={2}
+                        defaultValue={profile.teacherNotes ?? ""}
+                        placeholder="Gives up quickly when stuck. Loves being asked to explain things back."
+                      />
+                    </div>
+
+                    <div className="sm:col-span-2">
+                      <label className={fieldClass()}>The teacher&apos;s voice</label>
+                      <select
+                        name="voiceId"
+                        defaultValue={profile.voiceId ?? ""}
+                        className="h-11 w-full rounded-xl border border-line bg-surface-raised px-3 text-sm text-ink outline-none focus:border-accent focus:ring-2 focus:ring-accent-soft"
+                      >
+                        <option value="">Default</option>
+                        {VOICE_OPTIONS.map((v) => (
+                          <option key={v.id} value={v.id}>
+                            {v.label} — {v.description}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div className="sm:col-span-2 flex items-end">
+                      <label className="flex min-h-11 items-center gap-2 text-sm text-ink">
+                        <input
+                          type="checkbox"
+                          name="voiceEnabled"
+                          defaultChecked={profile.voiceEnabled}
+                          className="h-5 w-5 rounded border-line text-accent focus:ring-accent-soft"
+                        />
+                        Read explanations aloud
+                      </label>
                     </div>
 
                     <div className="sm:col-span-4">

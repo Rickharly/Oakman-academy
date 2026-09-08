@@ -46,6 +46,12 @@ export interface TeacherContext {
   studentId: string;
   studentName: string;
   yearGroup: number;
+  /** How old they actually are. A Year 4 child may be 8 or 9, and it changes how you explain. */
+  age: number | null;
+  /** What they are into, so an example can be about football rather than abstract widgets. */
+  interests: string[];
+  /** Anything the parent wants the teacher to know about how this child learns. */
+  teacherNotes: string | null;
   mode: TeacherMode;
   subject: { id: string; title: string } | null;
   unit: { id: string; title: string } | null;
@@ -222,6 +228,11 @@ export async function composeContext(input: ComposeContextInput): Promise<Compos
     studentId: input.studentId,
     studentName: student.user.displayName,
     yearGroup: student.yearGroup,
+    age: student.age,
+    interests: Array.isArray(student.interests)
+      ? (student.interests as unknown[]).filter((v): v is string => typeof v === "string")
+      : [],
+    teacherNotes: student.teacherNotes,
     mode,
     subject: subject ? { id: subject.id, title: subject.title } : null,
     unit: unit ? { id: unit.id, title: unit.title } : null,
@@ -248,7 +259,18 @@ export async function composeContext(input: ComposeContextInput): Promise<Compos
 
 function renderContextText(ctx: TeacherContext): string {
   const lines: string[] = [];
-  lines.push(`STUDENT: ${ctx.studentName}, Year ${ctx.yearGroup}`);
+  lines.push(
+    `STUDENT: ${ctx.studentName}, Year ${ctx.yearGroup}${ctx.age ? `, aged ${ctx.age}` : ""}`,
+  );
+  if (ctx.interests.length > 0) {
+    // Given to the teacher as material for examples, not as small talk. A child who is asked
+    // about football every single message notices, and it stops being about them.
+    lines.push(
+      `THINGS THEY LIKE: ${ctx.interests.join(", ")} — use these for examples where one fits ` +
+        "naturally. Do not force them into every answer.",
+    );
+  }
+  if (ctx.teacherNotes) lines.push(`FROM THEIR PARENT: ${ctx.teacherNotes}`);
   lines.push(`SUBJECT: ${ctx.subject?.title ?? "(no subject — general chat)"}`);
   lines.push(`UNIT: ${ctx.unit?.title ?? "(none)"}`);
   lines.push(`LESSON: ${ctx.lesson?.title ?? "(no lesson in progress)"}`);

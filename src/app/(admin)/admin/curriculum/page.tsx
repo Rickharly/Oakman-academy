@@ -51,8 +51,17 @@ export default async function AdminCurriculumPage() {
     try {
       subjectOptions = await provider.getSubjects();
     } catch {
-      // Best-effort only — the sync form just shows no subjects if the provider can't be reached.
+      // Asking Oak for the subject list is itself a request, and it fails exactly when the
+      // quota is gone — which is the moment a parent most needs the form to still work.
     }
+  }
+
+  // Whatever the provider says, the subjects the children are actually enrolled on are in our
+  // own database. An empty dropdown is not a true "no subjects available"; it is us having
+  // failed to ask, and it leaves a parent unable to sync the very thing they came here to sync.
+  if (subjectOptions.length === 0) {
+    const known = await prisma.subject.findMany({ orderBy: { title: "asc" } });
+    subjectOptions = [...new Map(known.map((s) => [s.slug, { slug: s.slug, title: s.title }])).values()];
   }
 
   const [programmes, units, lessonsByLicence, jobs, lessonsByProvider, quota] = await Promise.all([

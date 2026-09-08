@@ -144,6 +144,7 @@ async function chat(input: ChatInput): Promise<ChatResult> {
   const system = buildSystemPrompt({
     studentName: ctx.studentName,
     yearGroup: ctx.yearGroup,
+    age: ctx.age,
     mode: ctx.mode,
     contextText: composed.text,
   });

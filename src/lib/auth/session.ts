@@ -25,6 +25,12 @@ export type SessionUser = {
     lessonMinutes: number;
     breakMinutes: number;
     schoolStartTime: string;
+    /** Personalisation a parent set: how old they are, what they like, how they are taught. */
+    age: number | null;
+    interests: string[];
+    teacherNotes: string | null;
+    voiceId: string | null;
+    voiceEnabled: boolean;
   } | null;
 };
 
@@ -52,6 +58,13 @@ function toSessionUser(user: UserWithProfile): SessionUser {
           lessonMinutes: user.studentProfile.lessonMinutes,
           breakMinutes: user.studentProfile.breakMinutes,
           schoolStartTime: user.studentProfile.schoolStartTime,
+          age: user.studentProfile.age,
+          interests: Array.isArray(user.studentProfile.interests)
+            ? (user.studentProfile.interests as unknown[]).filter((v): v is string => typeof v === "string")
+            : [],
+          teacherNotes: user.studentProfile.teacherNotes,
+          voiceId: user.studentProfile.voiceId,
+          voiceEnabled: user.studentProfile.voiceEnabled,
         }
       : null,
   };

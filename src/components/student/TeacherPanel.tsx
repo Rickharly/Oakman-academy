@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { Send, MessageCircle, Info } from "lucide-react";
 import { Textarea } from "@/components/ui/Textarea";
 import { Button } from "@/components/ui/Button";
+import { SpeakButton } from "./SpeakButton";
 import { cn } from "@/lib/cn";
 
 export type TeacherPanelProps = {
@@ -14,6 +15,8 @@ export type TeacherPanelProps = {
   /** Current lesson stage — used only to show the assessment-mode note. */
   stage?: "STARTER" | "LEARN" | "PRACTICE" | "CHECK" | "FEEDBACK" | "COMPLETE";
   className?: string;
+  /** Whether this child's teacher reads her replies aloud. Set by a parent in Settings. */
+  voice?: boolean;
 };
 
 type ChatMessage = { id: string; role: "user" | "assistant"; content: string };
@@ -46,7 +49,7 @@ function TypingDots() {
   );
 }
 
-export function TeacherPanel({ lessonAttemptId, questionId, stage, className }: TeacherPanelProps) {
+export function TeacherPanel({ lessonAttemptId, questionId, stage, className, voice = false }: TeacherPanelProps) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [conversationId, setConversationId] = useState<string | undefined>(undefined);
@@ -164,19 +167,26 @@ export function TeacherPanel({ lessonAttemptId, questionId, stage, className }: 
           </div>
         ) : (
           messages.map((m) => (
-            <div
-              key={m.id}
-              className={cn(
-                "max-w-[90%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed whitespace-pre-wrap",
-                m.role === "user"
-                  ? "ml-auto bg-accent text-white"
-                  : "bg-stone-100 text-ink",
-              )}
-            >
-              {m.content ? (
-                m.content
-              ) : m.role === "assistant" ? (
-                <TypingDots />
+            <div key={m.id} className={cn("max-w-[90%]", m.role === "user" ? "ml-auto" : "")}>
+              <div
+                className={cn(
+                  "rounded-2xl px-4 py-2.5 text-sm leading-relaxed whitespace-pre-wrap",
+                  m.role === "user" ? "bg-accent text-white" : "bg-stone-100 text-ink",
+                )}
+              >
+                {m.content ? (
+                  m.content
+                ) : m.role === "assistant" ? (
+                  <TypingDots />
+                ) : null}
+              </div>
+              {/*
+                Only the teacher's finished replies get a voice, and only when a parent has
+                turned it on for this child. A half-streamed sentence read aloud is worse than
+                silence.
+              */}
+              {voice && m.role === "assistant" && m.content && !sending ? (
+                <SpeakButton text={m.content} />
               ) : null}
             </div>
           ))

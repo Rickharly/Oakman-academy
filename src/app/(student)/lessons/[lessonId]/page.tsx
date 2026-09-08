@@ -142,6 +142,7 @@ export default async function LessonPage({
       subjectSlug={subject.slug}
       unitTitle={lesson.unit.title}
       questionsByStage={questionsByStage}
+      voiceEnabled={user.studentProfile.voiceEnabled}
       // Only for a lesson not yet begun: asking someone mid-lesson whether they need it makes
       // no sense, and a lesson they have already worked on is not one to skip.
       offerPreCheck={

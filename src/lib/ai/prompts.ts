@@ -23,7 +23,21 @@ const PEDAGOGY = [
 ].map((line) => `- ${line}`).join("\n");
 
 /** Age-appropriate register, roughly by UK year group. */
-function registerFor(yearGroup: number): string {
+/**
+ * How to speak to this particular child.
+ *
+ * Year group sets the register, but age sharpens it: eight and eleven are both "primary", and
+ * they are not the same conversation. Where a parent has told us the age, it wins.
+ */
+function registerFor(yearGroup: number, age?: number | null): string {
+  if (age != null && age <= 9) {
+    return (
+      `This student is ${age} years old (Year ${yearGroup}). Talk to them the way you would ` +
+      "to an eight or nine year old: one idea per sentence, everyday words, and something " +
+      "concrete they can picture. Never more than a few sentences before you stop and check " +
+      "they are with you. No technical terms unless you explain them in the same breath."
+    );
+  }
   if (yearGroup <= 6) {
     return "This student is in primary school (Year " + yearGroup + "). Use very short, simple sentences, everyday words, and plenty of warm encouragement. Avoid technical terms unless you explain them immediately with a concrete example.";
   }
@@ -49,6 +63,8 @@ const OUTPUT_STYLE = [
 ].map((line) => `- ${line}`).join("\n");
 
 export interface SystemPromptContext {
+  /** The child's age, when a parent has told us. Sharper than the year group alone. */
+  age?: number | null;
   studentName: string;
   yearGroup: number;
   mode: TeacherMode;
@@ -63,7 +79,7 @@ export function buildSystemPrompt(ctx: SystemPromptContext): string {
     "Pedagogy:",
     PEDAGOGY,
     "",
-    registerFor(ctx.yearGroup),
+    registerFor(ctx.yearGroup, ctx.age),
     "",
     `MODE: ${ctx.mode}`,
     MODE_TEXT[ctx.mode],

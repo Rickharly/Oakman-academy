@@ -73,6 +73,18 @@ model StudentProfile {
   breakMinutes       Int      @default(10)
   /// When the school day starts, in the family's timezone, as "HH:MM".
   schoolStartTime    String   @default("13:00")
+  /// The child's age in years, when a parent has told us. The year group is a poor proxy —
+  /// a Year 4 child may be 8 or 9, and how you explain something differs.
+  age                Int?
+  /// What they are into, in their parent's words: "football", "Minecraft", "horses".
+  /// The teacher uses these for examples, so a fraction becomes a football pitch.
+  interests          Json     @default("[]")
+  /// Anything else a parent wants the teacher to know — how they learn, what puts them off.
+  teacherNotes       String?
+  /// The ElevenLabs voice this child's teacher speaks with. Null uses the default.
+  voiceId            String?
+  /// Whether the teacher reads her explanations aloud for this child.
+  voiceEnabled       Boolean  @default(false)
   preferences        Json     @default("{}") // { gamification: "calm" | "playful", theme … }
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
