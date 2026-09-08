@@ -50,7 +50,7 @@ export default async function AdminSettingsPage({
   });
   const students = links.map((l) => l.student).filter((u) => u.studentProfile != null);
   // The family's own ElevenLabs voices, by name. Falls back to stock voices without a key.
-  const { voices, fromAccount: voicesFromAccount } = await listVoices();
+  const { voices, fromAccount: voicesFromAccount, problem: voiceProblem } = await listVoices();
 
   async function changePassword(formData: FormData) {
     "use server";
@@ -345,6 +345,7 @@ export default async function AdminSettingsPage({
                         voices={voices}
                         defaultValue={profile.voiceId}
                         fromAccount={voicesFromAccount}
+                        problem={voiceProblem}
                       />
                     </div>
 

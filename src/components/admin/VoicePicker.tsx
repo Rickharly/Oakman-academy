@@ -16,13 +16,19 @@ export function VoicePicker({
   voices,
   defaultValue,
   fromAccount,
+  problem,
 }: {
   name: string;
   voices: VoiceOption[];
   defaultValue: string | null;
   fromAccount: boolean;
+  /** Why the list is the fallback rather than the family's own voices. */
+  problem?: string | null;
 }) {
   const [voiceId, setVoiceId] = useState(defaultValue ?? "");
+  // A voice already set that is not in the list — a pasted id, or one the API did not return.
+  const known = voices.some((v) => v.id === (defaultValue ?? ""));
+  const [custom, setCustom] = useState(Boolean(defaultValue) && !known);
   const [state, setState] = useState<"idle" | "loading" | "error">("idle");
   const [error, setError] = useState<string | null>(null);
 
@@ -54,20 +60,31 @@ export function VoicePicker({
   return (
     <div className="space-y-1.5">
       <div className="flex gap-2">
-        <select
-          name={name}
-          value={voiceId}
-          onChange={(e) => setVoiceId(e.target.value)}
-          className="h-11 min-w-0 flex-1 rounded-xl border border-line bg-surface-raised px-3 text-sm text-ink outline-none focus:border-accent focus:ring-2 focus:ring-accent-soft"
-        >
-          <option value="">Default</option>
-          {voices.map((v) => (
-            <option key={v.id} value={v.id}>
-              {v.label}
-              {v.description ? ` — ${v.description}` : ""}
-            </option>
-          ))}
-        </select>
+        {custom ? (
+          // Whatever the API does, a voice id pasted from the ElevenLabs dashboard always works.
+          <input
+            name={name}
+            value={voiceId}
+            onChange={(e) => setVoiceId(e.target.value.trim())}
+            placeholder="Paste a voice ID from ElevenLabs"
+            className="h-11 min-w-0 flex-1 rounded-xl border border-line bg-surface-raised px-3 text-sm text-ink outline-none focus:border-accent focus:ring-2 focus:ring-accent-soft"
+          />
+        ) : (
+          <select
+            name={name}
+            value={voiceId}
+            onChange={(e) => setVoiceId(e.target.value)}
+            className="h-11 min-w-0 flex-1 rounded-xl border border-line bg-surface-raised px-3 text-sm text-ink outline-none focus:border-accent focus:ring-2 focus:ring-accent-soft"
+          >
+            <option value="">Default</option>
+            {voices.map((v) => (
+              <option key={v.id} value={v.id}>
+                {v.label}
+                {v.description ? ` — ${v.description}` : ""}
+              </option>
+            ))}
+          </select>
+        )}
         <button
           type="button"
           onClick={() => void preview()}
@@ -83,10 +100,20 @@ export function VoicePicker({
         </button>
       </div>
       {error ? <p className="text-xs text-danger">{error}</p> : null}
+
+      <button
+        type="button"
+        onClick={() => setCustom((v) => !v)}
+        className="text-xs font-medium text-accent underline-offset-4 hover:underline"
+      >
+        {custom ? "Choose from the list instead" : "Paste a voice ID instead"}
+      </button>
+
       {!fromAccount ? (
-        <p className="text-xs text-ink-faint">
-          Showing stock voices — your own ElevenLabs voices will appear here once the key can
-          reach your account.
+        <p className="text-xs text-warning">
+          These are stock voices, not yours.{" "}
+          {problem ? `Reason: ${problem}.` : ""} Paste the voice ID from your ElevenLabs
+          dashboard and it will work regardless.
         </p>
       ) : null}
     </div>
