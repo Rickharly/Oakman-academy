@@ -565,12 +565,22 @@ export function LessonPlayer(props: LessonPlayerProps) {
         body: JSON.stringify({ extension: true }),
       });
       const data = (await res.json()) as { questions?: LessonPlayerQuestion[]; error?: string };
-      if (!res.ok || !data.questions?.length) {
-        throw new Error(data.error ?? "Couldn't write the questions. Try again in a moment.");
+      if (!res.ok) throw new Error(data.error ?? "Couldn't write the questions. Try again in a moment.");
+      if (!data.questions?.length) {
+        // Not an error: there is genuinely nothing more to set. Say so, and leave the Finish
+        // button below as the obvious next thing rather than a red message and a dead end.
+        setPracticeError(
+          "I haven't got more questions on this one right now. Finish the lesson below when you're ready.",
+        );
+        return;
       }
       startExtraRound(data.questions);
     } catch (err) {
-      setPracticeError(err instanceof Error ? err.message : "Couldn't write the questions.");
+      setPracticeError(
+        err instanceof Error
+          ? `${err.message} You can finish the lesson below if you'd rather stop.`
+          : "Couldn't write the questions. You can finish the lesson below.",
+      );
     } finally {
       setGeneratingPractice(false);
     }
@@ -992,32 +1002,43 @@ export function LessonPlayer(props: LessonPlayerProps) {
                 ? `The bit that tripped you up was ${wrongTopics.join(", ")}. A few questions on just that will sort it.`
                 : "A few more questions on the parts you missed will sort this out."}
             </p>
-            {extraPractice.length > 0 ? (
-              <p className="text-sm font-medium text-ink">
-                Your practice is ready — it&apos;s in the Practice step above.
-              </p>
-            ) : (
-              <div className="flex flex-wrap items-center gap-3">
+            <div className="flex flex-wrap items-center gap-3">
+              {extraPractice.length > 0 ? (
+                <Button onClick={() => setViewStage("PRACTICE")}>Go to your practice</Button>
+              ) : (
                 <Button onClick={() => void practiseWeakSpots()} disabled={generatingPractice}>
                   {generatingPractice ? "Writing your questions…" : "Practise what I missed"}
                 </Button>
-                <Button variant="ghost" onClick={() => void finishLesson()} disabled={submitting}>
-                  Finish anyway
-                </Button>
-              </div>
-            )}
+              )}
+              {/* Never removed: this is the way out when nothing else on the screen works. */}
+              <Button variant="ghost" onClick={() => void finishLesson()} disabled={submitting}>
+                {submitting ? "Finishing…" : "Finish anyway"}
+              </Button>
+            </div>
             {practiceError ? <p className="text-sm text-danger">{practiceError}</p> : null}
           </Card>
         ) : null}
 
+        {/*
+          Finishing is ALWAYS available. Encouraging a child to use the whole period is right;
+          hiding the only door until a question-writing request succeeds is not — when that
+          request failed, a child sat in front of a finished lesson with nothing to press and
+          twenty minutes on the clock. The nudge above keeps the emphasis; this button is quiet
+          while there is time left, and the obvious one when there isn't.
+        */}
         <div className="flex flex-wrap items-center gap-3">
           {retryingIds.size > 0 ? (
             <Button onClick={() => void submitRetries()} disabled={submitting}>
               {submitting ? "Your teacher is checking…" : "Submit answer"}
             </Button>
-          ) : secure && timeRemaining < 5 ? (
-            <Button onClick={() => void finishLesson()} disabled={submitting}>
-              {submitting ? "Finishing…" : "Finish"}
+          ) : null}
+          {secure ? (
+            <Button
+              onClick={() => void finishLesson()}
+              disabled={submitting}
+              variant={timeRemaining >= 5 ? "secondary" : "primary"}
+            >
+              {submitting ? "Finishing…" : timeRemaining >= 5 ? "Finish this lesson" : "Finish"}
             </Button>
           ) : null}
           {submitError ? <p className="text-sm text-danger">{submitError}</p> : null}
