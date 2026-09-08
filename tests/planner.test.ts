@@ -232,3 +232,25 @@ describe("planner: a day that came out doubled", () => {
     expect(after.some((a) => a.id === second.id)).toBe(true);
   });
 });
+
+describe("planner: a student added through Settings", () => {
+  it("enrols them the first time anything plans for them", async () => {
+    await resetDb();
+    // Build the curriculum, then a student with an account and nothing else — exactly what
+    // "add a student" used to produce.
+    await buildStudentWithCurriculum(12);
+    const user = await prisma.user.create({
+      data: { role: "STUDENT", username: "brand-new", passwordHash: "x", displayName: "New" },
+    });
+    const profile = await prisma.studentProfile.create({
+      data: { userId: user.id, yearGroup: 7, keyStage: "ks3" },
+    });
+
+    expect(await prisma.studentEnrolment.count({ where: { studentId: profile.id } })).toBe(0);
+
+    const day = await ensureDayPlanned(profile.id, MONDAY);
+
+    expect(await prisma.studentEnrolment.count({ where: { studentId: profile.id } })).toBeGreaterThan(0);
+    expect(day.filter((a) => a.kind === "LESSON")).toHaveLength(5);
+  });
+});

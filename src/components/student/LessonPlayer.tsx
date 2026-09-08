@@ -524,6 +524,30 @@ export function LessonPlayer(props: LessonPlayerProps) {
     }
   }
 
+  /** More work on the same topic, for a child who finished the period with time to spare. */
+  async function practiseMore() {
+    if (generatingPractice) return;
+    setGeneratingPractice(true);
+    setPracticeError(null);
+    try {
+      const res = await fetch(`/api/lessons/${lesson.id}/practice`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ extension: true }),
+      });
+      const data = (await res.json()) as { questions?: LessonPlayerQuestion[]; error?: string };
+      if (!res.ok || !data.questions?.length) {
+        throw new Error(data.error ?? "Couldn't write the questions. Try again in a moment.");
+      }
+      setExtraPractice(data.questions);
+      setViewStage("PRACTICE");
+    } catch (err) {
+      setPracticeError(err instanceof Error ? err.message : "Couldn't write the questions.");
+    } finally {
+      setGeneratingPractice(false);
+    }
+  }
+
   /** Practice aimed at the questions they actually got wrong, not the same quiz again. */
   async function practiseWeakSpots() {
     if (generatingPractice) return;
@@ -845,6 +869,12 @@ export function LessonPlayer(props: LessonPlayerProps) {
   function renderComplete() {
     const attempt = finalAttempt;
     const pct = scorePct(attempt ?? undefined);
+    // A period is 45 minutes. Racing through in twelve and going on a break is not a lesson —
+    // it means the content ran out, not that the child is finished learning. Offer more of the
+    // same topic rather than sending them away early.
+    const minutesSpent = Math.round(elapsedSeconds / 60);
+    const timeLeft = lessonMinutes - minutesSpent;
+    const finishedEarly = timeLeft >= 10;
     const statusLabel =
       attempt?.status === "MASTERED" ? "mastered" : attempt?.status === "NEEDS_REVIEW" ? "completed — worth another look" : "completed";
 
@@ -858,6 +888,26 @@ export function LessonPlayer(props: LessonPlayerProps) {
         {attempt?.masteryScore != null ? (
           <p className="text-sm text-ink-muted">Mastery {Math.round(attempt.masteryScore * 100)}%</p>
         ) : null}
+        {finishedEarly ? (
+          <div className="space-y-3 rounded-2xl bg-accent-soft p-5 text-left">
+            <p className="text-base font-medium text-ink">
+              That took {minutesSpent} minutes — you&apos;ve still got about {timeLeft} in this
+              period.
+            </p>
+            <p className="text-sm text-ink-muted">
+              Your teacher can set you more on the same topic. It counts towards this lesson.
+            </p>
+            {extraPractice.length > 0 ? (
+              <Button onClick={() => setViewStage("PRACTICE")}>Go to your extra practice</Button>
+            ) : (
+              <Button onClick={() => void practiseMore()} disabled={generatingPractice}>
+                {generatingPractice ? "Writing your questions…" : "Give me more practice"}
+              </Button>
+            )}
+            {practiceError ? <p className="text-sm text-danger">{practiceError}</p> : null}
+          </div>
+        ) : null}
+
         <div className="pt-2">
           <BreakTimer
             minutes={breakMinutes}

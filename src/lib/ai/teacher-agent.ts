@@ -621,6 +621,8 @@ async function generateLessonPractice(args: {
   count?: number;
   /** Questions they got wrong, when this is practice aimed at a specific gap. */
   missedPrompts?: string[];
+  /** True when the child finished early and wants harder work on the same topic. */
+  extension?: boolean;
 }): Promise<Question[]> {
   const count = args.count ?? 5;
 
@@ -637,7 +639,9 @@ async function generateLessonPractice(args: {
   // mistake is always written fresh: handing back questions they have already answered
   // would teach nothing.
   const aimed = (args.missedPrompts ?? []).filter((p) => p.trim().length > 0);
-  if (aimed.length === 0) {
+  // Extension work is always fresh: a child who has finished the lesson has seen the stored
+  // set already, and handing it back is not more work, it is the same work.
+  if (aimed.length === 0 && !args.extension) {
     const existing = await prisma.question.findMany({
       where: { lessonId: lesson.id, stage: "PRACTICE", source: "AI_GENERATED" },
       orderBy: { order: "asc" },
@@ -664,7 +668,15 @@ async function generateLessonPractice(args: {
       `Write ${count} practice questions on the lesson "${lesson.title}" for a Year`,
       `${student.yearGroup} child studying ${lesson.unit.programme.subject.title}.`,
       "",
-      aimed.length > 0
+      args.extension
+        ? [
+            "This child has finished the lesson comfortably and has time left in the period.",
+            "Write questions that go FURTHER than the lesson's own quiz: apply the idea in an",
+            "unfamiliar situation, combine it with something they already know, or ask them to",
+            "explain why it works rather than only to get the answer. Still answerable from",
+            "this lesson — stretch, not new material.",
+          ].join(" ")
+        : aimed.length > 0
         ? [
             "This child has just got some questions wrong, listed below. Every question you write",
             "must target what those mistakes reveal they have not understood — approach the same",
@@ -716,7 +728,11 @@ async function generateLessonPractice(args: {
     studentId: args.studentId,
     context: {
       lessonId: lesson.id,
-      reason: aimed.length > 0 ? "missed_questions" : "no_practice_questions",
+      reason: args.extension
+        ? "finished_early"
+        : aimed.length > 0
+          ? "missed_questions"
+          : "no_practice_questions",
       ...(aimed.length > 0 ? { missedPrompts: aimed } : {}),
     },
     baseOrder: 900,

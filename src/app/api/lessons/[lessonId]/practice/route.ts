@@ -20,13 +20,14 @@ export async function POST(req: Request, ctx: { params: Promise<{ lessonId: stri
     // practice beats another round of the same quiz.
     const body = await req
       .json()
-      .then((v) => z.object({ missedPrompts: z.array(z.string()).max(20) }).partial().parse(v))
-      .catch(() => ({ missedPrompts: undefined }));
+      .then((v) => z.object({ missedPrompts: z.array(z.string()).max(20), extension: z.boolean() }).partial().parse(v))
+      .catch(() => ({ missedPrompts: undefined, extension: undefined }));
 
     const questions = await teacherAgent.generateLessonPractice({
       studentId: user.studentProfile.id,
       lessonId,
       missedPrompts: body.missedPrompts,
+      extension: body.extension,
     });
 
     // Only what the player needs. The answer key never leaves the server.

@@ -6,6 +6,7 @@ import { Card } from "@/components/ui/Card";
 import { Avatar, isPhotoAvatar } from "@/components/ui/Avatar";
 import { PhotoUpload } from "@/components/admin/PhotoUpload";
 import { ResetProgress } from "@/components/admin/ResetProgress";
+import { enrolStudentInYearGroup } from "@/lib/admin/enrol";
 import { dayEndsAt } from "@/lib/scheduling/timetable";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
@@ -167,13 +168,19 @@ export default async function AdminSettingsPage({
     }
 
     const passwordHash = await hashPassword(pin);
-    await prisma.$transaction(async (tx) => {
+    const newStudentId = await prisma.$transaction(async (tx) => {
       const user = await tx.user.create({
         data: { role: "STUDENT", username, passwordHash, displayName, avatar: avatar || null },
       });
       await tx.parentStudentLink.create({ data: { parentId: currentParent.id, studentId: user.id } });
-      await tx.studentProfile.create({ data: { userId: user.id, yearGroup, keyStage } });
+      const profile = await tx.studentProfile.create({ data: { userId: user.id, yearGroup, keyStage } });
+      return profile.id;
     });
+
+    // A child with an account but no subjects opens Today to an empty page and no explanation.
+    // Enrolling them here is what makes "add a student" mean what a parent thinks it means.
+    await enrolStudentInYearGroup(newStudentId);
+
     redirect("/admin/settings?ok=1");
   }
 

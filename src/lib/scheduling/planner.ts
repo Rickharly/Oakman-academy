@@ -7,6 +7,7 @@ import { prisma } from "@/lib/db";
 import type { DailyAssignment, Lesson, Programme, ReviewItem, StudentLessonProgress, Subject, Unit } from "@/generated/prisma/client";
 import { Prisma } from "@/generated/prisma/client";
 import { addDaysKey, dateOnlyKey, isoWeekday, schoolDayEnd, todayDateOnly, toDateOnly, weekStartKey } from "@/lib/dates";
+import { enrolStudentInYearGroup } from "@/lib/admin/enrol";
 
 const REVIEW_MINUTES = 15;
 const MAX_REVIEWS_PER_DAY = 2;
@@ -75,12 +76,23 @@ export async function planWeek(studentId: string, weekStart: string, opts?: { re
 
   const existing = await prisma.dailyAssignment.findMany({ where: { studentId, date: { in: dayDates } } });
 
-  const schedules = await prisma.studentSchedule.findMany({
-    where: { studentId, active: true },
-    orderBy: [{ priority: "desc" }, { weeklyFrequency: "desc" }],
-  });
+  const readSchedules = () =>
+    prisma.studentSchedule.findMany({
+      where: { studentId, active: true },
+      orderBy: [{ priority: "desc" }, { weeklyFrequency: "desc" }],
+    });
+  let schedules = await readSchedules();
 
-  const enrolments = await prisma.studentEnrolment.findMany({ where: { studentId, active: true } });
+  let enrolments = await prisma.studentEnrolment.findMany({ where: { studentId, active: true } });
+
+  // A student added through Settings used to get an account and nothing else, so they opened
+  // Today to an empty page. Enrol them on their year group's subjects the first time anything
+  // tries to plan for them, so an existing account repairs itself rather than staying broken.
+  if (enrolments.length === 0) {
+    await enrolStudentInYearGroup(studentId).catch(() => undefined);
+    enrolments = await prisma.studentEnrolment.findMany({ where: { studentId, active: true } });
+    schedules = await readSchedules();
+  }
   const programmes = enrolments.length
     ? await prisma.programme.findMany({ where: { id: { in: enrolments.map((e) => e.programmeId) } } })
     : [];
