@@ -4,6 +4,7 @@ import { prisma } from "@/lib/db";
 import { Role } from "@/generated/prisma/client";
 import { hashPassword } from "@/lib/auth/password";
 import { loginParent, loginStudent, listStudentAvatars } from "@/lib/auth/login";
+import { sessionTtlMs } from "@/lib/auth/session";
 import { getSessionFromRequest, SESSION_COOKIE } from "@/lib/auth/session";
 import { resetDb } from "./helpers/db";
 
@@ -161,5 +162,22 @@ describe("auth", () => {
       headers: { cookie: `${SESSION_COOKIE}=${token}` },
     });
     expect(await getSessionFromRequest(req)).toBeNull();
+  });
+});
+
+describe("staying signed in", () => {
+  const days = (ms: number) => ms / 86_400_000;
+
+  it("keeps a remembered login for a term, not a month", () => {
+    expect(days(sessionTtlMs(true))).toBeGreaterThan(90);
+  });
+
+  it("keeps an unticked login to a single day", () => {
+    // A borrowed device should not stay signed in to a child's records for months.
+    expect(days(sessionTtlMs(false))).toBeLessThan(2);
+  });
+
+  it("leaves an older client, which sends nothing, on the previous default", () => {
+    expect(days(sessionTtlMs(undefined))).toBe(30);
   });
 });

@@ -21,12 +21,16 @@ export default async function LoginPage({
       .trim()
       .toLowerCase();
     const password = String(formData.get("password") ?? "");
+    // Ticked by default: this is a family's own iPad, picked up several times a day. Making a
+    // parent type a password to glance at their child's progress means they stop glancing.
+    // Unticking it keeps the session to a single day, for a borrowed device.
+    const remember = formData.get("remember") === "on";
 
     const loggedInUser = await loginParent(email, password);
     if (!loggedInUser) {
       redirect("/login?error=1");
     }
-    await createSession(loggedInUser.id);
+    await createSession(loggedInUser.id, { remember });
     redirect("/admin");
   }
 
@@ -69,6 +73,15 @@ export default async function LoginPage({
             className="mt-1 w-full rounded-xl border border-line px-3 py-2.5 text-ink focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent-soft"
           />
         </div>
+        <label className="flex min-h-11 items-center gap-2.5 text-sm text-ink">
+          <input
+            type="checkbox"
+            name="remember"
+            defaultChecked
+            className="h-5 w-5 rounded border-line text-accent focus:ring-accent-soft"
+          />
+          Keep me signed in on this device
+        </label>
         <button
           type="submit"
           className="w-full rounded-xl bg-accent px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-accent-hover"

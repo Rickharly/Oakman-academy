@@ -10,7 +10,11 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
   }
 
-  const { email, password } = (body ?? {}) as { email?: unknown; password?: unknown };
+  const { email, password, remember } = (body ?? {}) as {
+    email?: unknown;
+    password?: unknown;
+    remember?: unknown;
+  };
   if (typeof email !== "string" || typeof password !== "string" || !email || !password) {
     return NextResponse.json({ error: "email and password are required" }, { status: 400 });
   }
@@ -20,6 +24,6 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Invalid email or password" }, { status: 401 });
   }
 
-  await createSession(user.id);
+  await createSession(user.id, { remember: remember === true });
   return NextResponse.json({ ok: true, role: user.role });
 }

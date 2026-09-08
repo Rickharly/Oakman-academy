@@ -6,7 +6,24 @@ import type { StudentProfile, User } from "@/generated/prisma/client";
 
 export const SESSION_COOKIE = "fs_session";
 
+/**
+ * How long a session lasts.
+ *
+ * "Remember me" is the difference between a shared family iPad the parent picks up twice a day
+ * and a device they are only borrowing. Remembered sessions last a term; the rest last a
+ * working day, which is long enough to finish what you sat down to do and short enough that a
+ * borrowed device does not stay logged in to a child's records.
+ */
 const SESSION_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
+const REMEMBERED_TTL_MS = 120 * 24 * 60 * 60 * 1000; // a school term and then some
+const SHORT_TTL_MS = 12 * 60 * 60 * 1000; // one day
+
+/** How long a new session should last. Pure, so the decision itself can be tested. */
+export function sessionTtlMs(remember?: boolean): number {
+  if (remember === true) return REMEMBERED_TTL_MS;
+  if (remember === false) return SHORT_TTL_MS;
+  return SESSION_TTL_MS;
+}
 const REFRESH_THRESHOLD_MS = 15 * 24 * 60 * 60 * 1000; // refresh when < 15 days left
 
 export type SessionUser = {
@@ -119,7 +136,10 @@ async function loadSessionUser(token: string, opts?: { refreshCookie?: boolean }
   }
 
   if (session.expiresAt.getTime() - now < REFRESH_THRESHOLD_MS) {
-    const expiresAt = new Date(now + SESSION_TTL_MS);
+    // Extend by however long this session was originally granted, so a remembered login is
+    // not quietly demoted to a short one the first time it refreshes.
+    const granted = session.expiresAt.getTime() - session.createdAt.getTime();
+    const expiresAt = new Date(now + Math.max(SESSION_TTL_MS, granted));
     await prisma.session.update({ where: { id: session.id }, data: { expiresAt } });
     if (opts?.refreshCookie) {
       try {
@@ -193,10 +213,13 @@ export async function requireParentOfStudent(
 }
 
 /** Creates a new session for userId, sets the cookie, and returns the token + expiry. */
-export async function createSession(userId: string): Promise<{ token: string; expiresAt: Date }> {
+export async function createSession(
+  userId: string,
+  opts: { remember?: boolean } = {},
+): Promise<{ token: string; expiresAt: Date }> {
   const token = randomBytes(32).toString("base64url");
   const tokenHash = hashToken(token);
-  const expiresAt = new Date(Date.now() + SESSION_TTL_MS);
+  const expiresAt = new Date(Date.now() + sessionTtlMs(opts.remember));
 
   await prisma.session.create({ data: { tokenHash, userId, expiresAt } });
 
