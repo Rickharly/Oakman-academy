@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { RefreshCw, Loader2 } from "lucide-react";
+import { RefreshCw, Loader2, CalendarCheck } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Badge } from "@/components/ui/Badge";
@@ -81,9 +81,45 @@ export function SyncPanel({ subjectOptions }: { subjectOptions: { slug: string; 
   // Batches, because Oak's quota is a fixed budget: a whole subject-year rarely fits in one
   // window, and a run that dies half way is worse than three runs that each finish.
   const [maxLessons, setMaxLessons] = useState("25");
-  const [pending, setPending] = useState<"one" | "all" | null>(null);
+  const [pending, setPending] = useState<"one" | "all" | "week" | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [jobIds, setJobIds] = useState<string[]>([]);
+  const [weekSummary, setWeekSummary] = useState<string | null>(null);
+
+  /**
+   * The lessons the next fortnight of school will actually use, and nothing else.
+   *
+   * The timetable already knows what is coming — each subject's frequency, and the next
+   * incomplete lesson in its sequence. Importing exactly that costs a fraction of a quota
+   * window, where "the next 25 of everything" spends the lot on material nobody opens for a
+   * month and still misses Tuesday's lesson.
+   */
+  async function syncWeek() {
+    setPending("week");
+    setError(null);
+    setWeekSummary(null);
+    try {
+      const res = await fetch("/api/admin/sync/week", { method: "POST" });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error ?? "Could not start the weekly import");
+      if (data.nothingToDo) {
+        setWeekSummary("Every lesson the next two weeks need is already here.");
+      } else {
+        const total = (data.targets ?? []).reduce((n: number, t: { lessons: number }) => n + t.lessons, 0);
+        setWeekSummary(
+          `Importing ${total} lesson(s) across ${(data.targets ?? []).length} subject-year(s).` +
+            ((data.failures ?? []).length > 0
+              ? ` ${data.failures.length} failed — see the jobs below.`
+              : ""),
+        );
+      }
+      setJobIds((prev) => [...(data.jobIds ?? []), ...prev]);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Something went wrong");
+    } finally {
+      setPending(null);
+    }
+  }
 
   async function syncOne() {
     setPending("one");
@@ -160,7 +196,7 @@ export function SyncPanel({ subjectOptions }: { subjectOptions: { slug: string; 
             className="h-11 w-28"
           />
         </div>
-        <Button disabled={pending !== null || !subjectSlug} onClick={syncOne}>
+        <Button variant="secondary" disabled={pending !== null || !subjectSlug} onClick={syncOne}>
           <RefreshCw className="h-4 w-4" /> Sync
         </Button>
         <Button variant="secondary" disabled={pending !== null} onClick={syncAll}>
@@ -168,6 +204,36 @@ export function SyncPanel({ subjectOptions }: { subjectOptions: { slug: string; 
         </Button>
       </div>
       {error ? <p className="text-xs text-danger">{error}</p> : null}
+
+      {/*
+        The one a parent should normally press. It is separated from the manual controls above
+        because those are for filling a subject in; this is the weekly job, and the weekly job
+        is the one that keeps school running.
+      */}
+      <div className="space-y-2 rounded-2xl border border-line bg-accent-soft/50 p-4">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <p className="text-sm font-semibold text-ink">Get the next two weeks ready</p>
+            <p className="text-xs text-ink-muted">
+              Works out exactly which lessons each child will reach from their timetable, and
+              imports only those. The server does this by itself about once a week; this button
+              is for when you want it now.
+            </p>
+          </div>
+          <Button disabled={pending !== null} onClick={syncWeek}>
+            {pending === "week" ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" /> Importing…
+              </>
+            ) : (
+              <>
+                <CalendarCheck className="h-4 w-4" /> Import this fortnight
+              </>
+            )}
+          </Button>
+        </div>
+        {weekSummary ? <p className="text-xs text-ink">{weekSummary}</p> : null}
+      </div>
       {jobIds.length > 0 ? (
         <div className="space-y-2">
           {jobIds.map((id) => (

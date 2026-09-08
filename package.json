@@ -24,7 +24,8 @@
     "verify:loop": "tsx scripts/dev/walk-lesson.ts",
     "verify:admin": "node scripts/dev/walk-admin.mjs",
     "verify:reading": "tsx scripts/dev/walk-reading.ts",
-    "books:import": "tsx scripts/books-import.ts"
+    "books:import": "tsx scripts/books-import.ts",
+    "oak:week": "tsx scripts/import-week.ts"
   },
   "dependencies": {
     "@prisma/adapter-pg": "^7.10.0",

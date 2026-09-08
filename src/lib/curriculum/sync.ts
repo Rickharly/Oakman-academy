@@ -19,6 +19,11 @@ export interface SyncScope {
   subjectSlug: string;
   yearGroup: number;
   lessonSlugs?: string[];
+  /**
+   * Only read these units. A targeted run knows which units its lessons live in — reading the
+   * other twenty to find out costs a provider request each, for nothing.
+   */
+  unitSlugs?: string[];
   includeAssets?: boolean;
 }
 
@@ -290,6 +295,8 @@ export async function syncProgramme(scope: SyncScope, opts: SyncOptions = {}): P
     log(`${unitRefs.length} units`);
 
     for (const unitRef of unitRefs) {
+      // Skipped before the request, not after: the point is not to make it.
+      if (scope.unitSlugs && !scope.unitSlugs.includes(unitRef.slug)) continue;
       const unitDetail = await provider.getUnit(unitRef.slug);
       if (!unitDetail) {
         log(`Unit ${unitRef.slug}: no summary available, skipped`);

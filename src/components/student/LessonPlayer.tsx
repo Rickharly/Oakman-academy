@@ -15,9 +15,36 @@ import { subjectTheme } from "@/components/student/subjectTheme";
 import { SubjectArt } from "@/components/student/SubjectArt";
 import { LessonTimer } from "@/components/student/LessonTimer";
 import { BreakTimer } from "@/components/student/BreakTimer";
+import { ReadAloud } from "@/components/student/ReadAloud";
 import { formatMinutes } from "@/components/student/format";
 import type { LessonExplainer } from "@/lib/lessons/explainer";
 import { cn } from "@/lib/cn";
+
+/**
+ * The written lesson as the teacher would say it, in order.
+ *
+ * Headings are spoken too — they are how a listener knows a new idea has started, which is the
+ * job the bold text does for a reader.
+ */
+function explainerSpeech(explainer: LessonExplainer): string[] {
+  const parts: string[] = [explainer.intro];
+  for (const section of explainer.sections) {
+    parts.push(`${section.heading}. ${section.body}`);
+  }
+  if (explainer.workedExample) {
+    parts.push(
+      [
+        "Let's do one together.",
+        explainer.workedExample.question,
+        ...explainer.workedExample.steps.map((step, i) => `Step ${i + 1}. ${step}`),
+        `So the answer is ${explainer.workedExample.answer}.`,
+      ].join(" "),
+    );
+  }
+  if (explainer.watchOutFor) parts.push(`Watch out for this. ${explainer.watchOutFor}`);
+  parts.push(`Before you go on. ${explainer.thinkAbout}`);
+  return parts;
+}
 
 // ───────────────────────────── props ─────────────────────────────
 
@@ -890,6 +917,13 @@ export function LessonPlayer(props: LessonPlayerProps) {
               </p>
               <p className="text-[17px] leading-relaxed text-ink">{explainer.intro}</p>
             </div>
+
+            {/*
+              A written lesson is a lot of words for a nine-year-old to get through alone. The
+              teacher reads it — the whole thing, in order, pausable — so listening is a real
+              way through the lesson and not a consolation prize. The words stay on screen.
+            */}
+            <ReadAloud parts={explainerSpeech(explainer)} />
 
             {explainer.sections.map((section, i) => (
               <div key={i} className="space-y-1.5">
