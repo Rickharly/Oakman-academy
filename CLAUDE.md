@@ -30,7 +30,7 @@ Read `docs/ARCHITECTURE.md` first; `prisma/schema.prisma` is the data contract.
 8. Design: light, calm, spacious, rounded (`rounded-2xl`), restrained borders (`border-stone-200`),
    near-white background, strong typography, no cartoon mascots, touch targets ≥ 44px, iPad first.
 9. Dates: store `DateTime @db.Date` values as UTC midnight (`toDateOnly()` in `src/lib/dates.ts`); the
-   school day is computed in the family's timezone (`SCHOOL_TIMEZONE`, default `Europe/London`).
+   school day is computed in the family's timezone (`SCHOOL_TIMEZONE`, default `Asia/Yerevan`).
 10. Tests: put unit tests next to code (`*.test.ts`); DB-backed tests in `tests/`. Run `pnpm typecheck`,
     `pnpm lint`, and `pnpm test` before declaring work done.
 

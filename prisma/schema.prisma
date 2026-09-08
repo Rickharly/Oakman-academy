@@ -408,6 +408,9 @@ model DailyAssignment {
 
   @@index([studentId, date])
   @@index([studentId, lessonId])
+  // Partial unique indexes guarding against a day being planned twice live in
+  // migrations/20260908073000_no_duplicate_assignments. Prisma cannot express a
+  // WHERE clause on an index, so they are raw SQL and must not be removed from it.
 }
 
 // ───────────────────────────── Reading (literacy) ─────────────────────────────
@@ -912,6 +915,9 @@ enum SyncStatus {
   PENDING
   RUNNING
   SUCCESS
+  /// Stopped part-way for a reason that is not a fault — running out of the provider's quota.
+  /// Everything imported before the stop is kept and the next run continues from there.
+  PARTIAL
   FAILED
 }
 

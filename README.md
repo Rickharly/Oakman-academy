@@ -35,7 +35,7 @@ when a key is configured, and from a bundled sample curriculum otherwise.
    | `OAK_API_KEY` | your Oak key, once you have it |
    | `SEED_PARENT_EMAIL` | the email you will log in with |
    | `SEED_PARENT_PASSWORD` | your initial password (change it after first login) |
-   | `SCHOOL_TIMEZONE` | e.g. `Europe/London` |
+   | `SCHOOL_TIMEZONE` | IANA zone the family lives in. Defaults to `Asia/Yerevan`. |
 
 4. **Deploy.** The start command runs `prisma migrate deploy`, then seeds the parent account,
    the two student accounts and the bundled curriculum on first boot, then starts the server.

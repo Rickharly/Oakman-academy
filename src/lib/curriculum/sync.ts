@@ -7,6 +7,7 @@
  * Student learning data is never touched.
  */
 import fs from "node:fs/promises";
+import { OakRateLimitError } from "@/lib/oak/client";
 import path from "node:path";
 import { prisma } from "@/lib/db";
 import type { Prisma, ResourceType, LicenceStatus } from "@/generated/prisma/client";
@@ -403,12 +404,20 @@ export async function syncProgramme(scope: SyncScope, opts: SyncOptions = {}): P
 
     return { jobId: job.id, programmeId: programme.id, stats };
   } catch (err) {
-    const message = (err as Error).message;
-    log(`FAILED: ${message}`);
+    // Running out of Oak's quota is not a failure of this import — it is the import being
+    // interrupted. Everything already written stays, and the next run picks up where this one
+    // stopped, because the sync is idempotent. Calling that FAILED would tell the parent to go
+    // looking for a fault that does not exist.
+    const outOfQuota = err instanceof OakRateLimitError;
+    const message = outOfQuota
+      ? `${(err as Error).message} Nothing already imported was lost; the next sync continues from here.`
+      : (err as Error).message;
+
+    log(outOfQuota ? `STOPPED: ${message}` : `FAILED: ${message}`);
     await prisma.curriculumSyncJob.update({
       where: { id: job.id },
       data: {
-        status: "FAILED",
+        status: outOfQuota ? "PARTIAL" : "FAILED",
         finishedAt: new Date(),
         error: message,
         stats: stats as Prisma.InputJsonValue,

@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
-import { Settings as SettingsIcon } from "lucide-react";
+import { Prisma } from "@/generated/prisma/client";
+import { PartyPopper, Settings as SettingsIcon } from "lucide-react";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Card } from "@/components/ui/Card";
 import { Avatar, isPhotoAvatar } from "@/components/ui/Avatar";
@@ -120,6 +121,25 @@ export default async function AdminSettingsPage({
     }
     const passwordHash = await hashPassword(pin);
     await prisma.user.update({ where: { id: student.userId }, data: { passwordHash } });
+    redirect("/admin/settings?ok=1");
+  }
+
+  /**
+   * Clears the "you have seen the welcome" flag so a child gets the first-run walkthrough and
+   * the confetti again. Needed more often than you would think: a parent checking the account
+   * works burns the child's first login.
+   */
+  async function replayWelcome(formData: FormData) {
+    "use server";
+    const studentId = String(formData.get("studentId") ?? "");
+    const { student } = await requireParentOfStudent(studentId);
+
+    const { welcomeSeenAt: _seen, ...preferences } = (student.preferences ?? {}) as Record<string, unknown>;
+    await prisma.studentProfile.update({
+      where: { id: student.id },
+      data: { preferences: preferences as Prisma.InputJsonObject },
+    });
+
     redirect("/admin/settings?ok=1");
   }
 
@@ -259,6 +279,17 @@ export default async function AdminSettingsPage({
                         Save changes
                       </Button>
                     </div>
+                  </form>
+
+                  <form action={replayWelcome} className="mb-3">
+                    <input type="hidden" name="studentId" value={profile.id} />
+                    <button
+                      type="submit"
+                      className="flex h-11 items-center gap-1.5 rounded-full border border-line px-4 text-sm font-medium text-ink transition-colors duration-150 hover:bg-stone-100"
+                    >
+                      <PartyPopper className="h-4 w-4 text-ink-muted" />
+                      Show the welcome again on next login
+                    </button>
                   </form>
 
                   <form action={resetPin} className="flex flex-wrap items-end gap-3">
