@@ -22,6 +22,9 @@ export function Matching({ question, value, onChange, disabled, result }: Questi
 
   const pairForLeft = (leftId: string) => pairs.find((p) => p.leftId === leftId);
   const pairForRight = (rightId: string) => pairs.find((p) => p.rightId === rightId);
+  // Colour alone says "this one is matched"; it does not say matched to *what*. With four or
+  // five pairs on screen, the number is what lets a child check their own work.
+  const pairNumber = (index: number) => (index < 0 ? null : index + 1);
 
   function tapLeft(leftId: string) {
     if (disabled) return;
@@ -63,6 +66,7 @@ export function Matching({ question, value, onChange, disabled, result }: Questi
         <div className="space-y-2">
           {left.map((item) => {
             const paired = pairForLeft(item.id);
+            const number = pairNumber(pairs.findIndex((p) => p.leftId === item.id));
             const isSelected = selectedLeft === item.id;
             const state = correctness(item.id);
             return (
@@ -81,13 +85,14 @@ export function Matching({ question, value, onChange, disabled, result }: Questi
                       : isSelected
                         ? "border-accent bg-accent-soft text-accent-ink"
                         : paired
-                          ? "border-line-strong bg-stone-50 text-ink"
+                          ? "border-match-line bg-match-soft text-match"
                           : "border-line bg-surface-raised text-ink hover:border-line-strong",
                 )}
               >
                 {state === "correct" ? <Check className="h-4 w-4 shrink-0" /> : null}
                 {state === "wrong" ? <X className="h-4 w-4 shrink-0" /> : null}
                 <span className="min-w-0 flex-1">{item.text}</span>
+                {number != null ? <PairBadge number={number} /> : null}
               </button>
             );
           })}
@@ -95,6 +100,7 @@ export function Matching({ question, value, onChange, disabled, result }: Questi
         <div className="space-y-2">
           {right.map((item) => {
             const paired = pairForRight(item.id);
+            const number = pairNumber(pairs.findIndex((p) => p.rightId === item.id));
             const pairedLeft = paired ? left.find((l) => l.id === paired.leftId) : undefined;
             const state = pairedLeft ? correctness(pairedLeft.id) : null;
             return (
@@ -111,16 +117,29 @@ export function Matching({ question, value, onChange, disabled, result }: Questi
                     : state === "wrong"
                       ? "border-danger bg-danger-soft text-danger"
                       : paired
-                        ? "border-line-strong bg-stone-50 text-ink"
+                        ? "border-match-line bg-match-soft text-match"
                         : "border-line bg-surface-raised text-ink hover:border-line-strong",
                 )}
               >
                 <span className="min-w-0 flex-1">{item.text}</span>
+                {number != null ? <PairBadge number={number} /> : null}
               </button>
             );
           })}
         </div>
       </div>
     </div>
+  );
+}
+
+/** The pair's number, on both halves of the match. */
+function PairBadge({ number }: { number: number }) {
+  return (
+    <span
+      aria-label={`Pair ${number}`}
+      className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-match-line text-xs font-semibold text-white"
+    >
+      {number}
+    </span>
   );
 }

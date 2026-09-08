@@ -45,6 +45,12 @@
   --color-danger: #dc2626;
   --color-danger-soft: #fef2f2;
 
+  /* A pair the student has matched. Not a status — a "you did this" marker, and it has to be
+     obvious at arm's length on an iPad. Grey on near-white was invisible. */
+  --color-match: #92400e;
+  --color-match-soft: #fef3c7;
+  --color-match-line: #f59e0b;
+
   /* Subject tints (muted, one family per subject) */
   --color-subject-maths: #4f6cc7;
   --color-subject-maths-soft: #eef1fb;
