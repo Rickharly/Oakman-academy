@@ -40,6 +40,18 @@ export interface SyncResult {
 interface SyncOptions {
   provider?: CurriculumProvider;
   log?: (line: string) => void;
+  /**
+   * Stop after importing this many lessons for the programme.
+   *
+   * Oak's quota is a fixed budget per window, and a full subject-year costs roughly five
+   * requests per lesson — enough that importing every lesson of every subject cannot fit in
+   * one window, which is exactly how a family ends up with nothing imported at all.
+   *
+   * Children work through lessons in order at five a day. They need the next few weeks, not
+   * the whole year, so importing in batches gets them studying today and the rest follows on
+   * later runs. Lessons already imported are skipped, so a second run reaches further.
+   */
+  maxLessons?: number;
 }
 
 /** Oak asset type → our ResourceType. Unknown types are ignored rather than failing the sync. */
@@ -269,6 +281,22 @@ export async function syncProgramme(scope: SyncScope, opts: SyncOptions = {}): P
         : unitDetail.lessons;
 
       for (const lessonRef of wanted) {
+        if (opts.maxLessons != null && stats.lessons >= opts.maxLessons) {
+          log(`Reached the ${opts.maxLessons}-lesson limit for this run — stopping here.`);
+          break;
+        }
+
+        // Already have this one with its content? Then it costs nothing to move past it, and
+        // the budget goes on lessons the children have not reached yet.
+        const already = await prisma.lesson.findUnique({
+          where: { provider_providerSlug: { provider: provider.name, providerSlug: lessonRef.slug } },
+          select: { id: true, syncedAt: true, _count: { select: { questions: true } } },
+        });
+        if (already?.syncedAt && already._count.questions > 0) {
+          stats.skipped += 1;
+          continue;
+        }
+
         try {
           const detail = await provider.getLesson(lessonRef.slug);
           if (!detail) {

@@ -7,6 +7,12 @@ const bodySchema = z.object({
   subjectSlug: z.string().optional(),
   yearGroup: z.number().int().optional(),
   all: z.boolean().optional(),
+  /**
+   * How many lessons to import in this run. Oak's quota is a fixed budget per window, so
+   * importing in batches is what makes an import finish at all. Defaults to a batch that
+   * comfortably fits alongside the other subjects.
+   */
+  maxLessons: z.number().int().min(1).max(500).optional(),
 });
 
 export async function POST(req: Request) {
@@ -24,7 +30,7 @@ export async function POST(req: Request) {
           scopes.push({ subjectSlug: subject.slug, yearGroup: programme.yearGroup });
         }
       }
-      const { jobIds } = await syncMany(scopes);
+      const { jobIds } = await syncMany(scopes, { maxLessons: body.maxLessons ?? 10 });
       return Response.json({ jobIds });
     }
 
@@ -32,7 +38,10 @@ export async function POST(req: Request) {
       return Response.json({ error: "subjectSlug and yearGroup are required unless all=true" }, { status: 400 });
     }
 
-    const { jobId } = await syncProgramme({ subjectSlug: body.subjectSlug, yearGroup: body.yearGroup });
+    const { jobId } = await syncProgramme(
+      { subjectSlug: body.subjectSlug, yearGroup: body.yearGroup },
+      { maxLessons: body.maxLessons ?? 25 },
+    );
     return Response.json({ jobId });
   } catch (err) {
     return jsonError(err);

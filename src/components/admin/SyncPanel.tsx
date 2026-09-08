@@ -78,6 +78,9 @@ function JobCard({ jobId }: { jobId: string }) {
 export function SyncPanel({ subjectOptions }: { subjectOptions: { slug: string; title: string }[] }) {
   const [subjectSlug, setSubjectSlug] = useState(subjectOptions[0]?.slug ?? "");
   const [yearGroup, setYearGroup] = useState("7");
+  // Batches, because Oak's quota is a fixed budget: a whole subject-year rarely fits in one
+  // window, and a run that dies half way is worse than three runs that each finish.
+  const [maxLessons, setMaxLessons] = useState("25");
   const [pending, setPending] = useState<"one" | "all" | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [jobIds, setJobIds] = useState<string[]>([]);
@@ -89,7 +92,7 @@ export function SyncPanel({ subjectOptions }: { subjectOptions: { slug: string; 
       const res = await fetch("/api/admin/sync", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ subjectSlug, yearGroup: Number(yearGroup) }),
+        body: JSON.stringify({ subjectSlug, yearGroup: Number(yearGroup), maxLessons: Number(maxLessons) }),
       });
       if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error ?? "Sync failed to start");
       const { jobId } = await res.json();
@@ -108,7 +111,7 @@ export function SyncPanel({ subjectOptions }: { subjectOptions: { slug: string; 
       const res = await fetch("/api/admin/sync", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ all: true }),
+        body: JSON.stringify({ all: true, maxLessons: Math.max(1, Math.round(Number(maxLessons) / 3)) }),
       });
       if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error ?? "Sync failed to start");
       const { jobIds: ids } = await res.json();
@@ -122,6 +125,11 @@ export function SyncPanel({ subjectOptions }: { subjectOptions: { slug: string; 
 
   return (
     <div className="space-y-4">
+      <p className="text-sm text-ink-muted">
+        Each lesson costs Oak roughly five requests, and the quota is a fixed budget per window
+        — so import in batches. Lessons already imported are skipped, so running this again
+        reaches further into the subject rather than starting over.
+      </p>
       <div className="flex flex-wrap items-end gap-3">
         <div className="space-y-1">
           <label className="text-xs font-medium text-ink-muted">Subject</label>
@@ -140,6 +148,17 @@ export function SyncPanel({ subjectOptions }: { subjectOptions: { slug: string; 
         <div className="space-y-1">
           <label className="text-xs font-medium text-ink-muted">Year</label>
           <Input type="number" min={1} max={13} value={yearGroup} onChange={(e) => setYearGroup(e.target.value)} className="h-11 w-24" />
+        </div>
+        <div className="space-y-1">
+          <label className="text-xs font-medium text-ink-muted">Lessons this run</label>
+          <Input
+            type="number"
+            min={1}
+            max={500}
+            value={maxLessons}
+            onChange={(e) => setMaxLessons(e.target.value)}
+            className="h-11 w-28"
+          />
         </div>
         <Button disabled={pending !== null || !subjectSlug} onClick={syncOne}>
           <RefreshCw className="h-4 w-4" /> Sync
