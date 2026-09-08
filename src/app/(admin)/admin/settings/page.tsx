@@ -10,7 +10,8 @@ import { enrolStudentInYearGroup } from "@/lib/admin/enrol";
 import { dayEndsAt } from "@/lib/scheduling/timetable";
 import { Input } from "@/components/ui/Input";
 import { Textarea } from "@/components/ui/Textarea";
-import { VOICE_OPTIONS } from "@/lib/ai/voice";
+import { listVoices } from "@/lib/ai/voice";
+import { VoicePicker } from "@/components/admin/VoicePicker";
 import { Button } from "@/components/ui/Button";
 import { requireParent, requireParentOfStudent } from "@/lib/auth/session";
 import { prisma } from "@/lib/db";
@@ -48,6 +49,8 @@ export default async function AdminSettingsPage({
     orderBy: { createdAt: "asc" },
   });
   const students = links.map((l) => l.student).filter((u) => u.studentProfile != null);
+  // The family's own ElevenLabs voices, by name. Falls back to stock voices without a key.
+  const { voices, fromAccount: voicesFromAccount } = await listVoices();
 
   async function changePassword(formData: FormData) {
     "use server";
@@ -337,18 +340,12 @@ export default async function AdminSettingsPage({
 
                     <div className="sm:col-span-2">
                       <label className={fieldClass()}>The teacher&apos;s voice</label>
-                      <select
+                      <VoicePicker
                         name="voiceId"
-                        defaultValue={profile.voiceId ?? ""}
-                        className="h-11 w-full rounded-xl border border-line bg-surface-raised px-3 text-sm text-ink outline-none focus:border-accent focus:ring-2 focus:ring-accent-soft"
-                      >
-                        <option value="">Default</option>
-                        {VOICE_OPTIONS.map((v) => (
-                          <option key={v.id} value={v.id}>
-                            {v.label} — {v.description}
-                          </option>
-                        ))}
-                      </select>
+                        voices={voices}
+                        defaultValue={profile.voiceId}
+                        fromAccount={voicesFromAccount}
+                      />
                     </div>
 
                     <div className="sm:col-span-2 flex items-end">

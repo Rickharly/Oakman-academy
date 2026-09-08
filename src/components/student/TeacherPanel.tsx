@@ -5,6 +5,7 @@ import { Send, MessageCircle, Info } from "lucide-react";
 import { Textarea } from "@/components/ui/Textarea";
 import { Button } from "@/components/ui/Button";
 import { SpeakButton } from "./SpeakButton";
+import { MicButton } from "./MicButton";
 import { cn } from "@/lib/cn";
 
 export type TeacherPanelProps = {
@@ -51,6 +52,9 @@ function TypingDots() {
 
 export function TeacherPanel({ lessonAttemptId, questionId, stage, className, voice = false }: TeacherPanelProps) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
+  // Only the newest finished reply plays by itself; replaying the whole history on every
+  // render would talk over itself.
+  const lastAssistantId = [...messages].reverse().find((m) => m.role === "assistant" && m.content)?.id;
   const [input, setInput] = useState("");
   const [conversationId, setConversationId] = useState<string | undefined>(undefined);
   const [sending, setSending] = useState(false);
@@ -186,7 +190,9 @@ export function TeacherPanel({ lessonAttemptId, questionId, stage, className, vo
                 silence.
               */}
               {voice && m.role === "assistant" && m.content && !sending ? (
-                <SpeakButton text={m.content} />
+                // The newest reply plays by itself: a teacher who talks should not need to be
+                // asked to talk. Older ones keep the button, for hearing something again.
+                <SpeakButton text={m.content} autoPlay={m.id === lastAssistantId} />
               ) : null}
             </div>
           ))
@@ -195,6 +201,12 @@ export function TeacherPanel({ lessonAttemptId, questionId, stage, className, vo
       </div>
 
       <form onSubmit={onSubmit} className="flex items-end gap-2 border-t border-line pt-3">
+        {voice ? (
+          <MicButton
+            disabled={sending}
+            onTranscript={(text) => setInput((prev) => (prev ? `${prev} ${text}` : text))}
+          />
+        ) : null}
         <Textarea
           value={input}
           onChange={(e) => setInput(e.target.value)}
