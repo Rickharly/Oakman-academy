@@ -14,6 +14,27 @@ import { execFileSync, spawn } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 
+/**
+ * Finds the JavaScript entry point of an installed tool, to be run with this very node binary.
+ *
+ * Deliberately not `npx`, and deliberately not `node_modules/.bin`. npx will try to *download*
+ * a package it cannot find, which on a container hangs until the platform gives up and reports
+ * the app as unable to respond. The `.bin` entries are shell shims that `exec node`, so they
+ * need node on PATH — which is one more thing that can differ between a laptop and a container.
+ *
+ * `process.execPath` is the node already running this file. It cannot be missing.
+ */
+function entryPoint(candidates) {
+  for (const relative of candidates) {
+    const full = path.join(process.cwd(), "node_modules", relative);
+    if (fs.existsSync(full)) return full;
+  }
+  return null;
+}
+
+const PRISMA = entryPoint(["prisma/build/index.js"]);
+const NEXT = entryPoint(["next/dist/bin/next"]);
+
 const STATUS_FILE = path.join(process.cwd(), ".boot-status.json");
 const status = { migratedAt: null, migrationError: null, releaseError: null };
 
@@ -38,7 +59,9 @@ function attempt(label, command, args) {
 
 // ── 1. Schema ──────────────────────────────────────────────────────────────
 console.log("[boot] applying database migrations…");
-status.migrationError = attempt("migrate deploy", "npx", ["prisma", "migrate", "deploy"]);
+status.migrationError = PRISMA
+  ? attempt("migrate deploy", process.execPath, [PRISMA, "migrate", "deploy"])
+  : "prisma is not installed — cannot apply migrations.";
 
 if (status.migrationError) {
   console.error(
@@ -49,10 +72,10 @@ if (status.migrationError) {
       "[boot]",
       "[boot] Most common causes:",
       "[boot]  • P3009 — an earlier migration failed and is blocking the rest.",
-      "[boot]    Fix: `npx prisma migrate resolve --rolled-back <migration_name>`",
+      "[boot]    Fix: `pnpm prisma migrate resolve --rolled-back <migration_name>`",
       "[boot]    then redeploy.",
       "[boot]  • The database was created with `db push` and has no migration",
-      "[boot]    history. Fix: `npx prisma migrate resolve --applied <name>` for",
+      "[boot]    history. Fix: `pnpm prisma migrate resolve --applied <name>` for",
       "[boot]    each migration already reflected in the schema.",
       "[boot]  • DATABASE_URL points somewhere unexpected, or the database is",
       "[boot]    asleep or out of connections.",
@@ -70,5 +93,16 @@ record();
 
 // ── 3. Serve, whatever happened above ──────────────────────────────────────
 console.log("[boot] starting the server…");
-const server = spawn("npx", ["next", "start"], { stdio: "inherit", env: process.env });
+if (!NEXT) {
+  console.error("[boot] FATAL: next is not installed. Nothing can be served.");
+  process.exit(1);
+}
+
+const server = spawn(process.execPath, [NEXT, "start"], { stdio: "inherit", env: process.env });
 server.on("exit", (code) => process.exit(code ?? 0));
+// A crash in the server must take the process down so the platform restarts it, rather than
+// leaving a live container with nothing listening on the port.
+server.on("error", (err) => {
+  console.error("[boot] FATAL: could not start the server.", err);
+  process.exit(1);
+});
