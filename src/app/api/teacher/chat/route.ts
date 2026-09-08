@@ -7,11 +7,26 @@ import { prisma } from "@/lib/db";
 import { ApiError, jsonError, requireStudentApi } from "@/lib/auth/api";
 import { teacherAgent } from "@/lib/ai/teacher-agent";
 
+/**
+ * What the player says is on screen. Every field is capped and optional: this is a hint about
+ * what the child can see, and a hostile value should make the answer vaguer, never leak
+ * anything. The server decides the teacher's mode; this can only tighten it.
+ */
+const viewSchema = z.object({
+  stage: z.enum(["STARTER", "LEARN", "PRACTICE", "CHECK", "FEEDBACK", "COMPLETE"]).optional(),
+  section: z.string().max(120).optional(),
+  questionPrompt: z.string().max(600).optional(),
+  options: z.array(z.string().max(200)).max(8).optional(),
+  unanswered: z.boolean().optional(),
+  draft: z.string().max(600).optional(),
+});
+
 const chatBodySchema = z.object({
   message: z.string().min(1, "message is required"),
   conversationId: z.string().optional(),
   lessonAttemptId: z.string().optional(),
   questionId: z.string().optional(),
+  view: viewSchema.optional(),
 });
 
 function toReadableStream(iterable: AsyncIterable<string>): ReadableStream<Uint8Array> {
@@ -62,6 +77,7 @@ export async function POST(req: Request): Promise<Response> {
       conversationId: body.conversationId,
       lessonAttemptId: body.lessonAttemptId,
       questionId: body.questionId,
+      view: body.view,
     });
 
     return new Response(toReadableStream(result.stream), {

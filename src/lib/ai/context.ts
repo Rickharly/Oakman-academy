@@ -35,11 +35,51 @@ export function teacherModeForStage(stage: LessonStage | null | undefined): Teac
   }
 }
 
+/**
+ * What the child can actually see, sent by the player with every message.
+ *
+ * The stored lesson stage says where the attempt has got to; it does not say what is on the
+ * screen. A child can be looking at question three of the quiz while the attempt row still
+ * says LEARN, and a teacher who only knows the row will cheerfully explain the answer to a
+ * question she cannot see. This is display information: it can make the teacher *stricter*
+ * (see `strictestMode`) and it tells her what to talk about, but it can never loosen a rule.
+ */
+export interface TeacherView {
+  /** The stage tab the child is on, which may be ahead of the stored stage. */
+  stage?: LessonStage;
+  /** Where in the lesson they are, in words: "the video", "question 2 of 5". */
+  section?: string;
+  /** The question on screen, verbatim, so she talks about this one and not a guess. */
+  questionPrompt?: string;
+  /** The choices in front of them, so a hint can point without naming. */
+  options?: string[];
+  /** True while the question on screen has not been answered. */
+  unanswered?: boolean;
+  /** What they have typed but not submitted yet. */
+  draft?: string;
+}
+
 export interface ComposeContextInput {
   studentId: string;
   lessonAttemptId?: string;
   questionId?: string;
   message: string;
+  /** What the player says is on screen. Never trusted to relax a rule. */
+  view?: TeacherView;
+}
+
+/** ASSESSMENT is the strictest, LEARN the most permissive. */
+const MODE_STRICTNESS: Record<TeacherMode, number> = { LEARN: 0, PRACTICE: 1, ASSESSMENT: 2 };
+
+/**
+ * The stricter of two modes.
+ *
+ * The stored stage and the on-screen stage can disagree, and when they do the answer is never
+ * "believe the more relaxed one". A child sitting on the quiz is being assessed whether or not
+ * the attempt row has caught up.
+ */
+export function strictestMode(...modes: TeacherMode[]): TeacherMode {
+  return modes.reduce((a, b) => (MODE_STRICTNESS[b] > MODE_STRICTNESS[a] ? b : a), "LEARN");
 }
 
 export interface TeacherContext {
@@ -69,6 +109,8 @@ export interface TeacherContext {
   studentAnswer: unknown | null;
   observations: AiLearningObservation[];
   transcriptWindow: string | null;
+  /** What the player says is on screen right now. */
+  view: TeacherView | null;
 }
 
 export interface ComposedContext {
@@ -198,7 +240,13 @@ export async function composeContext(input: ComposeContextInput): Promise<Compos
   const lesson = lessonAttempt?.lesson ?? null;
   const unit = lesson?.unit ?? null;
   const subject = unit?.programme.subject ?? null;
-  const mode = teacherModeForStage(lessonAttempt?.currentStage ?? null);
+  // The stored stage and the stage on screen can disagree — the row is written when a stage is
+  // submitted, the screen changes the moment a child clicks a tab. Take the stricter of the two
+  // so that "she gave me the answer" cannot happen through a lag in the database.
+  const mode = strictestMode(
+    teacherModeForStage(lessonAttempt?.currentStage ?? null),
+    teacherModeForStage(input.view?.stage ?? null),
+  );
 
   let question: Question | null = null;
   if (input.questionId) {
@@ -252,6 +300,7 @@ export async function composeContext(input: ComposeContextInput): Promise<Compos
     studentAnswer: latestAttempt?.response ?? null,
     observations,
     transcriptWindow,
+    view: input.view ?? null,
   };
 
   return { context, text: renderContextText(context) };
@@ -282,6 +331,36 @@ function renderContextText(ctx: TeacherContext): string {
     ? `Stage ${ctx.currentStage}${ctx.question ? ` — question: "${ctx.question.prompt}"` : ""}`
     : "No active lesson stage.";
   lines.push(`CURRENT ACTIVITY: ${activity}`);
+
+  // What is physically in front of them. Without this the teacher is answering into the dark:
+  // she knows the lesson, but not whether the child is watching the video, staring at question
+  // three, or reading their own feedback — and "what do I do now?" has a different answer for
+  // each of those.
+  if (ctx.view) {
+    const screen: string[] = [];
+    if (ctx.view.section) screen.push(ctx.view.section);
+    if (ctx.view.stage) screen.push(`(${ctx.view.stage} step)`);
+    lines.push(`ON SCREEN RIGHT NOW: ${screen.length > 0 ? screen.join(" ") : "the lesson page"}`);
+    if (ctx.view.questionPrompt) {
+      lines.push(`THE QUESTION THEY ARE LOOKING AT: "${ctx.view.questionPrompt}"`);
+      if (ctx.view.options && ctx.view.options.length > 0) {
+        lines.push(`THE CHOICES THEY CAN SEE: ${ctx.view.options.map((o) => `"${o}"`).join(", ")}`);
+      }
+      if (ctx.view.unanswered) {
+        // Stated flatly, because it is the one fact that changes what she is allowed to say.
+        lines.push(
+          "THEY HAVE NOT ANSWERED IT YET. Do not state, confirm, deny, rule out or hint at " +
+            "which answer is correct — not even by elimination. Help them work it out.",
+        );
+      }
+      if (ctx.view.draft) {
+        lines.push(
+          `WHAT THEY HAVE TYPED SO FAR (not submitted): "${ctx.view.draft}" — you may ask them ` +
+            "about their thinking, but do not tell them whether it is right.",
+        );
+      }
+    }
+  }
   lines.push(
     `STUDENT ANSWER: ${ctx.studentAnswer !== null && ctx.studentAnswer !== undefined ? JSON.stringify(ctx.studentAnswer) : "(no answer given yet)"}`,
   );

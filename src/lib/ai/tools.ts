@@ -84,6 +84,17 @@ function getQuestion(ctx: ToolContext): ToolDefinition {
         options: question.options,
       };
       if (ctx.mode === "ASSESSMENT") return base;
+
+      // Even outside an assessment, the answer key stays on the server until the child has
+      // actually submitted an answer. A model that has been handed the answer leaks it — in a
+      // hint, in a "not quite", in the shape of the next question it asks. The cheapest way to
+      // stop the teacher giving away an answer is to not give her the answer.
+      const answered = await prisma.questionAttempt.findFirst({
+        where: { studentId: ctx.studentId, questionId: question.id },
+        select: { id: true },
+      });
+      if (!answered) return { ...base, note: "Not answered yet — the answer key is withheld." };
+
       return { ...base, answerKey: question.answerKey, explanation: question.explanation };
     },
   };

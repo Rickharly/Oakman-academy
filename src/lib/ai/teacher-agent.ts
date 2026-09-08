@@ -24,7 +24,7 @@ import type { GradingContext } from "@/lib/grading/grade";
 import { schoolDayEnd, schoolDayStart } from "@/lib/dates";
 import { getAiProvider, AiError, type AiProvider, type ChatMessage } from "./provider";
 import { buildSystemPrompt } from "./prompts";
-import { composeContext, teacherModeForStage } from "./context";
+import { composeContext, teacherModeForStage, type TeacherView } from "./context";
 import { buildTeacherTools } from "./tools";
 
 export { teacherModeForStage };
@@ -35,6 +35,9 @@ export interface ChatInput {
   conversationId?: string;
   lessonAttemptId?: string;
   questionId?: string;
+  /** What the player says is on screen. Display information only — it can make the teacher
+   * stricter, never more permissive. */
+  view?: TeacherView;
 }
 
 export interface ChatResult {
@@ -92,6 +95,7 @@ async function chat(input: ChatInput): Promise<ChatResult> {
     lessonAttemptId: input.lessonAttemptId,
     questionId: input.questionId,
     message: input.message,
+    view: input.view,
   });
   const ctx = composed.context;
 

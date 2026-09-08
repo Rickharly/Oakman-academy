@@ -8,6 +8,19 @@ import { SpeakButton } from "./SpeakButton";
 import { MicButton } from "./MicButton";
 import { cn } from "@/lib/cn";
 
+/**
+ * What the child can see. Passed down from the player and sent with every message, so the
+ * teacher is talking about the screen in front of them rather than the lesson in the abstract.
+ */
+export type TeacherView = {
+  stage?: "STARTER" | "LEARN" | "PRACTICE" | "CHECK" | "FEEDBACK" | "COMPLETE";
+  section?: string;
+  questionPrompt?: string;
+  options?: string[];
+  unanswered?: boolean;
+  draft?: string;
+};
+
 export type TeacherPanelProps = {
   /** Current lesson attempt, so the AI has context. Omit for the standalone /teacher chat. */
   lessonAttemptId?: string;
@@ -18,6 +31,8 @@ export type TeacherPanelProps = {
   className?: string;
   /** Whether this child's teacher reads her replies aloud. Set by a parent in Settings. */
   voice?: boolean;
+  /** What is on screen right now. The server uses it for context, and to stay strict. */
+  view?: TeacherView;
 };
 
 type ChatMessage = { id: string; role: "user" | "assistant"; content: string };
@@ -50,7 +65,12 @@ function TypingDots() {
   );
 }
 
-export function TeacherPanel({ lessonAttemptId, questionId, stage, className, voice = false }: TeacherPanelProps) {
+export function TeacherPanel({ lessonAttemptId, questionId, stage, className, voice = false, view }: TeacherPanelProps) {
+  // Read at send time rather than captured in `send`'s closure: by the time a child finishes
+  // typing, the question they are looking at may not be the one that was on screen when the
+  // panel last rendered.
+  const viewRef = useRef(view);
+  viewRef.current = view;
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   // Only the newest finished reply plays by itself; replaying the whole history on every
   // render would talk over itself.
@@ -91,6 +111,7 @@ export function TeacherPanel({ lessonAttemptId, questionId, stage, className, vo
           conversationId,
           lessonAttemptId,
           questionId,
+          view: viewRef.current,
         }),
       });
 

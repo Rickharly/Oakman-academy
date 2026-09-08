@@ -10,7 +10,7 @@ import { Badge, type BadgeStatus } from "@/components/ui/Badge";
 import { Sheet } from "@/components/ui/Sheet";
 import { QuestionRenderer } from "@/components/student/questions/QuestionRenderer";
 import type { QuestionResult, StudentQuestionLite } from "@/components/student/questions/types";
-import { TeacherPanel } from "@/components/student/TeacherPanel";
+import { TeacherPanel, type TeacherView } from "@/components/student/TeacherPanel";
 import { subjectTheme } from "@/components/student/subjectTheme";
 import { SubjectArt } from "@/components/student/SubjectArt";
 import { LessonTimer } from "@/components/student/LessonTimer";
@@ -451,6 +451,57 @@ export function LessonPlayer(props: LessonPlayerProps) {
     (viewStage === "STARTER" || viewStage === "PRACTICE" || viewStage === "CHECK"
       ? questionsByStage[viewStage]?.[0]?.id
       : undefined);
+
+  /**
+   * What the child can see, described for the teacher.
+   *
+   * Without this she knows the lesson but not the screen, so "I don't get it" makes her ask
+   * which part they mean when the answer is right in front of both of them. It also tells her
+   * that the question they are staring at is unanswered, which is what stops her answering it.
+   */
+  const teacherView: TeacherView = (() => {
+    const onScreenQuestions =
+      viewStage === "PRACTICE" && extraPractice.length > 0
+        ? extraPractice
+        : viewStage === "STARTER" || viewStage === "PRACTICE" || viewStage === "CHECK"
+          ? questionsByStage[viewStage]
+          : [];
+    const question =
+      onScreenQuestions.find((q) => q.id === currentQuestionId) ?? onScreenQuestions[0];
+
+    if (!question) {
+      const section =
+        viewStage === "LEARN"
+          ? lesson.resources.some((r) => r.type === "VIDEO" && (r.providerUrl || r.storedPath))
+            ? "the lesson video, with the key points and keywords beside it"
+            : "the key points and keywords for this lesson"
+          : viewStage === "FEEDBACK"
+            ? "their marks and feedback for the quiz"
+            : viewStage === "COMPLETE"
+              ? "the end-of-lesson screen"
+              : "the lesson page";
+      return { stage: viewStage, section };
+    }
+
+    const index = onScreenQuestions.findIndex((q) => q.id === question.id);
+    const isExtra = viewStage === "PRACTICE" && extraPractice.length > 0;
+    const result = isExtra ? extraResults[question.id] : results[question.id];
+    const draft = isExtra ? extraDrafts[question.id] : drafts[question.id];
+    const choices = (question.options as { choices?: { text?: string }[] } | null)?.choices;
+
+    return {
+      stage: viewStage,
+      section: `question ${index + 1} of ${onScreenQuestions.length}${isExtra ? " in their extra practice" : ""}`,
+      questionPrompt: question.prompt,
+      options: Array.isArray(choices)
+        ? choices.map((c) => String(c?.text ?? "")).filter(Boolean).slice(0, 8)
+        : undefined,
+      // Unanswered is the fact that changes what she is allowed to say, so it is derived from
+      // whether the answer has actually been marked — not from which tab is open.
+      unanswered: !result,
+      draft: typeof draft === "string" && draft.trim() ? draft.slice(0, 600) : undefined,
+    };
+  })();
 
   // ───────────────────────────── stage renderers ─────────────────────────────
 
@@ -1282,7 +1333,7 @@ export function LessonPlayer(props: LessonPlayerProps) {
         {viewStage !== "COMPLETE" ? (
           <aside className="hidden lg:sticky lg:top-20 lg:block lg:max-h-[calc(100dvh-6rem)]">
             <Card padding="lg" className="flex h-[calc(100dvh-6rem)] flex-col">
-              <TeacherPanel lessonAttemptId={attemptId} questionId={currentQuestionId} stage={viewStage} voice={voiceEnabled} />
+              <TeacherPanel lessonAttemptId={attemptId} questionId={currentQuestionId} stage={viewStage} voice={voiceEnabled} view={teacherView} />
             </Card>
           </aside>
         ) : null}
@@ -1300,7 +1351,7 @@ export function LessonPlayer(props: LessonPlayerProps) {
           </button>
           <Sheet open={teacherSheetOpen} onClose={() => setTeacherSheetOpen(false)} side="bottom" title="Ask your teacher">
             <div className="flex h-[70dvh] flex-col">
-              <TeacherPanel lessonAttemptId={attemptId} questionId={currentQuestionId} stage={viewStage} voice={voiceEnabled} />
+              <TeacherPanel lessonAttemptId={attemptId} questionId={currentQuestionId} stage={viewStage} voice={voiceEnabled} view={teacherView} />
             </div>
           </Sheet>
         </>
