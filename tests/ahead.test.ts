@@ -100,6 +100,8 @@ describe("the lessons the next fortnight needs", () => {
     expect(targets[0].yearGroup).toBe(7);
     // Two a week for two weeks is four lessons; l1 is already teachable, so three are wanted.
     expect(targets[0].lessonSlugs).toEqual(["l2", "l3", "l4"]);
+    // Six lessons exist and four are needed — nothing to go looking for.
+    expect(targets[0].discover).toBe(0);
     // And it knows which unit to read, so it does not walk the whole year to find them.
     expect(targets[0].unitSlugs).toEqual(["maths-u1"]);
   });
@@ -124,6 +126,24 @@ describe("the lessons the next fortnight needs", () => {
     expect(targets[0].lessonSlugs).toEqual(["l2", "l3"]);
   });
 
+  it("goes looking for more when a subject has run out of lessons entirely", async () => {
+    // This is why a child ends up with two English periods and no history. Asking for lessons
+    // by name can only return lessons we already have, so a subject with nothing imported was
+    // invisible to the weekly import — and the planner filled its periods from somewhere else.
+    await buildStudent({
+      username: "starved",
+      weeklyFrequency: 3,
+      lessons: [{ slug: "l1", ready: true }],
+    });
+
+    const targets = await lessonsNeededAhead(2);
+
+    expect(targets).toHaveLength(1);
+    // One lesson exists and six periods are coming: five have to be found.
+    expect(targets[0].discover).toBe(5);
+    expect(targets[0].lessonSlugs).toEqual([]);
+  });
+
   it("asks for nothing when the fortnight ahead is already teachable", async () => {
     await buildStudent({
       username: "ready",
@@ -135,8 +155,8 @@ describe("the lessons the next fortnight needs", () => {
       ],
     });
 
-    // One a week for two weeks reaches l1 and l2, both of which are teachable. l3 is a week
-    // away and can wait for next Sunday — importing it now is quota spent early, not saved.
+    // One a week for two weeks reaches l1 and l2, both of which are teachable, and a third
+    // exists behind them. l3 can wait — importing it now is quota spent early, not saved.
     expect(await lessonsNeededAhead(2)).toEqual([]);
   });
 

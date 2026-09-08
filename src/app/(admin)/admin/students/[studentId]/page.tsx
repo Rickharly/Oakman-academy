@@ -16,6 +16,7 @@ import { getDayEngagement } from "@/lib/engagement/service";
 import { DayEngagement } from "@/components/admin/DayEngagement";
 import { schoolDayKey } from "@/lib/dates";
 import { settleFinishedLessons } from "@/lib/lessons/service";
+import { subjectSupply } from "@/lib/scheduling/gaps";
 
 const ASSIGNMENT_BADGE: Record<string, { status?: BadgeStatus; tone?: "neutral" | "warning" }> = {
   PLANNED: { tone: "neutral" },
@@ -44,6 +45,10 @@ export default async function AdminStudentOverviewPage({ params }: { params: Pro
   // parent is shown a number that is wrong in the direction that matters most.
   await settleFinishedLessons(studentId).catch(() => undefined);
 
+  // Which subjects can actually supply their periods this week, and why not where they cannot.
+  const supply = await subjectSupply(studentId).catch(() => []);
+  const starvedSubjects = supply.filter((s) => !s.healthy);
+
   const dateKey = schoolDayKey();
   const [overview, todayView, weekStrip, subjects, weakTopics, summaries, activity, engagement, readingEntries] =
     await Promise.all([
@@ -67,6 +72,44 @@ export default async function AdminStudentOverviewPage({ params }: { params: Pro
 
   return (
     <>
+      {/*
+        Why the day looks the way it does.
+        
+        The planner fills a day to a full timetable, taking a second lesson from a subject that
+        has material when one that should have had the period has none. That is right — an
+        empty period helps nobody — but done silently it reads as the planner inventing a
+        timetable of its own. Two English and two maths on one day has a cause, and the cause
+        belongs on this page rather than in a support conversation.
+      */}
+      {starvedSubjects.length > 0 ? (
+        <Card padding="md" className="mb-6 space-y-3 border-warning-soft bg-warning-soft/40">
+          <div className="flex items-start gap-3">
+            <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-warning" />
+            <div className="space-y-1">
+              <p className="text-sm font-semibold text-ink">
+                {starvedSubjects.length === 1 ? "One subject has" : `${starvedSubjects.length} subjects have`}{" "}
+                nothing to teach
+              </p>
+              <p className="text-sm text-ink-muted">
+                Their periods get filled by whichever subject still has lessons, which is why a
+                day can come out with two of something. Import more from Curriculum to fix it.
+              </p>
+            </div>
+          </div>
+          <ul className="space-y-1.5 pl-7">
+            {starvedSubjects.map((s) => (
+              <li key={s.subjectTitle} className="text-sm text-ink">
+                <span className="font-medium">{s.subjectTitle}</span>
+                <span className="text-ink-muted">
+                  {" "}
+                  — {s.problem} ({s.lessonsDone} done of {s.lessonsImported} imported)
+                </span>
+              </li>
+            ))}
+          </ul>
+        </Card>
+      ) : null}
+
       <PageHeader
         title={student.user.displayName}
         description={`Year ${student.yearGroup} · ${student.keyStage.toUpperCase()}`}

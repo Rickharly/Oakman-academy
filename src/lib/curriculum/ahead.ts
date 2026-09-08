@@ -27,6 +27,17 @@ export interface AheadTarget extends SyncScope {
   unitSlugs: string[];
   /** Whose week this is, for the log a parent reads. */
   students: string[];
+  /**
+   * How many lessons this subject still needs that we do not yet know exist.
+   *
+   * A subject whose programme has no lessons in the database at all — or has run to the end of
+   * what was imported — cannot be asked for by name, because we do not know the names. Eva had
+   * two English and two maths periods in a day and no history, and this was why: the weekly
+   * import only ever asked for lessons it could already see, so a subject with nothing imported
+   * stayed empty forever and the planner filled her day by doubling up the subjects that had
+   * something. Targets with `discover` set are imported by walking the programme instead.
+   */
+  discover: number;
 }
 
 /**
@@ -100,12 +111,17 @@ export async function lessonsNeededAhead(weeks: number = WEEKS_AHEAD): Promise<A
       });
       const doneIds = new Set(done.map((p) => p.lessonId));
 
-      const upcoming = sequence
-        .filter((l) => !doneIds.has(l.id))
-        .slice(0, schedule.weeklyFrequency * weeks);
+      const wanted = schedule.weeklyFrequency * weeks;
+      const remaining = sequence.filter((l) => !doneIds.has(l.id));
+      const upcoming = remaining.slice(0, wanted);
 
       const missing = upcoming.filter((l) => !isReady(l));
-      if (missing.length === 0) continue;
+      // Lessons this child needs that we cannot name because they were never imported. Asking
+      // for a subject's lessons by slug can only ever return lessons we already have, so a
+      // subject that has run out — or never started — needs the programme walking instead.
+      const shortfall = Math.max(0, wanted - remaining.length);
+
+      if (missing.length === 0 && shortfall === 0) continue;
 
       const key = `${programme.subject.slug}:${programme.yearGroup}`;
       const target =
@@ -116,12 +132,15 @@ export async function lessonsNeededAhead(weeks: number = WEEKS_AHEAD): Promise<A
           lessonSlugs: [],
           unitSlugs: [],
           students: [],
+          discover: 0,
         } satisfies AheadTarget);
 
       for (const lesson of missing) {
         if (!target.lessonSlugs.includes(lesson.providerSlug)) target.lessonSlugs.push(lesson.providerSlug);
         if (!target.unitSlugs.includes(lesson.unitSlug)) target.unitSlugs.push(lesson.unitSlug);
       }
+      // Two children on the same programme: take the larger shortfall, not the sum.
+      target.discover = Math.max(target.discover, shortfall);
       if (!target.students.includes(student.user.displayName)) target.students.push(student.user.displayName);
       byProgramme.set(key, target);
     }
@@ -155,15 +174,39 @@ export async function importLessonsAhead(
     return { targets, jobIds: [], failures: [], nothingToDo: true };
   }
 
+  const jobIds: string[] = [];
+  const failures: { scope: SyncScope; error: string }[] = [];
+
   for (const t of targets) {
     log(
-      `${t.subjectSlug} year ${t.yearGroup}: ${t.lessonSlugs.length} lesson(s) needed for ${t.students.join(" and ")}`,
+      `${t.subjectSlug} year ${t.yearGroup}: ${t.lessonSlugs.length} known lesson(s) to fetch` +
+        (t.discover > 0 ? `, and ${t.discover} more to find` : "") +
+        ` for ${t.students.join(" and ")}`,
     );
-  }
 
-  // No `maxLessons`: the scope is already the limit. Capping a list this small would mean
-  // deliberately leaving a child without Thursday's lesson.
-  const { jobIds, failures } = await syncMany(targets, { log: opts.log });
+    // Named lessons first: they are the ones a child reaches soonest, and they cost one unit
+    // read each rather than a walk of the year.
+    if (t.lessonSlugs.length > 0) {
+      const named = await syncMany(
+        [{ subjectSlug: t.subjectSlug, yearGroup: t.yearGroup, lessonSlugs: t.lessonSlugs, unitSlugs: t.unitSlugs }],
+        { log: opts.log },
+      );
+      jobIds.push(...named.jobIds);
+      failures.push(...named.failures);
+    }
+
+    // Then whatever this subject is short of. No slug filter — we are looking for lessons we
+    // have never seen — but bounded, so finding history's next three lessons cannot spend the
+    // window that maths needs.
+    if (t.discover > 0) {
+      const found = await syncMany([{ subjectSlug: t.subjectSlug, yearGroup: t.yearGroup }], {
+        log: opts.log,
+        maxLessons: t.discover,
+      });
+      jobIds.push(...found.jobIds);
+      failures.push(...found.failures);
+    }
+  }
 
   for (const f of failures) {
     log(`FAILED ${f.scope.subjectSlug} year ${f.scope.yearGroup}: ${f.error}`);
