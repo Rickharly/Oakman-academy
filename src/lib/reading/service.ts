@@ -142,18 +142,39 @@ function asPrompts(value: unknown): string[] {
  * because a model was briefly unavailable would be unforgivable; they can always be replied
  * to later.
  */
+/**
+ * How the time spent compares with how long the passage should take.
+ *
+ * A judgement for the parent, not a mark. Children reread, get interrupted, and read at
+ * different speeds, so the bands are wide: this is meant to catch "clicked straight through
+ * a 2,000-word chapter in forty seconds", not to police a slow reader.
+ */
+export function judgePace(readingSeconds: number, wordCount: number): "rushed" | "steady" | "slow" {
+  // 180 words a minute is a careful child reading unfamiliar prose.
+  const expected = Math.max(30, (wordCount / 180) * 60);
+  if (readingSeconds < expected * 0.4) return "rushed";
+  if (readingSeconds > expected * 3) return "slow";
+  return "steady";
+}
+
 export async function submitReadingResponse(input: {
   studentId: string;
   readingTextId: string;
   promptIndex: number | null;
   response: string;
   assignmentId?: string;
+  readingSeconds?: number;
 }): Promise<ReadingEntry> {
   const text = await prisma.readingText.findUnique({ where: { id: input.readingTextId } });
   if (!text) throw new ApiError(404, "Reading text not found");
 
   const trimmed = input.response.trim();
   if (trimmed.length < 2) throw new ApiError(400, "Write a little more before sending it.");
+
+  const readingSeconds =
+    input.readingSeconds == null
+      ? null
+      : Math.max(0, Math.min(Math.round(input.readingSeconds), 4 * 60 * 60));
 
   const isEssay = input.promptIndex === null && Boolean(text.essayPrompt);
   const prompts = asPrompts(text.prompts);
@@ -170,6 +191,10 @@ export async function submitReadingResponse(input: {
       prompt,
       response: trimmed,
       maxScore: isEssay ? 8 : null,
+      // Clamped: the browser reports this, and a tab left open overnight is not eight hours
+      // of reading.
+      readingSeconds: readingSeconds ?? null,
+      readingPace: readingSeconds == null ? null : judgePace(readingSeconds, text.wordCount),
     },
   });
 

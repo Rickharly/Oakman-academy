@@ -134,7 +134,8 @@ export default async function AdminSettingsPage({
     const studentId = String(formData.get("studentId") ?? "");
     const { student } = await requireParentOfStudent(studentId);
 
-    const { welcomeSeenAt: _seen, ...preferences } = (student.preferences ?? {}) as Record<string, unknown>;
+    const preferences = { ...((student.preferences ?? {}) as Record<string, unknown>) };
+    delete preferences.welcomeSeenAt;
     await prisma.studentProfile.update({
       where: { id: student.id },
       data: { preferences: preferences as Prisma.InputJsonObject },

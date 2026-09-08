@@ -6,6 +6,7 @@ import {
   getNextReadingText,
   getReadingHistory,
   getReadingSummary,
+  judgePace,
   submitReadingResponse,
 } from "@/lib/reading/service";
 import { planWeek } from "@/lib/scheduling/planner";
@@ -171,5 +172,51 @@ describe("reading in the timetable", () => {
     const yearNine = await makeStudent(9);
     await planWeek(yearNine, MONDAY, { replace: true });
     expect(await prisma.dailyAssignment.count({ where: { studentId: yearNine, kind: "READING" } })).toBe(0);
+  });
+});
+
+describe("reading pace", () => {
+  it("flags a chapter clicked through far too fast", () => {
+    // 2,000 words should take ~11 minutes; forty seconds is not reading.
+    expect(judgePace(40, 2000)).toBe("rushed");
+  });
+
+  it("calls a sensible range steady, including a careful reread", () => {
+    expect(judgePace(11 * 60, 2000)).toBe("steady");
+    expect(judgePace(25 * 60, 2000)).toBe("steady"); // read it twice — still fine
+  });
+
+  it("only says slow when the gap is large", () => {
+    expect(judgePace(60 * 60, 2000)).toBe("slow");
+  });
+
+  it("does not punish a short passage read briskly", () => {
+    // A 60-word poem: expected floor is 30s, so 20s is not yet rushed territory abuse.
+    expect(judgePace(20, 60)).toBe("steady");
+  });
+
+  it("records the pace alongside the writing", async () => {
+    const text = await getNextReadingText(studentId);
+    const entry = await submitReadingResponse({
+      studentId,
+      readingTextId: text!.id,
+      promptIndex: 0,
+      response: "I thought the ending was left open on purpose.",
+      readingSeconds: 5,
+    });
+    expect(entry.readingSeconds).toBe(5);
+    expect(entry.readingPace).toBe("rushed");
+  });
+
+  it("clamps a tab left open overnight", async () => {
+    const text = await getNextReadingText(studentId);
+    const entry = await submitReadingResponse({
+      studentId,
+      readingTextId: text!.id,
+      promptIndex: 0,
+      response: "Coming back to this the next morning.",
+      readingSeconds: 60 * 60 * 20,
+    });
+    expect(entry.readingSeconds).toBe(4 * 60 * 60);
   });
 });

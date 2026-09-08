@@ -758,8 +758,8 @@ export function LessonPlayer(props: LessonPlayerProps) {
         </div>
 
         {viewStage !== "COMPLETE" ? (
-          <aside className="hidden lg:sticky lg:top-20 lg:block lg:max-h-[calc(100vh-6rem)]">
-            <Card padding="lg" className="flex h-[calc(100vh-6rem)] flex-col">
+          <aside className="hidden lg:sticky lg:top-20 lg:block lg:max-h-[calc(100dvh-6rem)]">
+            <Card padding="lg" className="flex h-[calc(100dvh-6rem)] flex-col">
               <TeacherPanel lessonAttemptId={attemptId} questionId={currentQuestionId} stage={viewStage} />
             </Card>
           </aside>
@@ -777,7 +777,7 @@ export function LessonPlayer(props: LessonPlayerProps) {
             <MessageCircle className="h-6 w-6" />
           </button>
           <Sheet open={teacherSheetOpen} onClose={() => setTeacherSheetOpen(false)} side="bottom" title="Ask your teacher">
-            <div className="flex h-[65vh] flex-col">
+            <div className="flex h-[70dvh] flex-col">
               <TeacherPanel lessonAttemptId={attemptId} questionId={currentQuestionId} stage={viewStage} />
             </div>
           </Sheet>
