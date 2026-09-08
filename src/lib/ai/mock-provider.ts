@@ -152,6 +152,18 @@ function fakeDataFor(schemaName: string, system: string, messages: ChatMessage[]
         nextSteps: ["quote directly from the text"],
       };
     }
+    case "chapterPrompts": {
+      const body = messages.map((m) => m.content).join("\n");
+      const firstWords = body.trim().split(/\s+/).slice(0, 6).join(" ");
+      return {
+        prompts: [
+          `What happens at the start, where it says "${firstWords}…"?`,
+          "Why do you think the characters behave the way they do here?",
+          "What did you make of this chapter?",
+        ],
+        vocabulary: [{ word: "marram", meaning: "a tough grass that grows on sand dunes" }],
+      };
+    }
     case "subjectReportNote": {
       // Echoes real unit titles back, so a test can tell a grounded note from a generic one.
       const body = messages.map((m) => m.content).join("\n");

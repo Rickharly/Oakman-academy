@@ -13,6 +13,13 @@ import { Badge } from "@/components/ui/Badge";
  * The text stays on screen while they answer — reading responses should send you back into
  * the text, not test your memory of it.
  */
+export type ReadingRoomBook = {
+  title: string;
+  author: string;
+  chapterNumber: number;
+  chapterCount: number;
+};
+
 export type ReadingRoomText = {
   id: string;
   title: string;
@@ -24,6 +31,8 @@ export type ReadingRoomText = {
   prompts: string[];
   essayPrompt: string | null;
   vocabulary: { word: string; meaning: string }[];
+  /** Set when this passage is a chapter of the class novel. */
+  book: ReadingRoomBook | null;
 };
 
 export type ReadingRoomEntry = {
@@ -101,16 +110,37 @@ export function ReadingRoom({
       <Card padding="lg" className="space-y-4">
         <div className="flex flex-wrap items-center gap-2">
           <Badge tone="neutral">
-            <BookOpen className="h-3 w-3" /> {text.genre}
+            <BookOpen className="h-3 w-3" /> {text.book ? "Chapter" : text.genre}
           </Badge>
           <span className="text-xs text-ink-faint">
+            {text.book ? `Chapter ${text.book.chapterNumber} of ${text.book.chapterCount} · ` : ""}
             {text.wordCount} words · about {text.estimatedMinutes} minutes
           </span>
         </div>
         <div>
+          {text.book ? (
+            <p className="text-sm font-medium text-ink-muted">
+              {text.book.title} <span className="text-ink-faint">· {text.book.author}</span>
+            </p>
+          ) : null}
           <h1 className="text-xl font-semibold tracking-tight text-ink sm:text-2xl">{text.title}</h1>
-          <p className="text-sm text-ink-muted">{text.author}</p>
+          {text.book ? null : <p className="text-sm text-ink-muted">{text.author}</p>}
         </div>
+        {text.book ? (
+          <div
+            className="h-1 w-full overflow-hidden rounded-full bg-stone-100"
+            role="progressbar"
+            aria-label="How far through the book"
+            aria-valuenow={text.book.chapterNumber}
+            aria-valuemin={0}
+            aria-valuemax={text.book.chapterCount}
+          >
+            <span
+              className="block h-full rounded-full bg-accent"
+              style={{ width: `${(text.book.chapterNumber / text.book.chapterCount) * 100}%` }}
+            />
+          </div>
+        ) : null}
 
         <div className="space-y-4 text-[15px] leading-8 text-ink">
           {text.body.split(/\n{2,}/).map((para, i) => (

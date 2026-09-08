@@ -172,10 +172,29 @@ export async function recordTimeBreakdown(
 
   await prisma.schoolDay
     .updateMany({
-      where: { studentId, date: toDateOnly(schoolDayKey()) },
+      where: { studentId, date: await dateForAttempt(attemptId) },
       data: { lastActivityAt: new Date() },
     })
     .catch(() => undefined);
+}
+
+/**
+ * The day a break belongs to.
+ *
+ * Not simply "today": a break taken during a lesson belongs to that lesson's school day. They
+ * are usually the same, but not for a child finishing yesterday's work, and not for anyone
+ * still going at midnight — and a break filed under the wrong day is invisible to the parent
+ * reading the day it actually happened on.
+ */
+async function dateForAttempt(attemptId?: string): Promise<Date> {
+  if (attemptId) {
+    const attempt = await prisma.lessonAttempt.findUnique({
+      where: { id: attemptId },
+      select: { assignment: { select: { date: true } } },
+    });
+    if (attempt?.assignment?.date) return attempt.assignment.date;
+  }
+  return toDateOnly(schoolDayKey());
 }
 
 /** The child pressed "I need a moment". */
@@ -194,7 +213,7 @@ export async function startFocusEvent(
     data: {
       studentId,
       attemptId: input.attemptId ?? null,
-      date: toDateOnly(schoolDayKey()),
+      date: await dateForAttempt(input.attemptId),
       kind: input.kind,
       note: input.note?.slice(0, 200) || null,
     },
