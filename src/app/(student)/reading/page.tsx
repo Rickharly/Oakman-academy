@@ -52,6 +52,10 @@ export default async function ReadingPage({
     maxScore: e.maxScore,
   }));
 
+  const book = text.bookId
+    ? await prisma.book.findUnique({ where: { id: text.bookId } })
+    : null;
+
   const prompts = Array.isArray(text.prompts)
     ? (text.prompts as unknown[]).filter((p): p is string => typeof p === "string")
     : [];
@@ -75,6 +79,15 @@ export default async function ReadingPage({
         prompts,
         essayPrompt: text.essayPrompt,
         vocabulary,
+        book:
+          book && text.chapterNumber
+            ? {
+                title: book.title,
+                author: book.author,
+                chapterNumber: text.chapterNumber,
+                chapterCount: book.chapterCount,
+              }
+            : null,
       }}
       entries={entries}
       assignmentId={assignmentId}

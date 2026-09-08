@@ -14,7 +14,13 @@ import type { ReadingEntry, ReadingText } from "@/generated/prisma/client";
 
 export type ReadingPrompt = { index: number; text: string };
 
-/** The passage a child should read next: the lowest-ordered one they have not responded to. */
+/**
+ * The passage a child should read next.
+ *
+ * When a class novel is set for their year group they carry on with it, a chapter at a time —
+ * that is what reading in school actually looks like. With no book set they get the next
+ * standalone passage, which is what the short comprehension and poetry days are for.
+ */
 export async function getNextReadingText(studentId: string): Promise<ReadingText | null> {
   const student = await prisma.studentProfile.findUnique({ where: { id: studentId } });
   if (!student) return null;
@@ -25,11 +31,79 @@ export async function getNextReadingText(studentId: string): Promise<ReadingText
     distinct: ["readingTextId"],
   });
   const doneIds = done.map((d) => d.readingTextId);
+  const notDone = doneIds.length ? { notIn: doneIds } : undefined;
+
+  const book = await prisma.book.findFirst({
+    where: { yearGroup: student.yearGroup, active: true },
+  });
+
+  if (book) {
+    const chapter = await prisma.readingText.findFirst({
+      where: { bookId: book.id, id: notDone },
+      orderBy: { chapterNumber: "asc" },
+    });
+    // Finished the book: fall through to the standalone passages rather than stopping.
+    if (chapter) return ensurePrompts(chapter, book.title);
+  }
 
   return prisma.readingText.findFirst({
-    where: { yearGroup: student.yearGroup, id: { notIn: doneIds.length ? doneIds : undefined } },
+    where: { yearGroup: student.yearGroup, bookId: null, id: notDone },
     orderBy: { order: "asc" },
   });
+}
+
+const chapterPromptsSchema = z.object({
+  prompts: z.array(z.string()).min(2).max(4),
+  vocabulary: z.array(z.object({ word: z.string(), meaning: z.string() })).max(5),
+});
+
+/**
+ * Book chapters arrive from Gutenberg as plain text, so their questions are written the first
+ * time the chapter is served and then kept.
+ *
+ * Doing it lazily rather than at import means a 34-chapter novel costs nothing for the
+ * chapters nobody reaches, and doing it once rather than per view means a child who comes back
+ * to a chapter sees the same questions they saw yesterday.
+ */
+async function ensurePrompts(chapter: ReadingText, bookTitle: string): Promise<ReadingText> {
+  if (asPrompts(chapter.prompts).length > 0) return chapter;
+
+  try {
+    const ai = getAiProvider();
+    const { data } = await ai.structured({
+      model: "fast",
+      schemaName: "chapterPrompts",
+      schema: chapterPromptsSchema,
+      system: [
+        `You are an English teacher setting reading-journal questions on a chapter of "${bookTitle}".`,
+        "",
+        "Write three questions about THIS chapter, in this order:",
+        "1. Something they can answer by looking back at the text.",
+        "2. Something that asks them to infer — why a character did or said something.",
+        "3. Something that asks what they think, with no right answer.",
+        "",
+        "Ask only about what is actually in the passage. Never refer to events from later in",
+        "the book, and never assume they have read it before.",
+        "",
+        "vocabulary: up to 4 words from this chapter a child might not know, with a short",
+        "plain-English meaning as used here. Older words are the point — do not skip them.",
+        "",
+        "UK English. Speak to the child directly.",
+      ].join("\n"),
+      messages: [{ role: "user", content: chapter.body.slice(0, 12_000) }],
+    });
+
+    return await prisma.readingText.update({
+      where: { id: chapter.id },
+      data: { prompts: data.prompts, vocabulary: data.vocabulary },
+    });
+  } catch {
+    // A chapter with a general question is still a readable chapter.
+    return {
+      ...chapter,
+      prompts: ["What happened in this chapter, and what did you make of it?"],
+    };
+  }
 }
 
 export async function getReadingText(id: string): Promise<ReadingText | null> {

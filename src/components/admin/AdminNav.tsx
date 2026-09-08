@@ -12,6 +12,7 @@ import {
   Settings,
   LogOut,
   Menu,
+  BookMarked,
   type LucideIcon,
 } from "lucide-react";
 import { Avatar } from "@/components/ui/Avatar";
@@ -35,6 +36,7 @@ const items: NavItem[] = [
   { href: "/admin/students", label: "Students", icon: Users },
   { href: "/admin/schedule", label: "Schedule", icon: Calendar },
   { href: "/admin/curriculum", label: "Curriculum", icon: Library },
+  { href: "/admin/reading", label: "Reading", icon: BookMarked },
   { href: "/admin/reports", label: "Reports", icon: BarChart3 },
   { href: "/admin/settings", label: "Settings", icon: Settings },
 ];

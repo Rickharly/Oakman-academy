@@ -434,12 +434,54 @@ model ReadingText {
   essayPrompt      String?
   /// Vocabulary worth noticing, as {word, meaning}.
   vocabulary       Json     @default("[]")
+  /// Set when this passage is a chapter of a book rather than a standalone text.
+  bookId           String?
+  book             Book?    @relation(fields: [bookId], references: [id], onDelete: Cascade)
+  chapterNumber    Int?
   createdAt        DateTime @default(now())
 
   entries     ReadingEntry[]
   assignments DailyAssignment[]
 
   @@index([yearGroup, order])
+  @@index([bookId, chapterNumber])
+}
+
+/// A whole book, read a chapter at a time — the class novel.
+///
+/// Chapters are stored as `ReadingText` rows so a chapter behaves exactly like any other
+/// passage: same prompts, same responses, same place in the record. This row is the spine that
+/// holds them in order and carries what a parent needs to decide whether to set it.
+model Book {
+  id              String   @id @default(cuid())
+  slug            String   @unique
+  title           String
+  author          String
+  /// Recorded so the public-domain claim can be re-checked. UK and Canada are life + 70,
+  /// which is a stricter test than Project Gutenberg's US one.
+  authorDeathYear Int?
+  /// "gutenberg" | "fixture"
+  source          String   @default("gutenberg")
+  /// The Project Gutenberg ebook number, so the exact text can be traced back.
+  sourceRef       String?
+  sourceUrl       String?
+  yearGroup       Int
+  /// "accessible" | "stretching" | "hard" for that year group.
+  difficulty      String   @default("stretching")
+  /// Honest note about anything in the text that needs a conversation, shown to the parent.
+  contentNotes    String?
+  whyThisBook     String?
+  chapterCount    Int      @default(0)
+  wordCount       Int      @default(0)
+  /// Only one book at a time is normally set; the rest sit in the library.
+  active          Boolean  @default(false)
+  importedAt      DateTime?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  chapters ReadingText[]
+
+  @@index([yearGroup, active])
 }
 
 enum ReadingEntryKind {

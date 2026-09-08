@@ -225,6 +225,13 @@ describe("stepping away", () => {
   it("coming back with nothing open is harmless", async () => {
     expect(await endFocusEvent(studentId)).toBe(0);
   });
+
+  it("files a break with no lesson under today", async () => {
+    const { id } = await startFocusEvent(studentId, { kind: "DRINK" });
+    const stored = await prisma.focusEvent.findUniqueOrThrow({ where: { id } });
+    const today = new Date().toISOString().slice(0, 10);
+    expect(stored.date.toISOString().slice(0, 10)).toBe(today);
+  });
 });
 
 describe("the day a parent reads", () => {
@@ -246,6 +253,10 @@ describe("the day a parent reads", () => {
     }
     const { id } = await startFocusEvent(studentId, { attemptId: attempt.id, kind: "TOILET" });
     await endFocusEvent(studentId, id);
+
+    // The break belongs to the lesson's school day, not to whatever today happens to be.
+    const stored = await prisma.focusEvent.findUniqueOrThrow({ where: { id } });
+    expect(stored.date.toISOString().slice(0, 10)).toBe(DATE);
 
     const day = await getDayEngagement(studentId, DATE);
 
