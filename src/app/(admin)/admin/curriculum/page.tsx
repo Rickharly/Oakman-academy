@@ -9,6 +9,7 @@ import { requireParent } from "@/lib/auth/session";
 import { prisma } from "@/lib/db";
 import { getCurriculumProvider, type CurriculumProvider } from "@/lib/curriculum/provider";
 import { createOakClient, getRateLimit, type OakRateLimit } from "@/lib/oak/client";
+import { SCHOOL_TIMEZONE } from "@/lib/dates";
 
 /**
  * How much Oak quota is left. Oak grants a windowed budget rather than a rate, so knowing what
@@ -101,11 +102,16 @@ export default async function AdminCurriculumPage() {
               {quota.remaining < 200 ? (
                 <span className="text-warning">
                   {" "}
-                  — resets at {new Date(quota.reset).toISOString().slice(11, 16)} UTC
+                  — resets at{" "}
+                  {new Intl.DateTimeFormat("en-GB", {
+                    timeZone: SCHOOL_TIMEZONE,
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  }).format(new Date(quota.reset))}
                 </span>
               ) : null}
-              . One subject-year costs roughly 4 requests per lesson, so sync a subject at a time
-              rather than everything at once.
+              . A lesson costs about 5 requests, so a batch of 25 lessons costs roughly 125.
+              Lessons already imported are skipped and cost nothing.
             </p>
           ) : null}
           <span className="text-xs text-ink-muted">Provider: {provider?.name ?? "unavailable"}</span>

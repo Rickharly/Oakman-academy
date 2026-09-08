@@ -72,13 +72,25 @@ export class OakRateLimitError extends Error {
   readonly resetAt: Date | null;
 
   constructor(path: string, resetAt: Date | null) {
-    const when = resetAt
-      ? `Quota resets at ${resetAt.toISOString().slice(11, 16)} UTC.`
-      : "Try again later.";
+    const when = resetAt ? `Quota resets at ${formatLocalTime(resetAt)}.` : "Try again later.";
     super(`Oak API quota exhausted on ${path}. ${when}`);
     this.name = "OakRateLimitError";
     this.path = path;
     this.resetAt = resetAt;
+  }
+}
+
+/** A wall-clock time in the family's own timezone — a reset time in UTC helps nobody. */
+function formatLocalTime(at: Date): string {
+  try {
+    return new Intl.DateTimeFormat("en-GB", {
+      timeZone: process.env.SCHOOL_TIMEZONE || "Asia/Yerevan",
+      hour: "2-digit",
+      minute: "2-digit",
+      timeZoneName: "short",
+    }).format(at);
+  } catch {
+    return `${at.toISOString().slice(11, 16)} UTC`;
   }
 }
 
@@ -166,6 +178,11 @@ function throttledRetryFetch(
 
       const retryable = RETRYABLE_STATUSES.has(response.status) || response.status >= 500;
       if (!retryable || attempt >= MAX_RETRIES) return response;
+
+      // A 429 means the budget is spent. Retrying does not wait for more budget, it spends
+      // what little is left — three retries per call is how a quota goes from low to zero.
+      // Only a Retry-After we can actually honour justifies trying again.
+      if (response.status === 429 && !response.headers.get("retry-after")) return response;
 
       const wait = retryDelayMs(response, attempt + 1, state);
       // Waiting out a whole quota window would hang a deploy; let the caller stop instead.

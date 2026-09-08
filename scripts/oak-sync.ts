@@ -144,7 +144,9 @@ async function main() {
     }
 
     console.log(`Importing ${scopes.length} programme(s) from Oak…`);
+    const maxLessons = Number(arg("max-lessons") ?? "") || undefined;
     const { programmeIds, failures } = await syncMany(scopes, {
+      maxLessons,
       provider,
       log: (line) => console.log(`  ${line}`),
     });

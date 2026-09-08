@@ -6,10 +6,15 @@
  *
  *   SEED_ON_DEPLOY   if-empty (default) | always | never
  *   OAK_SYNC_ON_DEPLOY  off (default) | import | switch
+ *   OAK_LESSONS_PER_DEPLOY  how many lessons one deploy may import (default 10)
  *
  * `switch` imports the Oak curriculum and moves the students onto it — the one-off step when
- * an Oak API key first arrives. Leave it set: re-running is harmless and keeps the curriculum
- * fresh, since the sync is idempotent and students already on Oak are skipped.
+ * an Oak API key first arrives. It is safe to leave set: the import is idempotent, already
+ * imported lessons are skipped, and each deploy imports only a small batch.
+ *
+ * That batch limit is not a nicety. Oak's quota is a fixed budget per window and a lesson
+ * costs several requests, so an unbounded import on every deploy will empty the quota — and a
+ * day of ordinary deploys then leaves a family unable to import anything at all.
  *
  * Neither step is allowed to stop the server from starting: a school that boots with stale
  * curriculum is far better than one that will not boot at all.
@@ -42,8 +47,9 @@ if (oakMode === "off") {
 } else if (!process.env.OAK_API_KEY) {
   console.warn("[release] OAK_SYNC_ON_DEPLOY is set but OAK_API_KEY is missing — skipping the Oak import.");
 } else {
-  const args = ["scripts/oak-sync.ts"];
+  const perDeploy = process.env.OAK_LESSONS_PER_DEPLOY ?? "10";
+  const args = ["scripts/oak-sync.ts", "--max-lessons", perDeploy];
   if (oakMode === "switch") args.push("--switch");
-  console.log(`[release] importing curriculum from Oak (${oakMode})…`);
+  console.log(`[release] importing up to ${perDeploy} lesson(s) from Oak (${oakMode})…`);
   run("Oak sync", args);
 }
