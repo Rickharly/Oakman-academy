@@ -216,8 +216,7 @@ export function SyncPanel({ subjectOptions }: { subjectOptions: { slug: string; 
             <p className="text-sm font-semibold text-ink">Get the next two weeks ready</p>
             <p className="text-xs text-ink-muted">
               Works out exactly which lessons each child will reach from their timetable, and
-              imports only those. The server does this by itself about once a week; this button
-              is for when you want it now.
+              imports only those — cheap enough to run every week.
             </p>
           </div>
           <Button disabled={pending !== null} onClick={syncWeek}>

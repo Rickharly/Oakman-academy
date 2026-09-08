@@ -2,6 +2,7 @@ import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { requireStudentApi, jsonError } from "@/lib/auth/api";
 import { teacherAgent } from "@/lib/ai/teacher-agent";
+import { buildWorksheetPractice } from "@/lib/lessons/worksheet";
 
 
 /**
@@ -23,6 +24,31 @@ export async function POST(req: Request, ctx: { params: Promise<{ lessonId: stri
       .json()
       .then((v) => z.object({ missedPrompts: z.array(z.string()).max(20), extension: z.boolean() }).partial().parse(v))
       .catch(() => ({ missedPrompts: undefined, extension: undefined }));
+
+    // The lesson's own worksheet first. Questions invented from the lesson are a reasonable
+    // stand-in for a worksheet we cannot read; they are not better than the worksheet the
+    // teacher who wrote the lesson chose. Only for plain practice — a child asking for more, or
+    // for practice on what they missed, wants something new.
+    if (!body.extension && !body.missedPrompts?.length) {
+      const fromWorksheet = await buildWorksheetPractice(lessonId).catch((err: unknown) => {
+        console.error("[practice] worksheet could not be read; falling back", err);
+        return [];
+      });
+      if (fromWorksheet.length > 0) {
+        return Response.json({
+          source: "worksheet",
+          questions: fromWorksheet.map((q) => ({
+            id: q.id,
+            type: q.type,
+            stage: "PRACTICE" as const,
+            prompt: q.prompt,
+            promptImage: q.promptImage,
+            options: q.options,
+            maxScore: q.maxScore,
+          })),
+        });
+      }
+    }
 
     let questions = await teacherAgent
       .generateLessonPractice({

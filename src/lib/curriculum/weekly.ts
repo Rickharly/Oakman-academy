@@ -106,6 +106,12 @@ let started = false;
  */
 export function startWeeklyImportScheduler(): void {
   if (started) return;
+  // Off unless asked for. This runs a long job — provider calls, then writing lessons out with
+  // the model — inside the web server process, and a web server that is busy for ten minutes is
+  // a web server that fails its health check and gets restarted, over and over. Set
+  // WEEKLY_IMPORT=1 to turn it on once that job is proven to fit; until then the button in
+  // Admin and `pnpm oak:week` do the same work where nobody is waiting on the response.
+  if (process.env.WEEKLY_IMPORT !== "1") return;
   if (process.env.DISABLE_WEEKLY_IMPORT === "1") return;
   started = true;
 
