@@ -59,8 +59,10 @@ export type LessonPlayerProps = {
     keywords: { keyword: string; description: string }[];
     transcript: string | null;
     estimatedMinutes: number;
-    /** The lesson on Oak National Academy's own site — the fallback when we have no video. */
+    /** The lesson on Oak National Academy's own site — used when we have no video file. */
     oakUrl?: string | null;
+    /** Whether Oak's headers permit their page being shown inside ours. */
+    oakEmbeddable?: boolean;
     resources: LessonPlayerResource[];
   };
   subjectTitle: string;
@@ -629,7 +631,29 @@ export function LessonPlayer(props: LessonPlayerProps) {
                 there rather than pretending the lesson has no teaching in it — a transcript
                 is a poor substitute for being taught something.
               */}
-              {lesson.oakUrl ? (
+              {lesson.oakUrl && lesson.oakEmbeddable ? (
+                // Oak's headers allow it, so the lesson plays here and the child never leaves.
+                // The link stays underneath: if the frame is empty for any reason, there is
+                // always a way through rather than a dead end.
+                <div className="space-y-2">
+                  <iframe
+                    src={lesson.oakUrl}
+                    title={`${lesson.title} on Oak National Academy`}
+                    className="aspect-video w-full rounded-xl border border-line bg-stone-900"
+                    allow="fullscreen; picture-in-picture; encrypted-media"
+                    referrerPolicy="no-referrer-when-downgrade"
+                  />
+                  <a
+                    href={lesson.oakUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center gap-1 text-xs text-ink-muted underline-offset-4 hover:underline"
+                  >
+                    <ExternalLink className="h-3 w-3" />
+                    Not loading? Open it on Oak
+                  </a>
+                </div>
+              ) : lesson.oakUrl ? (
                 <div className="space-y-3 rounded-2xl bg-accent-soft p-5">
                   <p className="text-base font-medium text-ink">
                     The video for this lesson is on Oak National Academy&apos;s own site.
