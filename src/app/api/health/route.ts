@@ -28,6 +28,20 @@ function readBootStatus(): BootStatus | null {
   }
 }
 
+/**
+ * Which commit is actually running. Railway sets these; without one of them we cannot tell a
+ * stale deployment from a fresh one, and "I redeployed" is not the same as "the new code is
+ * live" — Railway's Redeploy button re-runs the previous build.
+ */
+function deployedCommit(): string | null {
+  const sha =
+    process.env.RAILWAY_GIT_COMMIT_SHA ??
+    process.env.VERCEL_GIT_COMMIT_SHA ??
+    process.env.GIT_COMMIT_SHA ??
+    null;
+  return sha ? sha.slice(0, 7) : null;
+}
+
 export function GET() {
   const boot = readBootStatus();
   const problems: string[] = [];
@@ -44,6 +58,7 @@ export function GET() {
   return Response.json({
     ok: true,
     service: "oakman-academy",
+    commit: deployedCommit(),
     time: new Date().toISOString(),
     schemaUpToDate: boot ? boot.migrationError === null : null,
     migratedAt: boot?.migratedAt ?? null,
