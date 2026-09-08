@@ -11,9 +11,10 @@ export const maxDuration = 120;
 
 export async function POST(req: Request, ctx: { params: Promise<{ lessonId: string }> }) {
   try {
-    await requireStudentApi(req);
+    const user = await requireStudentApi(req);
     const { lessonId } = await ctx.params;
-    const explainer = await getOrCreateExplainer(lessonId);
+    // The child's own interests steer which everyday thing the lesson is explained with.
+    const explainer = await getOrCreateExplainer(lessonId, { studentId: user.studentProfile.id });
     // Null is an answer, not a failure: this lesson has nothing to teach from. The player
     // says so plainly rather than showing a child an error they cannot act on.
     return Response.json({ explainer });

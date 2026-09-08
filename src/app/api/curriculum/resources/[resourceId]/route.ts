@@ -4,6 +4,8 @@ import fsp from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { Readable } from "node:stream";
+import { pipeline } from "node:stream/promises";
+import type { ReadableStream as WebReadableStream } from "node:stream/web";
 import { requireUserApi, jsonError, ApiError } from "@/lib/auth/api";
 import { prisma } from "@/lib/db";
 
@@ -39,6 +41,35 @@ const MAX_CACHE_BYTES = 64 * 1024 * 1024;
  * it kills it. Better to re-fetch a video occasionally than to take the school offline.
  */
 const MAX_CACHE_TOTAL_BYTES = Number(process.env.MEDIA_CACHE_MAX_BYTES ?? 256 * 1024 * 1024);
+
+/**
+ * What this file actually is, for the browser.
+ *
+ * A `<video>` element handed `application/octet-stream` renders its controls, shows 0:00, and
+ * never plays — which looks exactly like "there is no video for this lesson" and is not. Oak
+ * does not always send a useful content-type, and we stored whatever it sent, so the resource
+ * type is the thing to trust: a VIDEO row is a video whatever the header said.
+ */
+const TYPE_DEFAULTS: Record<string, string> = {
+  VIDEO: "video/mp4",
+  WORKSHEET: "application/pdf",
+  WORKSHEET_ANSWERS: "application/pdf",
+  STARTER_QUIZ: "application/pdf",
+  STARTER_QUIZ_ANSWERS: "application/pdf",
+  EXIT_QUIZ: "application/pdf",
+  EXIT_QUIZ_ANSWERS: "application/pdf",
+};
+
+function contentTypeFor(resource: { type: string; mimeType: string | null }, upstream: string | null): string {
+  const fallback = TYPE_DEFAULTS[resource.type];
+  for (const candidate of [upstream, resource.mimeType]) {
+    if (!candidate) continue;
+    const clean = candidate.split(";")[0]!.trim().toLowerCase();
+    // Generic types tell the browser nothing; prefer what we know the row to be.
+    if (clean && clean !== "application/octet-stream" && clean !== "binary/octet-stream") return candidate;
+  }
+  return fallback ?? "application/octet-stream";
+}
 
 /** Deletes the least recently used files until the cache fits in its budget again. */
 async function evictTo(budget: number): Promise<void> {
@@ -125,7 +156,7 @@ export async function GET(req: Request, ctx: { params: Promise<{ resourceId: str
       throw new ApiError(404, "This resource has no downloadable file.");
     }
 
-    const contentType = resource.mimeType ?? "application/octet-stream";
+    const contentType = contentTypeFor(resource, null);
     const file = cachePathFor(resourceId, url);
 
     // Already downloaded: never touch Oak again, however much the child scrubs.
@@ -155,43 +186,53 @@ export async function GET(req: Request, ctx: { params: Promise<{ resourceId: str
 
     const bytesExpected = declared > 0 ? declared : MAX_CACHE_BYTES;
 
-    if (declared > MAX_CACHE_BYTES) {
-      // Too big to keep. Pass it straight through and accept the cost.
-      return new Response(upstream.body, {
-        status: 200,
-        headers: { "content-type": upstreamType, "cache-control": "private, max-age=3600" },
-      });
-    }
-
-    // Download to a temporary name and rename into place, so a half-written file is never
-    // served and two simultaneous requests cannot corrupt each other's copy.
-    await fsp.mkdir(CACHE_DIR, { recursive: true });
-    // Make room before writing, not after: the disk has to hold this file either way.
-    await evictTo(Math.max(0, MAX_CACHE_TOTAL_BYTES - bytesExpected));
-    const temp = `${file}.${process.pid}.${Date.now()}.part`;
-    const bytes = Buffer.from(await upstream.arrayBuffer());
-    await fsp.writeFile(temp, bytes);
-    await fsp.rename(temp, file).catch(async () => {
-      await fsp.rm(temp, { force: true });
-    });
-
     // Remember what it turned out to be, so the next request knows before fetching.
-    if (!resource.mimeType && upstreamType) {
+    if (!resource.mimeType && upstreamType && !upstreamType.startsWith("application/octet-stream")) {
       await prisma.lessonResource
         .update({ where: { id: resource.id }, data: { mimeType: upstreamType } })
         .catch(() => undefined);
     }
 
-    const size = bytes.byteLength;
-    const stat = await fsp.stat(file).catch(() => null);
-    if (stat?.isFile()) return serveFromDisk(file, stat.size, upstreamType, req, resource.label);
+    const served = contentTypeFor(resource, upstreamType);
 
-    return new Response(bytes, {
+    // Play now; cache in the background.
+    //
+    // The old code downloaded the whole file before answering — and did it into memory. For a
+    // fifty-megabyte lesson video that meant a child stared at a player showing 0:00 until the
+    // request timed out, which is indistinguishable from "this lesson has no video", and on a
+    // small container it took the server down with it.
+    //
+    // The stream is split: one half goes to the browser immediately, the other is written to
+    // disk for the next request. Backpressure is bounded by the slower of the two, and if the
+    // disk copy fails the child still gets their video.
+    const [toClient, toDisk] = upstream.body.tee();
+
+    if (declared <= MAX_CACHE_BYTES) {
+      void (async () => {
+        try {
+          await fsp.mkdir(CACHE_DIR, { recursive: true });
+          // Make room before writing, not after: the disk has to hold this file either way.
+          await evictTo(Math.max(0, MAX_CACHE_TOTAL_BYTES - bytesExpected));
+          const temp = `${file}.${process.pid}.${Date.now()}.part`;
+          await pipeline(Readable.fromWeb(toDisk as WebReadableStream), fs.createWriteStream(temp));
+          await fsp.rename(temp, file).catch(async () => {
+            await fsp.rm(temp, { force: true });
+          });
+        } catch {
+          // A cache that will not write is a slower lesson, not a broken one.
+        }
+      })();
+    } else {
+      void toDisk.cancel().catch(() => undefined);
+    }
+
+    return new Response(toClient, {
       status: 200,
       headers: {
-        "content-type": upstreamType,
-        "content-length": String(size),
-        "accept-ranges": "bytes",
+        "content-type": served,
+        ...(declared > 0 ? { "content-length": String(declared) } : {}),
+        "cache-control": "private, max-age=3600",
+        "content-disposition": `inline; filename="${encodeURIComponent(resource.label)}"`,
       },
     });
   } catch (err) {

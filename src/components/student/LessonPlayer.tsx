@@ -249,6 +249,10 @@ export function LessonPlayer(props: LessonPlayerProps) {
   const [preCheckBusy, setPreCheckBusy] = useState(false);
   const [preCheckResult, setPreCheckResult] = useState<{ passed: boolean; message: string } | null>(null);
   const [practiceError, setPracticeError] = useState<string | null>(null);
+  // A video that will not load renders a player stuck at 0:00, which is indistinguishable from
+  // "this lesson has no video" and leaves a child staring at a black rectangle. When it fails,
+  // say so and give them the way through.
+  const [videoFailed, setVideoFailed] = useState(false);
   // The lesson taught in words. Present on the page when it has been written before; asked for
   // on first arrival otherwise. A lesson that arrives without a video is otherwise a bullet
   // list and a quiz, which is how a child ends up tested on decibels they have never met.
@@ -1012,7 +1016,7 @@ export function LessonPlayer(props: LessonPlayerProps) {
         ) : null}
 
         <Card padding="lg" className="space-y-4">
-          {video ? (
+          {video && !videoFailed ? (
             <video
               controls
               playsInline
@@ -1021,7 +1025,28 @@ export function LessonPlayer(props: LessonPlayerProps) {
               src={video.storedPath ?? `/api/curriculum/resources/${video.id}`}
               onTimeUpdate={handleVideoTimeUpdate}
               onEnded={handleVideoEnded}
+              onError={() => setVideoFailed(true)}
             />
+          ) : video && videoFailed ? (
+            <div className="space-y-3 rounded-2xl border border-warning/30 bg-warning-soft/40 p-5">
+              <p className="text-base font-medium text-ink">
+                The video won&apos;t play here right now.
+              </p>
+              <p className="text-sm text-ink-muted">
+                Everything you need is written out below, and I can read it to you. If you&apos;d
+                rather watch it, it&apos;s on Oak&apos;s own page.
+              </p>
+              <div className="flex flex-wrap gap-2">
+                <Button variant="secondary" onClick={() => setVideoFailed(false)}>
+                  Try the video again
+                </Button>
+                {lesson.oakUrl ? (
+                  <Button variant="ghost" href={lesson.oakUrl} target="_blank" rel="noreferrer">
+                    <ExternalLink className="h-4 w-4" /> Watch it on Oak
+                  </Button>
+                ) : null}
+              </div>
+            </div>
           ) : (
             <>
               {/*

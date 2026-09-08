@@ -49,7 +49,7 @@ async function fetchSpeech(text: string): Promise<string> {
 
 export function ReadAloud({ parts, className }: { parts: string[]; className?: string }) {
   const chunks = parts.flatMap(splitForSpeech);
-  const [state, setState] = useState<"idle" | "loading" | "playing" | "unavailable">("idle");
+  const [state, setState] = useState<"idle" | "loading" | "playing" | "paused" | "unavailable">("idle");
   const [index, setIndex] = useState(0);
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -87,7 +87,7 @@ export function ReadAloud({ parts, className }: { parts: string[]; className?: s
       setIndex(i);
       let url: string;
       try {
-        setState((s) => (s === "playing" ? s : "loading"));
+        setState((s) => (s === "playing" || s === "paused" ? s : "loading"));
         url = await urlFor(i);
       } catch {
         // No key, no credit, no network. The lesson is on the screen already, so this goes
@@ -116,22 +116,47 @@ export function ReadAloud({ parts, className }: { parts: string[]; className?: s
     setIndex(0);
   }
 
-  function stop() {
-    stopped.current = true;
+  /**
+   * Pause, not stop.
+   *
+   * Pausing used to tear the audio down and start the section again from its first word, which
+   * is worse than having no pause button at all — a child who stops to look at something loses
+   * their place. The element is kept exactly where it is; the sequencing loop is still waiting
+   * on this clip to end, so resuming carries on into the next section by itself.
+   */
+  function pause() {
     audioRef.current?.pause();
-    setState("idle");
+    setState("paused");
+  }
+
+  function resume() {
+    const audio = audioRef.current;
+    if (!audio) {
+      void playFrom(index);
+      return;
+    }
+    setState("playing");
+    audio.play().catch(() => setState("unavailable"));
   }
 
   if (chunks.length === 0 || state === "unavailable") return null;
 
   const playing = state === "playing";
   const loading = state === "loading";
+  const paused = state === "paused";
+
+  function onClick() {
+    if (loading) return;
+    if (playing) return pause();
+    if (paused) return resume();
+    void playFrom(index);
+  }
 
   return (
     <div className={cn("flex flex-wrap items-center gap-3", className)}>
       <button
         type="button"
-        onClick={() => (playing || loading ? stop() : void playFrom(index))}
+        onClick={onClick}
         className={cn(
           "inline-flex min-h-11 items-center gap-2 rounded-full px-4 text-sm font-medium transition-colors duration-150",
           playing || loading
@@ -146,9 +171,17 @@ export function ReadAloud({ parts, className }: { parts: string[]; className?: s
         ) : (
           <Volume2 className="h-4 w-4" />
         )}
-        {loading ? "Getting ready…" : playing ? "Pause" : index > 0 ? "Carry on reading" : "Read this to me"}
+        {loading
+          ? "Getting ready…"
+          : playing
+            ? "Pause"
+            : paused
+              ? "Carry on"
+              : index > 0
+                ? "Carry on reading"
+                : "Read this to me"}
       </button>
-      {chunks.length > 1 && (playing || index > 0) ? (
+      {chunks.length > 1 && (playing || paused || index > 0) ? (
         <span className="text-xs text-ink-muted">
           Part {index + 1} of {chunks.length}
         </span>

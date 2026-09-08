@@ -101,6 +101,8 @@ function fakeDataFor(schemaName: string, system: string, messages: ChatMessage[]
       // pretending to teach anything.
       const topic = extractField(system, /Lesson:\s*(.+)/i) ?? lessonTitle;
       return {
+        version: 2,
+        everydayAnchor: "a chocolate bar you can break into pieces",
         intro: `This lesson is about ${topic}. We will start with what you already know and build up from there.`,
         sections: [
           { heading: "Where this comes from", body: `A short explanation of ${topic}, in plain words.` },

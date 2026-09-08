@@ -18,7 +18,27 @@ import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { getAiProvider } from "@/lib/ai/provider";
 
+/**
+ * Bumped whenever the way a lesson is written changes materially.
+ *
+ * Stored lessons carry the version they were written under, so an improvement reaches the
+ * children who already have the old one instead of only new lessons. The first fractions
+ * lesson we wrote opened with "the top number is called the numerator" — correct, and useless.
+ */
+export const EXPLAINER_VERSION = 2;
+
 export const explainerSchema = z.object({
+  /** The version of these instructions this was written under. */
+  version: z.number().optional(),
+  /**
+   * The one real thing this whole lesson is explained with — "a pizza cut into slices", "the
+   * bar of chocolate in your bag", "the pitch at half time".
+   *
+   * Required, and required to be a thing a child has actually held or seen, because the way a
+   * lesson goes wrong is by explaining an abstraction with another abstraction. Every section
+   * has to keep coming back to this one.
+   */
+  everydayAnchor: z.string(),
   /** "Today we're looking at…" — what this is, why anyone cares. 2-3 sentences. */
   intro: z.string(),
   /** The teaching, in order. Each one short enough to hold in your head. */
@@ -48,10 +68,18 @@ export const explainerSchema = z.object({
 
 export type LessonExplainer = z.infer<typeof explainerSchema>;
 
-/** Rejects a stored value that no longer matches the shape, rather than rendering rubbish. */
+/**
+ * A stored lesson, if it is still usable.
+ *
+ * Rejects a shape that no longer parses, and a lesson written under an older set of
+ * instructions — those get rewritten rather than shown, because leaving a child with the worse
+ * explanation is the whole problem we were fixing.
+ */
 export function parseExplainer(value: unknown): LessonExplainer | null {
   const parsed = explainerSchema.safeParse(value);
-  return parsed.success ? parsed.data : null;
+  if (!parsed.success) return null;
+  if ((parsed.data.version ?? 1) < EXPLAINER_VERSION) return null;
+  return parsed.data;
 }
 
 function asStrings(value: unknown): string[] {
@@ -104,7 +132,7 @@ function registerFor(yearGroup: number): string {
  */
 export async function getOrCreateExplainer(
   lessonId: string,
-  opts: { force?: boolean } = {},
+  opts: { force?: boolean; studentId?: string } = {},
 ): Promise<LessonExplainer | null> {
   const lesson = await prisma.lesson.findUnique({
     where: { id: lessonId },
@@ -118,6 +146,20 @@ export async function getOrCreateExplainer(
   }
 
   const yearGroup = lesson.unit.programme.yearGroup;
+
+  // What this child is into, when we know. An anchor drawn from something they already care
+  // about is the difference between a lesson they follow and one they endure.
+  const student = opts.studentId
+    ? await prisma.studentProfile.findUnique({ where: { id: opts.studentId }, select: { interests: true } })
+    : null;
+  const interests = Array.isArray(student?.interests)
+    ? (student.interests as unknown[]).filter((v): v is string => typeof v === "string")
+    : [];
+  const interestsLine =
+    interests.length > 0
+      ? `\nThis child is into ${interests.join(", ")}. If one of those makes a natural anchor for this topic, use it. If it would be a stretch, pick something everyday instead — a forced example is worse than a plain one.`
+      : "";
+
   const keyPoints = asStrings(lesson.keyLearningPoints);
   const keywords = asPairs(lesson.keywords, "keyword", "description");
   const misconceptions = asPairs(lesson.misconceptions, "misconception", "response");
@@ -134,26 +176,51 @@ export async function getOrCreateExplainer(
     schemaName: "lesson_explainer",
     schema: explainerSchema,
     system: [
-      "You are a teacher, teaching a lesson to one child. Write the lesson out as you would",
-      "say it standing next to them — not as revision notes, not as a summary, not as bullet",
-      "points with the verbs removed. They have not met this topic before. Assume nothing.",
+      "You are a teacher sitting next to one child, teaching them this for the first time. They",
+      "have not met this topic before. Assume nothing.",
       "",
       registerFor(yearGroup),
+      interestsLine,
+      "",
+      "The one rule that matters most: TEACH THE THING BEFORE YOU NAME IT.",
+      "",
+      "A child who is read a definition has learnt a sentence, not an idea. So every idea in",
+      "this lesson arrives as something real first — something they have held, eaten, seen or",
+      "done — and only then gets its proper name. Pick ONE everyday thing at the start",
+      "(everydayAnchor) and explain the whole lesson with it. Not a new example every section;",
+      "the same one, coming back, getting a little more done to it each time.",
+      "",
+      "What a bad version of this looks like, so you can avoid it:",
+      '  "When we write 1/2, the top number is called the numerator. Numerator means how many',
+      '   parts we have. The bottom number is the denominator."',
+      "That teaches nothing. It is three names and no picture.",
+      "",
+      "What a good version looks like:",
+      '  "You cut a pizza down the middle and take one piece. You have got one piece, out of the',
+      '   two the whole pizza was cut into. That is what we write as 1/2 — the 2 underneath says',
+      '   how many pieces the pizza was cut into, the 1 on top says how many you took."',
+      "Same facts. The child can see it.",
       "",
       "Rules:",
-      "- Start from what they already know and build. Never open with the technical term; open",
-      "  with the thing it describes, then name it.",
-      "- Every new word gets a plain definition the moment it appears.",
-      "- Sections must build in order: each one uses what the last one established.",
-      "- The worked example is done in full, every step shown and said aloud. Set it to null",
-      "  only when the subject genuinely has nothing to work through (some history lessons).",
-      "- 'watchOutFor' names the mistake children actually make here and corrects it. Null if",
-      "  the lesson material does not suggest one.",
+      "- NEVER open a section with a definition or a technical word. Open with the thing itself.",
+      "- Never explain a word with another word they do not have. If you catch yourself writing",
+      '  "multiply means to scale by repeated addition", stop: show two lots of something instead.',
+      "- Keep the anchor. If it is a chocolate bar in section one, it is the same chocolate bar",
+      "  in section four. Switching to bar models and number lines mid-lesson loses them.",
+      "- Short sentences. One idea each. Read it back as if aloud — if you would not say it",
+      "  standing next to a child, rewrite it.",
+      "- Sections build in order: each uses what the last one established.",
+      "- The worked example is done in full, every step said out loud, in the same everyday",
+      "  terms — not a change of register into exam language. Set it to null only when the",
+      "  subject genuinely has nothing to work through.",
+      "- 'watchOutFor' names the mistake children actually make here, shows it going wrong with",
+      "  the anchor, and corrects it. Null if the material does not suggest one.",
       "- 'thinkAbout' is one question they should be able to answer after reading. Do not give",
-      "  its answer — they are about to be quizzed, and it is theirs to work out.",
-      "- Never invent facts, dates or figures that are not in the material below. If the",
-      "  material is thin, teach what is there properly rather than padding it out.",
-      "- UK English. Plain prose. No markdown, no headers inside a body, no bullet characters.",
+      "  its answer — it is theirs to work out.",
+      "- Never invent facts, dates or figures that are not in the material below. If the material",
+      "  is thin, teach what is there properly rather than padding it out.",
+      "- UK English. Plain prose. No markdown, no headings inside a body, no bullet characters,",
+      "  no lists — this gets read aloud.",
     ].join("\n"),
     messages: [
       {
@@ -183,10 +250,11 @@ export async function getOrCreateExplainer(
     ],
   });
 
+  const stamped = { ...data, version: EXPLAINER_VERSION };
   await prisma.lesson.update({
     where: { id: lesson.id },
-    data: { explainer: data, explainerAt: new Date() },
+    data: { explainer: stamped, explainerAt: new Date() },
   });
 
-  return data;
+  return stamped;
 }
