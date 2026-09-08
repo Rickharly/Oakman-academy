@@ -8,6 +8,22 @@ import { SyncPanel } from "@/components/admin/SyncPanel";
 import { requireParent } from "@/lib/auth/session";
 import { prisma } from "@/lib/db";
 import { getCurriculumProvider, type CurriculumProvider } from "@/lib/curriculum/provider";
+import { createOakClient, getRateLimit, type OakRateLimit } from "@/lib/oak/client";
+
+/**
+ * How much Oak quota is left. Oak grants a windowed budget rather than a rate, so knowing what
+ * remains is the difference between syncing a subject that will finish and starting one that
+ * dies half way.
+ */
+async function readOakQuota(): Promise<OakRateLimit | null> {
+  const apiKey = process.env.OAK_API_KEY;
+  if (!apiKey) return null;
+  try {
+    return await getRateLimit(createOakClient({ apiKey }));
+  } catch {
+    return null;
+  }
+}
 
 const JOB_TONE: Record<string, "neutral" | "accent" | "success" | "warning" | "danger"> = {
   PENDING: "neutral",
@@ -38,11 +54,13 @@ export default async function AdminCurriculumPage() {
     }
   }
 
-  const [programmes, units, lessonsByLicence, jobs] = await Promise.all([
+  const [programmes, units, lessonsByLicence, jobs, quota] = await Promise.all([
     prisma.programme.findMany({ include: { subject: true, _count: { select: { units: true } } }, orderBy: [{ yearGroup: "asc" }] }),
     prisma.unit.findMany({ select: { id: true, programmeId: true, _count: { select: { lessons: true } } } }),
     prisma.lesson.groupBy({ by: ["licence"], _count: { _all: true } }),
     prisma.curriculumSyncJob.findMany({ orderBy: { createdAt: "desc" }, take: 10 }),
+    // Free to ask — Oak does not count this endpoint against the quota.
+    readOakQuota(),
   ]);
 
   const lessonCountByProgramme = new Map<string, number>();
@@ -76,6 +94,20 @@ export default async function AdminCurriculumPage() {
       <Card padding="lg" className="mb-6 space-y-4">
         <div className="flex items-center justify-between">
           <h2 className="text-base font-semibold text-ink">Sync now</h2>
+          {quota ? (
+            <p className="text-sm text-ink-muted">
+              Oak quota: <span className="font-medium text-ink">{quota.remaining.toLocaleString()}</span>{" "}
+              of {quota.limit.toLocaleString()} requests left
+              {quota.remaining < 200 ? (
+                <span className="text-warning">
+                  {" "}
+                  — resets at {new Date(quota.reset).toISOString().slice(11, 16)} UTC
+                </span>
+              ) : null}
+              . One subject-year costs roughly 4 requests per lesson, so sync a subject at a time
+              rather than everything at once.
+            </p>
+          ) : null}
           <span className="text-xs text-ink-muted">Provider: {provider?.name ?? "unavailable"}</span>
         </div>
         {subjectOptions.length === 0 ? (
