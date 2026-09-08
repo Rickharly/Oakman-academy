@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState, type SyntheticEvent } from "react";
+import { type SyntheticEvent, useEffect, useRef, useState } from "react";
 import { Check, ExternalLink, FileText, Loader2, Lock, MessageCircle, PartyPopper, Sparkles } from "lucide-react";
 import type { LessonStage } from "@/generated/prisma/client";
 import { nextStage, stageIndex } from "@/lib/lessons/stages";
@@ -220,6 +220,19 @@ export function LessonPlayer(props: LessonPlayerProps) {
   const [preCheckResult, setPreCheckResult] = useState<{ passed: boolean; message: string } | null>(null);
   const [practiceError, setPracticeError] = useState<string | null>(null);
   const [extraPractice, setExtraPractice] = useState<LessonPlayerQuestion[]>([]);
+  const [extraDrafts, setExtraDrafts] = useState<Record<string, unknown>>({});
+  const [extraResults, setExtraResults] = useState<Record<string, QuestionResult>>({});
+  const [extraSubmitted, setExtraSubmitted] = useState(false);
+  const [retryError, setRetryError] = useState<Record<string, string>>({});
+  // The period clock, ticking. `elapsedSeconds` is only the value at page load, so anything
+  // that asks "how much of the lesson is left" has to keep counting.
+  const [spentSeconds, setSpentSeconds] = useState(elapsedSeconds);
+  useEffect(() => {
+    const id = setInterval(() => {
+      if (!document.hidden) setSpentSeconds((s) => s + 1);
+    }, 1000);
+    return () => clearInterval(id);
+  }, []);
 
   const theme = subjectTheme(subjectSlug);
 
@@ -357,6 +370,7 @@ export function LessonPlayer(props: LessonPlayerProps) {
   // ── CHECK retries (shown on FEEDBACK) ──
   async function startRetry(questionId: string) {
     setSubmitError(null);
+    setRetryError((prev) => ({ ...prev, [questionId]: "" }));
     try {
       const res = await fetch(`/api/attempts/${attemptId}/retry`, {
         method: "POST",
@@ -371,7 +385,8 @@ export function LessonPlayer(props: LessonPlayerProps) {
       });
       setRetryingIds((prev) => new Set(prev).add(questionId));
     } catch (err) {
-      setSubmitError(err instanceof Error ? err.message : "Something went wrong. Please try again.");
+      const message = err instanceof Error ? err.message : "Something went wrong. Please try again.";
+      setRetryError((prev) => ({ ...prev, [questionId]: message }));
     }
   }
 
@@ -553,12 +568,50 @@ export function LessonPlayer(props: LessonPlayerProps) {
       if (!res.ok || !data.questions?.length) {
         throw new Error(data.error ?? "Couldn't write the questions. Try again in a moment.");
       }
-      setExtraPractice(data.questions);
-      setViewStage("PRACTICE");
+      startExtraRound(data.questions);
     } catch (err) {
       setPracticeError(err instanceof Error ? err.message : "Couldn't write the questions.");
     } finally {
       setGeneratingPractice(false);
+    }
+  }
+
+  /** Puts a new set of extra questions on screen, cleared of any previous round. */
+  function startExtraRound(questions: LessonPlayerQuestion[]) {
+    setExtraPractice(questions);
+    setExtraDrafts({});
+    setExtraResults({});
+    setExtraSubmitted(false);
+    setViewStage("PRACTICE");
+  }
+
+  /** Marks the extra questions. Graded on their own, never mixed into the lesson's scores. */
+  async function submitExtra() {
+    if (submitting) return;
+    setSubmitting(true);
+    setSubmitError(null);
+    try {
+      const res = await fetch(`/api/lessons/${lesson.id}/practice/submit`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ attemptId, answers: extraDrafts }),
+      });
+      const data = (await res.json()) as {
+        results?: { questionId: string; isCorrect: boolean; feedback: string | null }[];
+        error?: string;
+      };
+      if (!res.ok || !data.results) throw new Error(data.error ?? "Could not mark that.");
+
+      const next: Record<string, QuestionResult> = {};
+      for (const r of data.results) {
+        next[r.questionId] = { isCorrect: r.isCorrect, feedback: r.feedback ?? undefined } as QuestionResult;
+      }
+      setExtraResults(next);
+      setExtraSubmitted(true);
+    } catch (err) {
+      setSubmitError(err instanceof Error ? err.message : "Could not mark that.");
+    } finally {
+      setSubmitting(false);
     }
   }
 
@@ -580,8 +633,7 @@ export function LessonPlayer(props: LessonPlayerProps) {
       if (!res.ok || !data.questions?.length) {
         throw new Error(data.error ?? "Couldn't write the questions. Try again in a moment.");
       }
-      setExtraPractice(data.questions);
-      setViewStage("PRACTICE");
+      startExtraRound(data.questions);
     } catch (err) {
       setPracticeError(err instanceof Error ? err.message : "Couldn't write the questions.");
     } finally {
@@ -589,8 +641,72 @@ export function LessonPlayer(props: LessonPlayerProps) {
     }
   }
 
+  /** The extra round: its own questions, its own marking, its own Submit. */
+  function renderExtraPractice() {
+    return (
+      <div className="space-y-5">
+        <Card padding="lg" className="space-y-1 bg-accent-soft">
+          <h2 className="text-base font-semibold text-ink">More practice on this topic</h2>
+          <p className="text-sm text-ink-muted">
+            These don&apos;t change your lesson score — they are here so the idea sticks.
+          </p>
+        </Card>
+
+        {extraPractice.map((q, i) => (
+          <Card key={q.id} padding="lg">
+            <p className="mb-3 text-xs font-medium text-ink-faint">
+              Question {i + 1} of {extraPractice.length}
+            </p>
+            <p className="mb-4 text-base font-medium text-ink">{q.prompt}</p>
+            <QuestionRenderer
+              question={q}
+              value={extraDrafts[q.id]}
+              onChange={(v) => setExtraDrafts((prev) => ({ ...prev, [q.id]: v }))}
+              disabled={extraSubmitted}
+              result={extraResults[q.id]}
+            />
+            {extraSubmitted && extraResults[q.id]?.feedback ? (
+              <p
+                className={cn(
+                  "mt-3 text-sm",
+                  extraResults[q.id]?.isCorrect ? "text-success" : "text-ink-muted",
+                )}
+              >
+                {extraResults[q.id]?.feedback}
+              </p>
+            ) : null}
+          </Card>
+        ))}
+
+        <div className="flex flex-wrap items-center gap-3">
+          {!extraSubmitted ? (
+            <Button
+              onClick={() => void submitExtra()}
+              disabled={submitting || Object.keys(extraDrafts).length === 0}
+            >
+              {submitting ? "Checking…" : "Submit"}
+            </Button>
+          ) : (
+            <>
+              <Button variant="secondary" onClick={() => void practiseMore()} disabled={generatingPractice}>
+                {generatingPractice ? "Writing more…" : "More like these"}
+              </Button>
+              <Button variant="ghost" onClick={() => setViewStage("FEEDBACK")}>
+                Back to my feedback
+              </Button>
+            </>
+          )}
+          {submitError ? <p className="text-sm text-danger">{submitError}</p> : null}
+        </div>
+      </div>
+    );
+  }
+
   function renderPractice() {
-    const qs = questionsByStage.PRACTICE.length ? questionsByStage.PRACTICE : extraPractice;
+    // An extra round takes over the practice slot while it is live: it has its own questions
+    // and its own marking, and mixing it into the lesson's practice was why it did nothing.
+    if (extraPractice.length > 0) return renderExtraPractice();
+    const qs = questionsByStage.PRACTICE;
     const submitted = submittedStage.PRACTICE;
     const worksheetUrl = worksheetFallback
       ? (worksheetFallback.storedPath ?? `/api/curriculum/resources/${worksheetFallback.id}`)
@@ -768,6 +884,7 @@ export function LessonPlayer(props: LessonPlayerProps) {
     // Below 70% the lesson has not landed. Mastery is preferred when we have it, because it
     // accounts for how they answered as well as what they scored.
     const secure = masteryEstimate != null ? masteryEstimate >= 0.7 : pct == null || pct >= 70;
+    const timeRemaining = Math.max(0, lessonMinutes - Math.round(spentSeconds / 60));
     const wrongTopics = checkQs
       .filter((q) => results[q.id] && results[q.id]?.isCorrect === false)
       .map((q) => q.prompt.replace(/\s+/g, " ").trim())
@@ -821,9 +938,19 @@ export function LessonPlayer(props: LessonPlayerProps) {
                     </p>
                   ) : null}
                   {canRetry ? (
-                    <Button variant="secondary" className="mt-3" onClick={() => void startRetry(q.id)}>
-                      Try again
-                    </Button>
+                    <div className="mt-3 space-y-1">
+                      <Button variant="secondary" onClick={() => void startRetry(q.id)}>
+                        Try again
+                      </Button>
+                      {/*
+                        A retry can be refused — no attempts left, or it was already right. The
+                        message belongs next to the button that was pressed; at the bottom of a
+                        long page it reads as the button doing nothing at all.
+                      */}
+                      {retryError[q.id] ? (
+                        <p className="text-sm text-danger">{retryError[q.id]}</p>
+                      ) : null}
+                    </div>
                   ) : null}
                 </Card>
               );
@@ -836,6 +963,25 @@ export function LessonPlayer(props: LessonPlayerProps) {
           mistakes rather than being the same quiz again. They can still choose to stop: this
           is a nudge with a reason, not a lock on the door.
         */}
+        {secure && timeRemaining >= 5 ? (
+          // A period is 45 minutes. Finishing the quiz in twelve does not end the lesson — it
+          // means the content ran out, and the honest response is more of it, not a break.
+          <Card padding="lg" className="space-y-3 bg-accent-soft">
+            <h3 className="text-base font-semibold text-ink">
+              Good — and there&apos;s still {timeRemaining} minutes of this lesson.
+            </h3>
+            <p className="text-sm text-ink">
+              Let&apos;s use them. Your teacher can set you harder questions on the same topic.
+            </p>
+            <div className="flex flex-wrap items-center gap-3">
+              <Button onClick={() => void practiseMore()} disabled={generatingPractice}>
+                {generatingPractice ? "Writing your questions…" : "Keep going"}
+              </Button>
+            </div>
+            {practiceError ? <p className="text-sm text-danger">{practiceError}</p> : null}
+          </Card>
+        ) : null}
+
         {!secure ? (
           <Card padding="lg" className="space-y-3 border-warning/30 bg-warning-soft/40">
             <h3 className="text-base font-semibold text-ink">
@@ -869,7 +1015,7 @@ export function LessonPlayer(props: LessonPlayerProps) {
             <Button onClick={() => void submitRetries()} disabled={submitting}>
               {submitting ? "Your teacher is checking…" : "Submit answer"}
             </Button>
-          ) : secure ? (
+          ) : secure && timeRemaining < 5 ? (
             <Button onClick={() => void finishLesson()} disabled={submitting}>
               {submitting ? "Finishing…" : "Finish"}
             </Button>
@@ -886,9 +1032,9 @@ export function LessonPlayer(props: LessonPlayerProps) {
     // A period is 45 minutes. Racing through in twelve and going on a break is not a lesson —
     // it means the content ran out, not that the child is finished learning. Offer more of the
     // same topic rather than sending them away early.
-    const minutesSpent = Math.round(elapsedSeconds / 60);
+    const minutesSpent = Math.round(spentSeconds / 60);
     const timeLeft = lessonMinutes - minutesSpent;
-    const finishedEarly = timeLeft >= 10;
+    const finishedEarly = timeLeft >= 5;
     const statusLabel =
       attempt?.status === "MASTERED" ? "mastered" : attempt?.status === "NEEDS_REVIEW" ? "completed — worth another look" : "completed";
 
