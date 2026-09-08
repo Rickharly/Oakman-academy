@@ -39,7 +39,22 @@ async function build() {
   return { studentId: profile.id, lessonId: lesson.id, subjectId: subject.id };
 }
 
+/**
+ * A period on the timetable. Each gets its own lesson: a day may not contain the same lesson
+ * twice, which the database now enforces.
+ */
 async function makeAssignment(order: number, subjectId: string, minutes = 45) {
+  const unit = await prisma.unit.findFirstOrThrow();
+  const lesson = await prisma.lesson.create({
+    data: {
+      provider: "test",
+      providerSlug: `period-${order}`,
+      unitId: unit.id,
+      title: `Period ${order + 1}`,
+      order: order + 10,
+      estimatedMinutes: minutes,
+    },
+  });
   return prisma.dailyAssignment.create({
     data: {
       studentId,
@@ -48,7 +63,7 @@ async function makeAssignment(order: number, subjectId: string, minutes = 45) {
       kind: "LESSON",
       source: "AUTO",
       subjectId,
-      lessonId,
+      lessonId: lesson.id,
       estimatedMinutes: minutes,
     },
   });
@@ -127,13 +142,13 @@ describe("when each period is due", () => {
     const second = await makeAssignment(1, subjectId);
 
     const a1 = await prisma.lessonAttempt.create({
-      data: { studentId, lessonId, assignmentId: first.id, attemptNumber: 1 },
+      data: { studentId, lessonId: first.lessonId!, assignmentId: first.id, attemptNumber: 1 },
     });
     await recordAttemptPunctuality(a1, dayStart);
 
     // Period two was due 55 minutes in (45 + a 10-minute break); they turned up 70 minutes in.
     const a2 = await prisma.lessonAttempt.create({
-      data: { studentId, lessonId, assignmentId: second.id, attemptNumber: 2 },
+      data: { studentId, lessonId: second.lessonId!, assignmentId: second.id, attemptNumber: 1 },
     });
     await recordAttemptPunctuality(a2, new Date(dayStart.getTime() + 70 * 60_000));
 

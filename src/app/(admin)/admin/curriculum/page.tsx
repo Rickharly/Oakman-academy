@@ -9,10 +9,12 @@ import { requireParent } from "@/lib/auth/session";
 import { prisma } from "@/lib/db";
 import { getCurriculumProvider, type CurriculumProvider } from "@/lib/curriculum/provider";
 
-const JOB_TONE: Record<string, "neutral" | "accent" | "success" | "danger"> = {
+const JOB_TONE: Record<string, "neutral" | "accent" | "success" | "warning" | "danger"> = {
   PENDING: "neutral",
   RUNNING: "accent",
   SUCCESS: "success",
+  // Stopped on the provider's quota, not broken: everything imported was kept.
+  PARTIAL: "warning",
   FAILED: "danger",
 };
 

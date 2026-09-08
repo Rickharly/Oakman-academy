@@ -1,6 +1,11 @@
 import { formatInTimeZone, fromZonedTime, toZonedTime } from "date-fns-tz";
 
-export const SCHOOL_TIMEZONE = process.env.SCHOOL_TIMEZONE || "Europe/London";
+/**
+ * Where the family actually is. The school day, "today", and every punctuality figure are
+ * computed in this zone — a date-only column stored against the wrong zone silently files a
+ * lesson under the wrong day, so this is not cosmetic.
+ */
+export const SCHOOL_TIMEZONE = process.env.SCHOOL_TIMEZONE || "Asia/Yerevan";
 
 /** "YYYY-MM-DD" for the school day that contains `now` in the family's timezone. */
 export function schoolDayKey(now: Date = new Date()): string {

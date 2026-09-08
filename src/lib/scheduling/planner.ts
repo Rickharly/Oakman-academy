@@ -5,6 +5,7 @@
  */
 import { prisma } from "@/lib/db";
 import type { DailyAssignment, Lesson, Programme, ReviewItem, StudentLessonProgress, Subject, Unit } from "@/generated/prisma/client";
+import { Prisma } from "@/generated/prisma/client";
 import { addDaysKey, dateOnlyKey, isoWeekday, schoolDayEnd, todayDateOnly, toDateOnly, weekStartKey } from "@/lib/dates";
 
 const REVIEW_MINUTES = 15;
@@ -249,6 +250,24 @@ export async function planWeek(studentId: string, weekStart: string, opts?: { re
 
   const created: DailyAssignment[] = [];
 
+  /**
+   * Creates one assignment, tolerating the case where a concurrent request got there first.
+   *
+   * Partial unique indexes stop a day being planned twice (see the migration
+   * `no_duplicate_assignments`). Losing that race is normal, not an error: the other request
+   * created exactly the row we were about to, because planning is deterministic.
+   */
+  const createUnlessRaced = async (
+    data: Parameters<typeof prisma.dailyAssignment.create>[0]["data"],
+  ): Promise<DailyAssignment | null> => {
+    try {
+      return await prisma.dailyAssignment.create({ data });
+    } catch (err) {
+      if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002") return null;
+      throw err;
+    }
+  };
+
   for (let i = 0; i < dayKeys.length; i++) {
     const dayKey = dayKeys[i];
     const dayDate = toDateOnly(dayKey);
@@ -260,54 +279,51 @@ export async function planWeek(studentId: string, weekStart: string, opts?: { re
     for (const slot of slots) {
       if (slot.kind === "REVIEW") {
         const reviewItem = pendingReviewsById.get(slot.reviewItemId!);
-        const [, row] = await prisma.$transaction([
-          prisma.reviewItem.update({ where: { id: slot.reviewItemId! }, data: { status: "SCHEDULED" } }),
-          prisma.dailyAssignment.create({
-            data: {
-              studentId,
-              date: dayDate,
-              order: order++,
-              kind: "REVIEW",
-              source: "REVIEW_ENGINE",
-              status: "PLANNED",
-              reviewItemId: slot.reviewItemId,
-              lessonId: reviewItem?.lessonId ?? null,
-              estimatedMinutes: slot.estimatedMinutes,
-            },
-          }),
-        ]);
-        created.push(row);
+        const row = await createUnlessRaced({
+          studentId,
+          date: dayDate,
+          order: order++,
+          kind: "REVIEW",
+          source: "REVIEW_ENGINE",
+          status: "PLANNED",
+          reviewItemId: slot.reviewItemId,
+          lessonId: reviewItem?.lessonId ?? null,
+          estimatedMinutes: slot.estimatedMinutes,
+        });
+        if (row) {
+          await prisma.reviewItem.update({
+            where: { id: slot.reviewItemId! },
+            data: { status: "SCHEDULED" },
+          });
+          created.push(row);
+        }
       } else if (slot.kind === "READING") {
-        const row = await prisma.dailyAssignment.create({
-          data: {
-            studentId,
-            date: dayDate,
-            order: order++,
-            kind: "READING",
-            source: "AUTO",
-            status: "PLANNED",
-            customTitle: "Reading",
-            estimatedMinutes: slot.estimatedMinutes,
-          },
+        const row = await createUnlessRaced({
+          studentId,
+          date: dayDate,
+          order: order++,
+          kind: "READING",
+          source: "AUTO",
+          status: "PLANNED",
+          customTitle: "Reading",
+          estimatedMinutes: slot.estimatedMinutes,
         });
-        created.push(row);
+        if (row) created.push(row);
       } else {
-        const row = await prisma.dailyAssignment.create({
-          data: {
-            studentId,
-            date: dayDate,
-            order: order++,
-            kind: "LESSON",
-            source: "AUTO",
-            status: slot.movedTo ? "MOVED" : "PLANNED",
-            subjectId: slot.subjectId!,
-            lessonId: slot.lessonId!,
-            estimatedMinutes: slot.estimatedMinutes,
-            optional: Boolean(slot.optional),
-            movedToDate: slot.movedTo ? toDateOnly(slot.movedTo) : null,
-          },
+        const row = await createUnlessRaced({
+          studentId,
+          date: dayDate,
+          order: order++,
+          kind: "LESSON",
+          source: "AUTO",
+          status: slot.movedTo ? "MOVED" : "PLANNED",
+          subjectId: slot.subjectId!,
+          lessonId: slot.lessonId!,
+          estimatedMinutes: slot.estimatedMinutes,
+          optional: Boolean(slot.optional),
+          movedToDate: slot.movedTo ? toDateOnly(slot.movedTo) : null,
         });
-        created.push(row);
+        if (row) created.push(row);
       }
     }
   }
