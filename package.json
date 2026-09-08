@@ -20,7 +20,7 @@
     "plan": "tsx scripts/plan.ts",
     "e2e": "playwright test",
     "postinstall": "prisma generate",
-    "start:prod": "prisma migrate deploy && node scripts/release.mjs && next start",
+    "start:prod": "node scripts/boot.mjs",
     "verify:loop": "tsx scripts/dev/walk-lesson.ts",
     "verify:admin": "node scripts/dev/walk-admin.mjs",
     "verify:reading": "tsx scripts/dev/walk-reading.ts",
