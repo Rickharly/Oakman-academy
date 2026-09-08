@@ -290,9 +290,15 @@ export async function syncProgramme(scope: SyncScope, opts: SyncOptions = {}): P
         // the budget goes on lessons the children have not reached yet.
         const already = await prisma.lesson.findUnique({
           where: { provider_providerSlug: { provider: provider.name, providerSlug: lessonRef.slug } },
-          select: { id: true, syncedAt: true, _count: { select: { questions: true } } },
+          select: { id: true, syncedAt: true, assetsSyncedAt: true, _count: { select: { questions: true } } },
         });
-        if (already?.syncedAt && already._count.questions > 0) {
+        // A lesson is finished only when its questions AND its assets were both actually
+        // fetched. Skipping on questions alone is why lessons had no video: a lesson imported
+        // while the provider's quota was spent got its questions from an earlier call and an
+        // empty asset list from a failed one, then was never asked about again. `assetsSyncedAt`
+        // is set only when the asset call succeeds — including when it succeeds with nothing,
+        // so a lesson that genuinely has no video does not cost budget on every run.
+        if (already?.syncedAt && already._count.questions > 0 && already.assetsSyncedAt) {
           stats.skipped += 1;
           continue;
         }
@@ -311,6 +317,10 @@ export async function syncProgramme(scope: SyncScope, opts: SyncOptions = {}): P
             provider.getAssets(lessonRef.slug).catch(() => null),
           ]);
 
+          // null means the call itself failed (quota, network). An empty list means the
+          // provider answered and this lesson has no assets — a different thing, and the
+          // difference is what decides whether we come back for it.
+          const assetsRead = assets !== null;
           const assetList = assets?.assets ?? [];
           const hasVideo = assetList.some((a) => a.type === "video");
           const hasWorksheet = assetList.some((a) => a.type === "worksheet");
@@ -334,7 +344,20 @@ export async function syncProgramme(scope: SyncScope, opts: SyncOptions = {}): P
             downloadsAvailable: detail.downloadsAvailable,
             state: lessonRef.state,
             syncedAt: new Date(),
+            // Only stamped when the provider actually answered. A failed call leaves this null
+            // so the next run comes back for the assets; success — even with no assets — stops
+            // us asking again.
+            ...(assetsRead ? { assetsSyncedAt: new Date() } : {}),
           };
+
+          // A re-run is often a backfill after a failed call, and a call that failed returns
+          // nothing. Writing that nothing over a transcript we already have would destroy it,
+          // so an empty result leaves the stored value alone (ARCHITECTURE: sync never loses
+          // what it already had).
+          const lessonUpdate = { ...lessonData };
+          if (!transcript?.transcript) delete (lessonUpdate as { transcript?: unknown }).transcript;
+          if (!transcript?.vtt) delete (lessonUpdate as { transcriptVtt?: unknown }).transcriptVtt;
+          if (!assetsRead) delete (lessonUpdate as { estimatedMinutes?: unknown }).estimatedMinutes;
 
           const lesson = await prisma.lesson.upsert({
             where: { provider_providerSlug: { provider: provider.name, providerSlug: lessonRef.slug } },
@@ -345,7 +368,7 @@ export async function syncProgramme(scope: SyncScope, opts: SyncOptions = {}): P
               rawSummary: (detail.raw ?? null) as Prisma.InputJsonValue,
               ...lessonData,
             },
-            update: { unitId: unit.id, ...lessonData },
+            update: { unitId: unit.id, ...lessonUpdate },
           });
           stats.lessons += 1;
 

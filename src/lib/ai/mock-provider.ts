@@ -96,6 +96,25 @@ function fakeDataFor(schemaName: string, system: string, messages: ChatMessage[]
   switch (schemaName) {
     case "grade":
       return buildMockGrade(system, messages);
+    case "lesson_explainer": {
+      // Enough shape to see the Learn step render properly in dev and in tests, without
+      // pretending to teach anything.
+      const topic = extractField(system, /Lesson:\s*(.+)/i) ?? lessonTitle;
+      return {
+        intro: `This lesson is about ${topic}. We will start with what you already know and build up from there.`,
+        sections: [
+          { heading: "Where this comes from", body: `A short explanation of ${topic}, in plain words.` },
+          { heading: "How it works", body: "The idea, one step at a time, with an everyday example." },
+        ],
+        workedExample: {
+          question: `An example question about ${topic}.`,
+          steps: ["Read the question.", "Work out what it is asking.", "Do it step by step."],
+          answer: "the answer",
+        },
+        watchOutFor: "The mistake most people make here.",
+        thinkAbout: `Can you explain ${topic} to someone else in one sentence?`,
+      };
+    }
     case "lessonSummary":
       return {
         forStudent: `You worked hard on ${lessonTitle} today — well done for sticking with it.`,

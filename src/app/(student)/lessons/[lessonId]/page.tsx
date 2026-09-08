@@ -10,6 +10,7 @@ import {
   type LessonPlayerActivity,
   type LessonPlayerQuestion,
 } from "@/components/student/LessonPlayer";
+import { parseExplainer } from "@/lib/lessons/explainer";
 
 type RawQuestion = {
   id: string;
@@ -125,6 +126,10 @@ export default async function LessonPage({
         keywords: (lesson.keywords as { keyword: string; description: string }[] | null) ?? [],
         transcript: lesson.transcript,
         estimatedMinutes: lesson.estimatedMinutes,
+        // The lesson taught in words. Already written for a lesson someone has reached before,
+        // so it is on screen with the page rather than after a wait; null means the player
+        // asks for it when the child opens the Learn step.
+        explainer: parseExplainer(lesson.explainer),
         // Where this lesson lives on Oak's own site, for when we have no video file.
         oakUrl,
         // Whether their site permits being shown inside ours. Decided by their own headers,

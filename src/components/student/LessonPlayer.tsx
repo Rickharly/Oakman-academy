@@ -16,6 +16,7 @@ import { SubjectArt } from "@/components/student/SubjectArt";
 import { LessonTimer } from "@/components/student/LessonTimer";
 import { BreakTimer } from "@/components/student/BreakTimer";
 import { formatMinutes } from "@/components/student/format";
+import type { LessonExplainer } from "@/lib/lessons/explainer";
 import { cn } from "@/lib/cn";
 
 // ───────────────────────────── props ─────────────────────────────
@@ -59,6 +60,8 @@ export type LessonPlayerProps = {
     keywords: { keyword: string; description: string }[];
     transcript: string | null;
     estimatedMinutes: number;
+    /** The lesson taught in words — null until it has been written for this lesson. */
+    explainer?: LessonExplainer | null;
     /** The lesson on Oak National Academy's own site — used when we have no video file. */
     oakUrl?: string | null;
     /** Whether Oak's headers permit their page being shown inside ours. */
@@ -219,6 +222,47 @@ export function LessonPlayer(props: LessonPlayerProps) {
   const [preCheckBusy, setPreCheckBusy] = useState(false);
   const [preCheckResult, setPreCheckResult] = useState<{ passed: boolean; message: string } | null>(null);
   const [practiceError, setPracticeError] = useState<string | null>(null);
+  // The lesson taught in words. Present on the page when it has been written before; asked for
+  // on first arrival otherwise. A lesson that arrives without a video is otherwise a bullet
+  // list and a quiz, which is how a child ends up tested on decibels they have never met.
+  const [explainer, setExplainer] = useState<LessonExplainer | null>(lesson.explainer ?? null);
+  const [explainerState, setExplainerState] = useState<"idle" | "loading" | "none" | "failed">("idle");
+
+  // Written the first time anyone reaches this lesson, then stored — so this fires once per
+  // lesson across the whole family, not once per child per visit.
+  // A ref, not state: this guards against the effect firing twice (Strict Mode, a re-render
+  // mid-request) without itself causing a render.
+  const explainerAsked = useRef(false);
+  useEffect(() => {
+    if (explainer || viewStage !== "LEARN" || explainerAsked.current) return;
+    explainerAsked.current = true;
+    let cancelled = false;
+    void (async () => {
+      setExplainerState("loading");
+      try {
+        const res = await fetch(`/api/lessons/${lesson.id}/explainer`, { method: "POST" });
+        const data = (await res.json()) as { explainer?: LessonExplainer | null };
+        if (cancelled) return;
+        if (!res.ok) {
+          setExplainerState("failed");
+          return;
+        }
+        // Null is an answer: this lesson has nothing to teach from. Saying so is better than
+        // a spinner that never stops.
+        if (!data.explainer) {
+          setExplainerState("none");
+          return;
+        }
+        setExplainer(data.explainer);
+        setExplainerState("idle");
+      } catch {
+        if (!cancelled) setExplainerState("failed");
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [explainer, lesson.id, viewStage]);
   const [extraPractice, setExtraPractice] = useState<LessonPlayerQuestion[]>([]);
   const [extraDrafts, setExtraDrafts] = useState<Record<string, unknown>>({});
   const [extraResults, setExtraResults] = useState<Record<string, QuestionResult>>({});
@@ -473,8 +517,10 @@ export function LessonPlayer(props: LessonPlayerProps) {
       const section =
         viewStage === "LEARN"
           ? lesson.resources.some((r) => r.type === "VIDEO" && (r.providerUrl || r.storedPath))
-            ? "the lesson video, with the key points and keywords beside it"
-            : "the key points and keywords for this lesson"
+            ? "the lesson video, with the written lesson, key points and keywords below it"
+            : explainer
+              ? "the lesson written out — intro, the taught sections, a worked example"
+              : "the key points and keywords for this lesson"
           : viewStage === "FEEDBACK"
             ? "their marks and feedback for the quiz"
             : viewStage === "COMPLETE"
@@ -825,9 +871,106 @@ export function LessonPlayer(props: LessonPlayerProps) {
     // never have. `storedPath` wins when the asset was downloaded at sync time.
     const video = lesson.resources.find((r) => r.type === "VIDEO" && Boolean(r.providerUrl || r.storedPath));
     const learnDone = stageIndex(currentStage) > stageIndex("LEARN");
+    const teaching = explainerState === "loading";
 
     return (
       <div className="space-y-6">
+        {/*
+          The lesson itself, in words, above everything else.
+
+          Key points and keywords are a teacher's notes; a child who has never met the topic
+          cannot learn from them. This is the part that teaches — it comes first, and the
+          Learn step cannot be marked done while it is still being written.
+        */}
+        {explainer ? (
+          <Card padding="lg" className="space-y-5">
+            <div className="space-y-2">
+              <p className="text-xs font-semibold uppercase tracking-wide text-accent">
+                What this lesson is about
+              </p>
+              <p className="text-[17px] leading-relaxed text-ink">{explainer.intro}</p>
+            </div>
+
+            {explainer.sections.map((section, i) => (
+              <div key={i} className="space-y-1.5">
+                <h3 className="text-base font-semibold text-ink">{section.heading}</h3>
+                <p className="text-[15px] leading-relaxed text-ink">{section.body}</p>
+              </div>
+            ))}
+
+            {explainer.workedExample ? (
+              <div className="space-y-2 rounded-2xl bg-stone-50 p-5">
+                <p className="text-xs font-semibold uppercase tracking-wide text-ink-muted">
+                  Let&apos;s do one together
+                </p>
+                <p className="text-[15px] font-medium text-ink">{explainer.workedExample.question}</p>
+                <ol className="list-decimal space-y-1.5 pl-5 text-[15px] leading-relaxed text-ink">
+                  {explainer.workedExample.steps.map((step, i) => (
+                    <li key={i}>{step}</li>
+                  ))}
+                </ol>
+                <p className="text-[15px] font-medium text-ink">
+                  So the answer is {explainer.workedExample.answer}
+                </p>
+              </div>
+            ) : null}
+
+            {explainer.watchOutFor ? (
+              <div className="rounded-2xl border border-warning/30 bg-warning-soft/40 p-4">
+                <p className="text-xs font-semibold uppercase tracking-wide text-ink-muted">
+                  Watch out for this
+                </p>
+                <p className="mt-1 text-[15px] leading-relaxed text-ink">{explainer.watchOutFor}</p>
+              </div>
+            ) : null}
+
+            <div className="rounded-2xl bg-accent-soft p-4">
+              <p className="text-xs font-semibold uppercase tracking-wide text-accent">
+                Before you go on
+              </p>
+              <p className="mt-1 text-[15px] leading-relaxed text-ink">{explainer.thinkAbout}</p>
+              <p className="mt-2 text-sm text-ink-muted">
+                Have a go at answering that in your head. If you can&apos;t, ask your teacher —
+                that is exactly what she is there for.
+              </p>
+            </div>
+          </Card>
+        ) : teaching ? (
+          <Card padding="lg" className="flex items-center gap-3">
+            <Loader2 className="h-5 w-5 animate-spin text-accent" />
+            <p className="text-ink">Your teacher is writing this lesson out for you…</p>
+          </Card>
+        ) : explainerState === "none" && !video && !lesson.oakUrl && !lesson.transcript ? (
+          // Nothing to teach from, and we will not invent a lesson. Said plainly, because a
+          // child sent into a quiz on material they were never given will think it is them.
+          <Card padding="lg" className="space-y-2">
+            <p className="text-ink">
+              This lesson hasn&apos;t got its teaching material yet, so there&apos;s nothing here
+              for me to take you through.
+            </p>
+            <p className="text-sm text-ink-muted">
+              Tell whoever set today&apos;s lessons — and don&apos;t worry about the quiz on this
+              one. It isn&apos;t a fair test if you were never taught it.
+            </p>
+          </Card>
+        ) : explainerState === "failed" ? (
+          <Card padding="lg" className="space-y-3">
+            <p className="text-ink">
+              I couldn&apos;t write this one out just now. Read what&apos;s below, and ask your
+              teacher anything you don&apos;t follow — she knows this lesson.
+            </p>
+            <Button
+              variant="secondary"
+              onClick={() => {
+                explainerAsked.current = false;
+                setExplainerState("idle");
+              }}
+            >
+              Try again
+            </Button>
+          </Card>
+        ) : null}
+
         <Card padding="lg" className="space-y-4">
           {video ? (
             <video
@@ -885,27 +1028,31 @@ export function LessonPlayer(props: LessonPlayerProps) {
               ) : null}
 
               {lesson.transcript ? (
-                <div className="space-y-3 text-[15px] leading-relaxed text-ink">
-                  {lesson.oakUrl ? (
-                    <p className="text-xs font-semibold uppercase tracking-wide text-ink-muted">
-                      What the teacher says, in words
-                    </p>
-                  ) : null}
-                  {lesson.transcript
-                    .split(/\n{2,}/)
-                    .filter((p) => p.trim().length > 0)
-                    .map((para, i) => (
-                      <p key={i}>{para}</p>
-                    ))}
-                </div>
-              ) : lesson.oakUrl ? null : (
-                <p className="text-ink-muted">No content is available for this lesson yet.</p>
-              )}
+                <details className="rounded-xl border border-line px-4 py-3">
+                  <summary className="cursor-pointer text-sm font-medium text-ink-muted">
+                    The original lesson, word for word
+                  </summary>
+                  <div className="mt-3 space-y-3 text-[15px] leading-relaxed text-ink">
+                    {lesson.transcript
+                      .split(/\n{2,}/)
+                      .filter((p) => p.trim().length > 0)
+                      .map((para, i) => (
+                        <p key={i}>{para}</p>
+                      ))}
+                  </div>
+                </details>
+              ) : null}
             </>
           )}
 
-          <Button onClick={() => void completeLearn()} disabled={submitting || learnDone}>
-            {learnDone ? "Marked as done" : video ? "I've finished watching" : "I've finished reading"}
+          <Button onClick={() => void completeLearn()} disabled={submitting || learnDone || teaching}>
+            {learnDone
+              ? "Marked as done"
+              : teaching
+                ? "Your teacher is writing this out…"
+                : video
+                  ? "I've finished watching"
+                  : "I've finished reading"}
           </Button>
           {submitError ? <p className="text-sm text-danger">{submitError}</p> : null}
         </Card>

@@ -222,6 +222,15 @@ model Lesson {
   state              String        @default("published") // published | new
   rawSummary         Json?
   syncedAt           DateTime?
+  /// When the provider's asset list was last successfully read. Null means we have never
+  /// managed to ask — so a lesson imported while the quota was exhausted is retried, and one
+  /// that genuinely has no assets is not asked about again.
+  assetsSyncedAt     DateTime?
+  /// The lesson taught in words: an intro, a few short taught sections, a worked example.
+  /// Written once by the teacher for lessons that arrive without a video, and reused after.
+  /// See src/lib/lessons/explainer.ts for the shape.
+  explainer          Json?
+  explainerAt        DateTime?
   createdAt          DateTime      @default(now())
   updatedAt          DateTime      @updatedAt
 
