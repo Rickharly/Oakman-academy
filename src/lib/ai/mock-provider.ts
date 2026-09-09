@@ -96,6 +96,47 @@ function fakeDataFor(schemaName: string, system: string, messages: ChatMessage[]
   switch (schemaName) {
     case "grade":
       return buildMockGrade(system, messages);
+    case "understanding_gaps":
+      return {
+        gaps: [
+          {
+            concept: "what the bottom number of a fraction counts",
+            misunderstanding: "They think it counts the pieces taken rather than the pieces the whole was cut into.",
+          },
+        ],
+      };
+    case "reteach":
+      return {
+        explanation:
+          "Think about a pizza cut down the middle. Two pieces altogether, and you take one. " +
+          "The number underneath is how many pieces the whole pizza was cut into, not how many you took.",
+        checkQuestion: "If a cake is cut into four and you take one piece, what goes underneath?",
+        checkLooksLike: "They say four, because that is how many pieces the whole was cut into.",
+      };
+    case "explain_back": {
+      // Generous about wording, strict about meaning — an answer with something in it passes.
+      const said = messages.map((m) => m.content).join(" ");
+      const understood = said.trim().length > 20;
+      return {
+        understood,
+        feedback: understood
+          ? "That's it — you've got which number counts what."
+          : "You're close. Tell me a bit more about what the bottom number is counting.",
+        stillMissing: understood ? null : "which number counts the pieces the whole was cut into",
+      };
+    }
+    case "worksheet_tasks":
+      return {
+        tasks: [
+          {
+            prompt: "Explain in your own words what makes a question an open question.",
+            type: "EXTENDED_TEXT",
+            acceptedAnswers: [],
+            rubric: "Shows that an open question cannot be answered with yes, no, or one word.",
+            adapted: true,
+          },
+        ],
+      };
     case "lesson_explainer": {
       // Enough shape to see the Learn step render properly in dev and in tests, without
       // pretending to teach anything.

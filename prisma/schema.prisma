@@ -108,6 +108,7 @@ model StudentProfile {
   reports        Report[]
   activityLogs   ActivityLog[]
   generatedQuestions Question[] @relation("GeneratedFor")
+  understandingGaps  UnderstandingGap[]
 }
 
 model ParentStudentLink {
@@ -244,6 +245,7 @@ model Lesson {
   conversations AiConversation[]
   observations AiLearningObservation[]
   overrides   ParentOverride[]
+  understandingGaps UnderstandingGap[]
 
   @@unique([provider, providerSlug])
   @@index([unitId, order])
@@ -597,6 +599,7 @@ model LessonAttempt {
 
   activities    ActivityAttempt[]
   conversations AiConversation[]
+  understandingGaps UnderstandingGap[]
   feedback      TeacherFeedback[]
   overrides     ParentOverride[]
   focusEvents   FocusEvent[]
@@ -1015,4 +1018,58 @@ model FocusEvent {
 
   @@index([studentId, date])
   @@index([attemptId])
+}
+
+/// How the teacher tried to explain something. Each round of a stuck concept uses a strategy
+/// that has not been tried yet — repeating the explanation that already failed is the one
+/// thing a tutor must never do.
+enum TeachingStrategy {
+  SIMPLER
+  ANALOGY
+  WORKED_EXAMPLE
+  ROLE_PLAY
+  BUILD_UP
+}
+
+enum GapStatus {
+  OPEN
+  UNDERSTOOD
+  /// Parked: the period ended before they got there. It comes back another day rather than
+  /// being written off, and it never counts as understood.
+  PARKED
+}
+
+/// One thing a child did not understand, and the tutoring that followed.
+///
+/// A school marks the quiz and moves on. A tutor does not: the point of finding out they have
+/// not understood something is to do something about it. A gap stays OPEN until the child can
+/// both answer questions on it AND explain it back in their own words — and every round of
+/// re-teaching uses a strategy the last one did not.
+model UnderstandingGap {
+  id              String         @id @default(cuid())
+  studentId       String
+  student         StudentProfile @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  lessonId        String
+  lesson          Lesson         @relation(fields: [lessonId], references: [id])
+  lessonAttemptId String?
+  lessonAttempt   LessonAttempt? @relation(fields: [lessonAttemptId], references: [id])
+
+  /// The concept, in words a parent would recognise — "what a denominator counts", not "Q3".
+  concept         String
+  /// What their answers show they actually believe, which is what has to be corrected.
+  misunderstanding String
+  status          GapStatus      @default(OPEN)
+  round           Int            @default(0)
+  /// Strategies already used, so the next round is genuinely a different approach.
+  strategiesTried Json           @default("[]")
+  /// The teacher's latest explanation, kept so a reload does not lose it.
+  lastExplanation Json?
+  /// Their own words, the last time they explained it back.
+  lastExplainBack String?
+  openedAt        DateTime       @default(now())
+  closedAt        DateTime?
+  updatedAt       DateTime       @updatedAt
+
+  @@index([studentId, status])
+  @@index([lessonAttemptId])
 }

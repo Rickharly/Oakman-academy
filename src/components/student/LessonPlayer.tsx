@@ -16,6 +16,7 @@ import { SubjectArt } from "@/components/student/SubjectArt";
 import { LessonTimer } from "@/components/student/LessonTimer";
 import { BreakTimer } from "@/components/student/BreakTimer";
 import { ReadAloud } from "@/components/student/ReadAloud";
+import { UnderstandingLoop } from "@/components/student/UnderstandingLoop";
 import { formatMinutes } from "@/components/student/format";
 import type { LessonExplainer } from "@/lib/lessons/explainer";
 import { cn } from "@/lib/cn";
@@ -253,6 +254,8 @@ export function LessonPlayer(props: LessonPlayerProps) {
   // "this lesson has no video" and leaves a child staring at a black rectangle. When it fails,
   // say so and give them the way through.
   const [videoFailed, setVideoFailed] = useState(false);
+  // Set when the tutoring loop reports nothing left open, so the lesson stops holding them.
+  const [gapsClosed, setGapsClosed] = useState(false);
   // The lesson taught in words. Present on the page when it has been written before; asked for
   // on first arrival otherwise. A lesson that arrives without a video is otherwise a bullet
   // list and a quiz, which is how a child ends up tested on decibels they have never met.
@@ -1237,10 +1240,27 @@ export function LessonPlayer(props: LessonPlayerProps) {
           </Card>
         ) : null}
 
+        {/*
+          The tutoring loop.
+
+          A score below the bar is not a result to report, it is work to do. This finds what was
+          not understood — the idea, not the question — explains it a different way each round,
+          and asks them to say it back in their own words before it counts as closed. Getting
+          questions right can be pattern-matching; explaining it back cannot.
+        */}
+        {!secure ? (
+          <UnderstandingLoop
+            lessonId={lesson.id}
+            attemptId={attemptId}
+            voice={voiceEnabled}
+            onAllUnderstood={() => setGapsClosed(true)}
+          />
+        ) : null}
+
         {!secure ? (
           <Card padding="lg" className="space-y-3 border-warning/30 bg-warning-soft/40">
             <h3 className="text-base font-semibold text-ink">
-              Let&apos;s make this stick before you move on.
+              {gapsClosed ? "Now let's practise it." : "More practice on this, when you're ready."}
             </h3>
             <p className="text-sm text-ink">
               {wrongTopics.length > 0

@@ -23,6 +23,7 @@ import { ApiError } from "@/lib/auth/api";
 import { gradeQuestion, type GradingContext } from "@/lib/grading/grade";
 import { teacherAgent, teacherModeForStage } from "@/lib/ai/teacher-agent";
 import { recomputeLessonProgress } from "@/lib/progress/aggregate";
+import { parkOpenGaps } from "@/lib/lessons/understanding";
 import { afterActivityGraded } from "@/lib/progress/review";
 import { completeReview } from "@/lib/progress/review";
 import {
@@ -570,6 +571,13 @@ export async function finaliseAttempt(attempt: LessonAttempt): Promise<LessonAtt
     if (mastery >= 0.9 && assessedCount >= 2) status = "MASTERED";
     else if (mastery < 0.7) status = "NEEDS_REVIEW";
   }
+
+  // Anything the tutoring loop opened and never closed is parked, not forgotten — it comes back
+  // as review tomorrow. And a lesson finished with something still not understood is never
+  // "mastered", whatever the arithmetic of the score says: the whole point of finding a gap is
+  // that it counts for something.
+  const parked = await parkOpenGaps(attempt.id, studentId).catch(() => 0);
+  if (parked > 0 && status !== "NEEDS_REVIEW") status = "NEEDS_REVIEW";
 
   const updated = await prisma.lessonAttempt.update({
     where: { id: attempt.id },
