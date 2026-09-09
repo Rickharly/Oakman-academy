@@ -66,7 +66,23 @@ export function MultiSelect({ question, value, onChange, disabled, result }: Que
               {showCorrect || (isSelected && !showWrong) ? <Check className="h-3.5 w-3.5" /> : null}
               {showWrong ? <X className="h-3.5 w-3.5" /> : null}
             </span>
-            <span className="min-w-0 flex-1">{choice.text}</span>
+            <span className="min-w-0 flex-1">
+              {/*
+                Some of Oak's answers are pictures, not words. The picture was imported and
+                never shown, so a choice whose whole meaning is the image read as a blank —
+                or as its alt text, which is a description of the answer rather than the
+                answer itself.
+              */}
+              {choice.image?.url ? (
+                // eslint-disable-next-line @next/next/no-img-element -- provider CDN, host not known ahead of time
+                <img
+                  src={choice.image.url}
+                  alt={choice.image.alt ?? choice.text}
+                  className="mb-1 max-h-40 rounded-lg border border-line bg-white"
+                />
+              ) : null}
+              {choice.text}
+            </span>
           </button>
         );
       })}

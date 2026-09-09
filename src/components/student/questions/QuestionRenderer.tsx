@@ -8,12 +8,27 @@ import { ExtendedText } from "./ExtendedText";
 import { Numeric } from "./Numeric";
 import { Matching } from "./Matching";
 import { Ordering } from "./Ordering";
+import { QuestionImage } from "./QuestionImage";
+import { imageSchema } from "@/lib/questions/types";
 import type { QuestionRendererProps } from "./types";
 
 export type { QuestionRendererProps, QuestionResult, StudentQuestionLite, Option } from "./types";
 
 /** Switches on `question.type` to the right per-type renderer. */
 export function QuestionRenderer(props: QuestionRendererProps) {
+  // Validated rather than trusted: this comes from a provider's JSON, and a malformed image is
+  // not a reason to take the whole question off the screen.
+  const image = imageSchema.safeParse(props.question.promptImage);
+
+  return (
+    <>
+      {image.success ? <QuestionImage image={image.data} /> : null}
+      <QuestionBody {...props} />
+    </>
+  );
+}
+
+function QuestionBody(props: QuestionRendererProps) {
   switch (props.question.type) {
     case "MULTIPLE_CHOICE":
       return <MultipleChoice {...props} />;

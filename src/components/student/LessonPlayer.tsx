@@ -595,6 +595,10 @@ export function LessonPlayer(props: LessonPlayerProps) {
     }
 
     const index = onScreenQuestions.findIndex((q) => q.id === question.id);
+    // Whether this question has a picture, and what it shows. Without this the teacher was
+    // answering "I can't do this one" about a question she thought was pure text, so she could
+    // not say "look at the table — the heading above the 100s column".
+    const picture = (question.promptImage as { alt?: string } | null | undefined)?.alt;
     const isExtra = viewStage === "PRACTICE" && extraPractice.length > 0;
     const result = isExtra ? extraResults[question.id] : results[question.id];
     const draft = isExtra ? extraDrafts[question.id] : drafts[question.id];
@@ -602,7 +606,11 @@ export function LessonPlayer(props: LessonPlayerProps) {
 
     return {
       stage: viewStage,
-      section: `question ${index + 1} of ${onScreenQuestions.length}${isExtra ? " in their extra practice" : ""}`,
+      section:
+        `question ${index + 1} of ${onScreenQuestions.length}${isExtra ? " in their extra practice" : ""}` +
+        (question.promptImage
+          ? `, which has a picture with it${picture ? ` showing: ${picture}` : ""}`
+          : ""),
       questionPrompt: question.prompt,
       options: Array.isArray(choices)
         ? choices.map((c) => String(c?.text ?? "")).filter(Boolean).slice(0, 8)
