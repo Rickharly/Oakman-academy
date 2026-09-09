@@ -13,8 +13,7 @@ import {
   LogOut,
   Menu,
   BookMarked,
-  type LucideIcon,
-} from "lucide-react";
+  type LucideIcon, Stethoscope } from "lucide-react";
 import { Avatar } from "@/components/ui/Avatar";
 import { Sheet } from "@/components/ui/Sheet";
 import { cn } from "@/lib/cn";
@@ -38,6 +37,7 @@ const items: NavItem[] = [
   { href: "/admin/curriculum", label: "Curriculum", icon: Library },
   { href: "/admin/reading", label: "Reading", icon: BookMarked },
   { href: "/admin/reports", label: "Reports", icon: BarChart3 },
+  { href: "/admin/diagnostics", label: "What's working", icon: Stethoscope },
   { href: "/admin/settings", label: "Settings", icon: Settings },
 ];
 
