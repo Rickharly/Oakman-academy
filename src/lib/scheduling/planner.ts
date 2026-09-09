@@ -214,11 +214,6 @@ export async function planWeek(studentId: string, weekStart: string, opts?: { re
       (a) => a.kind === "LESSON" && a.status !== "MOVED" && dateOnlyKey(a.date) === dayKey,
     );
     const existingLessonCount = existingToday.length;
-    // Reviews are periods too — a day of two lessons and three revisions is a full day, and
-    // treating it as short would have it topped up again on every visit.
-    const existingPeriodCount = existing.filter(
-      (a) => (a.kind === "LESSON" || a.kind === "REVIEW") && a.status !== "MOVED" && dateOnlyKey(a.date) === dayKey,
-    ).length;
 
     /**
      * Which subjects this day already has — including the ones already saved.
@@ -269,63 +264,6 @@ export async function planWeek(studentId: string, weekStart: string, opts?: { re
         break;
       }
       if (!added) break;
-    }
-
-    /**
-     * Rather than nothing.
-     *
-     * When every subject with material has had its period, a day can still be short — and a
-     * child sitting in front of a half-empty timetable with nobody around is the thing this
-     * whole app exists to prevent. Revisiting a lesson they have already done is real work:
-     * coming back to something a week later is how it sticks, and it is what a tutor would do
-     * with a spare half hour anyway. It is never a substitute for new material — the catch-up
-     * import is already running — but it is always better than an empty afternoon.
-     */
-    // Reviews count towards a full day. Without this the loop would never be satisfied and
-    // would keep adding revision until it ran out of finished lessons.
-    const periodsToday = () =>
-      slots.filter((s) => s.kind === "LESSON" || s.kind === "REVIEW").length + existingPeriodCount;
-    const stillShort = () => periodsToday() < lessonsPerDay;
-
-    if (stillShort()) {
-      const alreadyReviewing = new Set(
-        [...slots.filter((s) => s.kind === "REVIEW"), ...existingToday]
-          .map((s) => ("lessonId" in s ? s.lessonId : undefined))
-          .filter((id): id is string => Boolean(id)),
-      );
-
-      // Oldest first: the one longest since it was seen is the one most worth coming back to.
-      const done = await prisma.studentLessonProgress.findMany({
-        where: { studentId, status: { in: ["COMPLETED", "MASTERED", "NEEDS_REVIEW"] } },
-        orderBy: { updatedAt: "asc" },
-        take: 20,
-      });
-
-      for (const progress of done) {
-        if (!stillShort()) break;
-        if (alreadyReviewing.has(progress.lessonId)) continue;
-        alreadyReviewing.add(progress.lessonId);
-
-        const item = await prisma.reviewItem
-          .create({
-            data: {
-              studentId,
-              lessonId: progress.lessonId,
-              reason: "SPACED",
-              detail: "Coming back to this to keep it fresh.",
-              dueAt: toDateOnly(dayKey),
-            },
-          })
-          .catch(() => null);
-        if (!item) continue;
-
-        slots.push({
-          kind: "REVIEW",
-          lessonId: progress.lessonId,
-          reviewItemId: item.id,
-          estimatedMinutes: student.lessonMinutes,
-        });
-      }
     }
 
     // ── Reading closes the day. ──
@@ -473,7 +411,7 @@ export async function ensureDayPlanned(studentId: string, dateKey: string): Prom
   // having to notice and press anything.
   // New material specifically: a day propped up with revision still needs its real lessons.
   const lessonsPlanned = planned.filter((a) => a.kind === "LESSON" && a.status !== "MOVED").length;
-  if (lessonsPlanned < student.lessonsPerDay) void catchUpImport().catch(() => undefined);
+  if (lessonsPlanned < student.lessonsPerDay) void catchUpImport(studentId).catch(() => undefined);
 
   return planned;
 }

@@ -25,6 +25,8 @@ const SCHEMAS: Record<string, () => Promise<ZodType>> = {
   daySummary: async () => (await import("@/lib/ai/teacher-agent")).daySummarySchema,
   lessonSummary: async () => (await import("@/lib/ai/teacher-agent")).lessonSummarySchema,
   misconceptions: async () => (await import("@/lib/ai/teacher-agent")).observationsSchema,
+  lesson_sequence: async () => (await import("@/lib/curriculum/generate")).sequenceSchema,
+  lesson_quiz: async () => (await import("@/lib/curriculum/generate")).quizSchema,
   structured_worksheet: async () =>
     (await import("@/lib/questions/worksheet-pipeline")).structuredWorksheetSchema,
 };

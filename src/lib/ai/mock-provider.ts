@@ -96,6 +96,53 @@ function fakeDataFor(schemaName: string, system: string, messages: ChatMessage[]
   switch (schemaName) {
     case "grade":
       return buildMockGrade(system, messages);
+    case "lesson_sequence": {
+      const topic = extractField(system, /Plan the next \d+ lessons of (\w+)/i) ?? "the subject";
+      return {
+        unitTitle: `${topic} basics`,
+        lessons: [
+          {
+            title: `${topic}: the first idea`,
+            pupilOutcome: "Explain the idea in their own words.",
+            keyLearningPoints: ["What it is", "Why it matters", "How to use it"],
+            keywords: [{ keyword: "term", description: "A word this lesson introduces." }],
+          },
+        ],
+      };
+    }
+    case "lesson_quiz":
+      return {
+        questions: [
+          {
+            type: "MULTIPLE_CHOICE",
+            prompt: "Which of these is right?",
+            choices: ["The right one", "A tempting wrong one", "Another wrong one"],
+            acceptedAnswers: null,
+            explanation: "Because that is what the lesson showed.",
+          },
+          {
+            type: "SHORT_ANSWER",
+            prompt: "Say it in your own words.",
+            choices: null,
+            acceptedAnswers: ["the idea", "idea"],
+            explanation: "Any answer with the idea in it is right.",
+          },
+          {
+            type: "SHORT_ANSWER",
+            prompt: "Give an example.",
+            choices: null,
+            acceptedAnswers: ["example"],
+            explanation: "An example shows you can use it.",
+          },
+          {
+            type: "SHORT_ANSWER",
+            prompt: "When would you use this?",
+            choices: null,
+            acceptedAnswers: ["when it helps"],
+            explanation: "Knowing when to use it is the point.",
+          },
+        ],
+      };
     case "understanding_gaps":
       return {
         gaps: [

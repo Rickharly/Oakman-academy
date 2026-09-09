@@ -338,12 +338,11 @@ describe("planner: a day never repeats a subject", () => {
   });
 });
 
-describe("planner: a day is never empty", () => {
+describe("planner: a subject that has run out", () => {
   beforeAll(async () => {
     await resetDb();
     studentId = await buildStudentWithCurriculum(2);
-    // Both maths lessons already done, so maths has nothing new to give. A child with a gap in
-    // their timetable and nobody around is the thing this app exists to prevent.
+    // Both maths lessons already done, so maths has nothing new to give.
     const mathsLessons = await prisma.lesson.findMany({ where: { providerSlug: { startsWith: "maths-" } } });
     for (const lesson of mathsLessons) {
       await prisma.studentLessonProgress.create({
@@ -353,22 +352,19 @@ describe("planner: a day is never empty", () => {
     await planWeek(studentId, MONDAY, { replace: true });
   });
 
-  it("fills what is left with revisiting lessons already done", async () => {
-    const day = toDateOnly(MONDAY);
-    const periods = await prisma.dailyAssignment.findMany({
-      where: { studentId, date: day, kind: { in: ["LESSON", "REVIEW"] }, status: { not: "MOVED" } },
-    });
-    // Five periods either way. Revision is not as good as new material, and the catch-up import
-    // is already running for that — but it beats an empty afternoon.
-    expect(periods.length).toBe(5);
-    expect(periods.some((p) => p.kind === "REVIEW")).toBe(true);
+  it("leaves the day short rather than teaching another subject twice", async () => {
+    const lessons = await lessonsOn(MONDAY);
+    const subjects = lessons.map((l) => l.subject?.title);
+    // Four subjects still have material, so four periods. Never five made by repeating one —
+    // and never padded with revision, which is not a lesson and reads as filler.
+    expect(new Set(subjects).size).toBe(subjects.length);
+    expect(lessons.length).toBe(4);
   });
 
-  it("does not keep topping the day up once revision has filled it", async () => {
+  it("does not add anything on a second visit", async () => {
     const before = await prisma.dailyAssignment.count({
       where: { studentId, date: toDateOnly(MONDAY), status: { not: "MOVED" } },
     });
-    await ensureDayPlanned(studentId, MONDAY);
     await ensureDayPlanned(studentId, MONDAY);
     const after = await prisma.dailyAssignment.count({
       where: { studentId, date: toDateOnly(MONDAY), status: { not: "MOVED" } },

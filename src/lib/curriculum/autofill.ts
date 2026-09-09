@@ -16,6 +16,8 @@
  */
 import { prisma } from "@/lib/db";
 import { importLessonsAhead } from "./ahead";
+import { subjectSupply } from "@/lib/scheduling/gaps";
+import { enrolOnGenerated, generateLessons } from "./generate";
 
 /** Marks this job's rows apart from a parent's manual syncs and the weekly run. */
 export const AUTOFILL_PROVIDER = "autofill";
@@ -29,7 +31,7 @@ let inFlight = false;
  * Starts a catch-up import if one is not already running. Returns whether one is now in flight,
  * so a page can say "getting your lessons ready" instead of showing an unexplained short day.
  */
-export async function catchUpImport(): Promise<boolean> {
+export async function catchUpImport(studentId?: string): Promise<boolean> {
   // Cheap in-process guard first, so a burst of page loads does not all hit the database.
   if (inFlight) return true;
 
@@ -64,6 +66,15 @@ export async function catchUpImport(): Promise<boolean> {
         skipExplainers: true,
         log: (line) => lines.push(line),
       });
+
+      // The provider is the better source, and it has had its go. Anything still empty gets
+      // written here instead, because a child's school day cannot wait on somebody else's API
+      // being reachable, in quota, and holding the subject we need. The alternatives — a short
+      // day, a day of revision, or the same subject four times — are all worse than a real
+      // lesson written for them.
+      if (studentId) {
+        await fillGapsWithWrittenLessons(studentId, (line) => lines.push(line));
+      }
       await prisma.curriculumSyncJob.update({
         where: { id: job.id },
         data: {
@@ -110,4 +121,45 @@ export async function catchUpRunning(): Promise<boolean> {
     })
     .catch(() => null);
   return recent !== null;
+}
+
+/**
+ * Writes lessons for whatever the provider could not supply.
+ *
+ * Only subjects that genuinely have nothing left to teach, and only enough for the week ahead —
+ * this is a floor under the timetable, not a replacement curriculum.
+ */
+async function fillGapsWithWrittenLessons(studentId: string, log: (line: string) => void): Promise<void> {
+  const student = await prisma.studentProfile.findUnique({ where: { id: studentId } });
+  if (!student) return;
+
+  const supply = await subjectSupply(studentId).catch(() => []);
+  const starved = supply.filter((s) => !s.healthy);
+  if (starved.length === 0) return;
+
+  const schedules = await prisma.studentSchedule.findMany({
+    where: { studentId, active: true },
+    include: { subject: true },
+  });
+
+  for (const row of starved) {
+    const schedule = schedules.find((s) => s.subject.title === row.subjectTitle);
+    if (!schedule) continue;
+
+    // Enough for a week of this subject, and at least a couple so a day is never one short.
+    const wanted = Math.max(2, schedule.weeklyFrequency) - row.lessonsLeft;
+    if (wanted <= 0) continue;
+
+    log(`${row.subjectTitle}: nothing left to teach — writing ${wanted} lesson(s)`);
+    try {
+      const written = await generateLessons(schedule.subject.slug, student.yearGroup, wanted, log);
+      if (written.length > 0) {
+        // A child with no programme for this subject needs putting on the one just written, or
+        // the lessons exist and the planner still cannot reach them.
+        await enrolOnGenerated(studentId, schedule.subjectId, student.yearGroup);
+      }
+    } catch (err) {
+      log(`${row.subjectTitle}: could not write lessons — ${(err as Error).message}`);
+    }
+  }
 }
