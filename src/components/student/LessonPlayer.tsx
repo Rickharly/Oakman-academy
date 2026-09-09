@@ -271,10 +271,18 @@ export function LessonPlayer(props: LessonPlayerProps) {
     if (explainer || viewStage !== "LEARN" || explainerAsked.current) return;
     explainerAsked.current = true;
     let cancelled = false;
+    // A hard stop. Writing a lesson takes twenty seconds or so; a minute means something has
+    // gone wrong upstream, and a child should be told that rather than left watching a spinner
+    // for as long as the request feels like taking.
+    const abort = new AbortController();
+    const timeout = setTimeout(() => abort.abort(), 60_000);
     void (async () => {
       setExplainerState("loading");
       try {
-        const res = await fetch(`/api/lessons/${lesson.id}/explainer`, { method: "POST" });
+        const res = await fetch(`/api/lessons/${lesson.id}/explainer`, {
+          method: "POST",
+          signal: abort.signal,
+        });
         const data = (await res.json()) as { explainer?: LessonExplainer | null };
         if (cancelled) return;
         if (!res.ok) {
@@ -291,10 +299,13 @@ export function LessonPlayer(props: LessonPlayerProps) {
         setExplainerState("idle");
       } catch {
         if (!cancelled) setExplainerState("failed");
+      } finally {
+        clearTimeout(timeout);
       }
     })();
     return () => {
       cancelled = true;
+      abort.abort();
     };
   }, [explainer, lesson.id, viewStage]);
   const [extraPractice, setExtraPractice] = useState<LessonPlayerQuestion[]>([]);
@@ -1095,14 +1106,17 @@ export function LessonPlayer(props: LessonPlayerProps) {
             </>
           )}
 
-          <Button onClick={() => void completeLearn()} disabled={submitting || learnDone || teaching}>
-            {learnDone
-              ? "Marked as done"
-              : teaching
-                ? "Your teacher is writing this out…"
-                : video
-                  ? "I've finished watching"
-                  : "I've finished reading"}
+          {/*
+            Never disabled while the lesson is being written.
+
+            This button used to wait for the written lesson, and a child whose request was slow
+            or stuck could not leave the Learn step at all — the whole lesson was held hostage
+            by one call to a model. Encouraging them to read the explanation is worth doing;
+            trapping them until it arrives is not. The spinner above says it is coming; this
+            always works.
+          */}
+          <Button onClick={() => void completeLearn()} disabled={submitting || learnDone}>
+            {learnDone ? "Marked as done" : video ? "I've finished watching" : "I've finished reading"}
           </Button>
           {submitError ? <p className="text-sm text-danger">{submitError}</p> : null}
         </Card>
