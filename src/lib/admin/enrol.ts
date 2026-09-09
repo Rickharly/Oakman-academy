@@ -9,6 +9,7 @@
  * These are starting points, not decisions — a parent changes any of it in Schedule afterwards.
  */
 import { prisma } from "@/lib/db";
+import { syncProgramme } from "@/lib/curriculum/sync";
 
 /** A sensible week for a child who has just been added. Mirrors what the seed sets up. */
 const DEFAULT_SCHEDULE: { subject: string; weeklyFrequency: number; priority: number }[] = [
@@ -147,6 +148,33 @@ export async function fixYearGroupEnrolments(studentId: string): Promise<{ remov
     await prisma.dailyAssignment.deleteMany({
       where: { studentId, status: "PLANNED", lessonId: { in: lessons.map((l) => l.id) } },
     });
+  }
+
+  /**
+   * Make sure their own year has something in it before moving them onto it.
+   *
+   * Mikhael was on Year 5 placeholders. Taking those away without Year 4 material existing
+   * would leave him with no enrolments at all — a worse day than the wrong one he had. So the
+   * subjects on his timetable are imported for his actual year first, and only then is he
+   * moved.
+   */
+  const schedules = await prisma.studentSchedule.findMany({
+    where: { studentId, active: true },
+    include: { subject: true },
+  });
+  for (const schedule of schedules) {
+    const exists = await prisma.programme.findFirst({
+      where: {
+        yearGroup: student.yearGroup,
+        provider: { not: PLACEHOLDER_PROVIDER },
+        subject: { slug: schedule.subject.slug },
+      },
+    });
+    if (exists) continue;
+    // Bounded: enough to start, and the ordinary top-up carries on from there.
+    await syncProgramme({ subjectSlug: schedule.subject.slug, yearGroup: student.yearGroup }, { maxLessons: 8 }).catch(
+      () => undefined,
+    );
   }
 
   await prisma.studentEnrolment.updateMany({

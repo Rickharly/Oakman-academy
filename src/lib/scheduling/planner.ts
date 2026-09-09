@@ -128,9 +128,18 @@ export async function planWeek(studentId: string, weekStart: string, opts?: { re
     for (const item of pendingReviews) {
       if (scheduledReviewIds.has(item.id)) continue;
       if (item.dueAt.getTime() > dayTime) continue;
-      // At most two quick reviews a day: they sit alongside the timetable, and a backlog
-      // must not turn a school day into an hour of revisiting old work.
-      const reviewsToday = daySlots.get(dayKey)!.filter((s) => s.kind === "REVIEW").length;
+      /**
+       * Reviews already on the day count.
+       *
+       * This only counted the ones this run had just added, so every visit to Today added the
+       * limit again on top of whatever was already there. Eva's board reached eleven reviews
+       * that way — the same page load, repeated, each time believing the day had none.
+       */
+      const reviewsToday =
+        daySlots.get(dayKey)!.filter((s) => s.kind === "REVIEW").length +
+        existing.filter(
+          (a) => a.kind === "REVIEW" && a.status !== "MOVED" && dateOnlyKey(a.date) === dayKey,
+        ).length;
       if (reviewsToday >= MAX_REVIEWS_PER_DAY) break;
       scheduledReviewIds.add(item.id);
       daySlots.get(dayKey)!.push({ kind: "REVIEW", reviewItemId: item.id, estimatedMinutes: REVIEW_MINUTES });
@@ -519,6 +528,14 @@ async function trimDayToTimetable(studentId: string, dayDate: Date, cap: number)
   }
   if (duplicateReviews.length > 0) {
     await prisma.dailyAssignment.deleteMany({ where: { id: { in: duplicateReviews } } });
+  }
+
+  // And cap what is left. A day that has collected eleven reviews needs cutting back to one,
+  // not just de-duplicating — the ones nobody has started, keeping the oldest.
+  const keptReviews = reviews.filter((r) => !duplicateReviews.includes(r.id));
+  const surplusReviews = keptReviews.slice(MAX_REVIEWS_PER_DAY).filter((r) => r.status === "PLANNED");
+  if (surplusReviews.length > 0) {
+    await prisma.dailyAssignment.deleteMany({ where: { id: { in: surplusReviews.map((r) => r.id) } } });
   }
 
   const remaining = lessons.filter((a) => !duplicates.includes(a.id));

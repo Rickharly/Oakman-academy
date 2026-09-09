@@ -438,3 +438,47 @@ describe("a child enrolled on the wrong year", () => {
     expect(titles).not.toContain("Separating mixtures");
   });
 });
+
+describe("planner: a day that has collected reviews", () => {
+  beforeAll(async () => {
+    await resetDb();
+    studentId = await buildStudentWithCurriculum(12);
+
+    // Eleven reviews and no lessons — exactly what a child's board looked like, because the
+    // review limit only counted the ones each run had just added, so every page load piled on
+    // two more on top of whatever was already there.
+    const subject = await prisma.subject.findFirstOrThrow({ where: { slug: "maths" } });
+    const lesson = await prisma.lesson.findFirstOrThrow({ where: { providerSlug: "maths-l1" } });
+    for (let i = 0; i < 11; i++) {
+      const item = await prisma.reviewItem.create({
+        data: { studentId, lessonId: lesson.id, reason: "LOW_SCORE", detail: `r${i}`, dueAt: toDateOnly(MONDAY) },
+      });
+      await prisma.dailyAssignment.create({
+        data: {
+          studentId,
+          date: toDateOnly(MONDAY),
+          order: 50 + i,
+          kind: "REVIEW",
+          subjectId: subject.id,
+          reviewItemId: item.id,
+          estimatedMinutes: 15,
+          source: "REVIEW_ENGINE",
+        },
+      });
+    }
+  });
+
+  it("cuts the reviews back and gives a full day of lessons", async () => {
+    await ensureDayPlanned(studentId, MONDAY);
+
+    const reviews = await prisma.dailyAssignment.count({
+      where: { studentId, date: toDateOnly(MONDAY), kind: "REVIEW", status: { not: "MOVED" } },
+    });
+    expect(reviews).toBeLessThanOrEqual(1);
+
+    // The point of all of it: a review is never a period, so a board full of them must never
+    // count as a full day and stop lessons being planned.
+    const lessons = await lessonsOn(MONDAY);
+    expect(lessons.length).toBe(5);
+  });
+});
