@@ -664,6 +664,27 @@ async function generateLessonPractice(args: {
     if (existing.length >= count) return existing;
   }
 
+  /**
+   * Everything this child has already been asked on this lesson.
+   *
+   * Without it the model is handed the same lesson, the same learning points and the same
+   * instructions every time, and unsurprisingly writes the same questions — a child pressed
+   * "more questions" and got back the set he had just finished. Knowing what has been asked is
+   * the whole difference between more practice and the same practice.
+   */
+  const alreadyAsked = await prisma.question.findMany({
+    where: {
+      lessonId: lesson.id,
+      OR: [{ source: "AI_GENERATED" }, { stage: { in: ["PRACTICE", "CHECK", "STARTER"] } }],
+    },
+    select: { prompt: true },
+    orderBy: { order: "asc" },
+    take: 40,
+  });
+  /** Loose comparison: wording drifts, the question does not. */
+  const normalise = (prompt: string) => prompt.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+  const seen = new Set(alreadyAsked.map((q) => normalise(q.prompt)));
+
   const asStrings = (value: unknown): string[] =>
     Array.isArray(value) ? value.filter((v): v is string => typeof v === "string") : [];
   const asPairs = (value: unknown, a: string, b: string): string[] =>
@@ -717,7 +738,13 @@ async function generateLessonPractice(args: {
       "",
       "explanation: why the answer is right, in one or two sentences, addressed to the child.",
       "UK English.",
-    ].join("\n"),
+      "",
+      alreadyAsked.length > 0
+        ? "They have already answered the questions listed at the end. Do not write any of them again, and do not write the same question with the numbers or the wording changed — they will recognise it, and it teaches nothing. Take a different angle on the same skill."
+        : "",
+    ]
+      .filter(Boolean)
+      .join("\n"),
     messages: [
       {
         role: "user",
@@ -737,6 +764,9 @@ async function generateLessonPractice(args: {
           "",
           aimed.length > 0 ? `\nThey got these wrong:\n${aimed.map((p) => `- ${p}`).join("\n")}` : "",
           lesson.transcript ? `Transcript extract:\n${lesson.transcript.slice(0, 6000)}` : "",
+          alreadyAsked.length > 0
+            ? `\nAlready asked — write none of these:\n${alreadyAsked.map((q) => `- ${q.prompt}`).join("\n")}`
+            : "",
         ]
           .filter(Boolean)
           .join("\n"),
@@ -744,7 +774,11 @@ async function generateLessonPractice(args: {
     ],
   });
 
-  return persistGeneratedQuestions(data.questions.slice(0, count), {
+  // Belt and braces: the instruction is not a guarantee, and handing back a question they have
+  // just answered is the exact complaint this is fixing.
+  const fresh = data.questions.filter((q) => !seen.has(normalise(q.prompt)));
+
+  return persistGeneratedQuestions((fresh.length > 0 ? fresh : data.questions).slice(0, count), {
     lessonId: lesson.id,
     studentId: args.studentId,
     context: {
