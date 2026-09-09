@@ -15,8 +15,24 @@ import { ImageOff } from "lucide-react";
  *
  * When it genuinely will not load, that is said plainly rather than left as empty space.
  */
-export function QuestionImage({ image }: { image: { url: string; alt?: string } }) {
+export function QuestionImage({
+  image,
+  questionId,
+}: {
+  image: { url: string; alt?: string };
+  questionId: string;
+}) {
   const [failed, setFailed] = useState(false);
+
+  /**
+   * Fetched through our own server, not linked straight at the provider.
+   *
+   * The provider's media can need the API key, which the browser must never hold, and a browser
+   * quietly refused shows an empty box with no way to tell why — which is exactly what the
+   * children were looking at. Going through us means the key is applied where it belongs and a
+   * failure has a status we can report.
+   */
+  const src = `/api/curriculum/image?question=${encodeURIComponent(questionId)}`;
 
   if (failed) {
     return (
@@ -37,7 +53,7 @@ export function QuestionImage({ image }: { image: { url: string; alt?: string } 
     // Deliberately unconstrained in height: a place value table cropped to a thumbnail is as
     // unanswerable as no picture at all.
     <img
-      src={image.url}
+      src={src}
       alt={image.alt ?? "Picture for this question"}
       className="mb-4 max-w-full rounded-xl border border-line bg-white"
       onError={() => setFailed(true)}

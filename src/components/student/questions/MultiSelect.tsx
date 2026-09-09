@@ -76,7 +76,7 @@ export function MultiSelect({ question, value, onChange, disabled, result }: Que
               {choice.image?.url ? (
                 // eslint-disable-next-line @next/next/no-img-element -- provider CDN, host not known ahead of time
                 <img
-                  src={choice.image.url}
+                  src={`/api/curriculum/image?question=${encodeURIComponent(question.id)}&option=${encodeURIComponent(choice.id)}`}
                   alt={choice.image.alt ?? choice.text}
                   className="mb-1 max-h-40 rounded-lg border border-line bg-white"
                 />

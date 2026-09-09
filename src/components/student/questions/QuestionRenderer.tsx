@@ -22,7 +22,7 @@ export function QuestionRenderer(props: QuestionRendererProps) {
 
   return (
     <>
-      {image.success ? <QuestionImage image={image.data} /> : null}
+      {image.success ? <QuestionImage image={image.data} questionId={props.question.id} /> : null}
       <QuestionBody {...props} />
     </>
   );

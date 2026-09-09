@@ -14,7 +14,8 @@ import { Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/db";
 import { getAiProvider, resolveModelId } from "@/lib/ai/provider";
 import { explainerSchema } from "@/lib/lessons/explainer";
-import { fetchProviderAsset, resolveAssetUrl } from "@/lib/curriculum/asset-fetch";
+import { describeFetchError, fetchProviderAsset, resolveAssetUrl } from "@/lib/curriculum/asset-fetch";
+import { imageSchema } from "@/lib/questions/types";
 import { todayDateOnly } from "@/lib/dates";
 
 export type CheckStatus = "ok" | "warn" | "fail" | "skip";
@@ -304,6 +305,66 @@ async function pictureCheck(): Promise<Check> {
 }
 
 /**
+ * Does a question's picture actually come back?
+ *
+ * "The images are blurred out" and "there is no video" look the same from a chair: an empty
+ * box. This fetches a real question's real picture exactly as the page does, and reports the
+ * status and content type, so the difference between blocked, missing and never-stored is a
+ * fact rather than a guess.
+ */
+async function questionImageCheck(): Promise<Check> {
+  const name = "Showing a question's picture";
+  const question = await prisma.question.findFirst({
+    where: { NOT: { promptImage: { equals: Prisma.DbNull } } },
+    select: { id: true, prompt: true, promptImage: true },
+  });
+  if (!question) {
+    return { name, status: "warn", summary: "No question has a picture stored, so there is nothing to test." };
+  }
+
+  const parsed = imageSchema.safeParse(question.promptImage);
+  if (!parsed.success) {
+    return {
+      name,
+      status: "fail",
+      summary: "A question's picture is stored in a shape we cannot read.",
+      detail: JSON.stringify(question.promptImage).slice(0, 300),
+    };
+  }
+
+  const url = parsed.data.url;
+  try {
+    const isProvider = /thenational\.academy$/i.test(new URL(url).hostname);
+    const res = await fetch(url, {
+      headers: isProvider && process.env.OAK_API_KEY ? { Authorization: `Bearer ${process.env.OAK_API_KEY}` } : {},
+      cache: "no-store",
+    });
+    const type = res.headers.get("content-type") ?? "(none)";
+    if (!res.ok) {
+      return {
+        name,
+        status: "fail",
+        summary: `The picture host returned ${res.status}. This is why questions show an empty box.`,
+        detail: `${question.prompt.slice(0, 80)}\n${url}`,
+      };
+    }
+    return {
+      name,
+      status: type.startsWith("image/") ? "ok" : "warn",
+      summary: type.startsWith("image/")
+        ? `Pictures load (${type}).`
+        : `The host answered with "${type}", not an image.`,
+      detail: url,
+    };
+  } catch (err) {
+    return {
+      ...fail(name, "Could not reach the picture at all.", err),
+      detail: `${describeFetchError(err)}\n${url}`,
+    };
+  }
+}
+
+/**
  * Why a child's day is empty, in full.
  *
  * The planner produces nothing for a hundred quiet reasons — no schedule, no enrolment, a
@@ -409,6 +470,7 @@ export async function runDiagnostics(): Promise<Check[]> {
     curriculumCheck().catch((err) => fail("Lessons ready to teach", "Check failed.", err)),
     timetableCheck().catch((err) => fail("Why today looks like this", "Check failed.", err)),
     pictureCheck().catch((err) => fail("Questions with missing pictures", "Check failed.", err)),
+    questionImageCheck().catch((err) => fail("Showing a question's picture", "Check failed.", err)),
     explainerCheck().catch((err) => fail("Writing a lesson (OpenAI)", "Check failed.", err)),
     oakQuotaCheck().catch((err) => fail("Curriculum provider (Oak)", "Check failed.", err)),
     videoCheck().catch((err) => fail("Playing a video", "Check failed.", err)),
