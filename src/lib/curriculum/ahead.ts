@@ -164,7 +164,7 @@ export interface AheadResult {
  * with its assets is skipped without a provider request.
  */
 export async function importLessonsAhead(
-  opts: { weeks?: number; log?: (line: string) => void } = {},
+  opts: { weeks?: number; log?: (line: string) => void; skipExplainers?: boolean } = {},
 ): Promise<AheadResult> {
   const log = opts.log ?? (() => {});
   const targets = await lessonsNeededAhead(opts.weeks ?? WEEKS_AHEAD);
@@ -212,8 +212,13 @@ export async function importLessonsAhead(
     log(`FAILED ${f.scope.subjectSlug} year ${f.scope.yearGroup}: ${f.error}`);
   }
 
-  const written = await writeExplainersFor(targets, log);
-  if (written > 0) log(`Wrote ${written} lesson(s) out in words, ready to open.`);
+  // Writing lessons out is the slow half — a strong-model call each. When children are waiting
+  // on a timetable, getting the lessons in is the urgent thing and the words can follow when
+  // they open one.
+  if (!opts.skipExplainers) {
+    const written = await writeExplainersFor(targets, log);
+    if (written > 0) log(`Wrote ${written} lesson(s) out in words, ready to open.`);
+  }
 
   return { targets, jobIds, failures, nothingToDo: false };
 }

@@ -9,6 +9,7 @@ import { Prisma } from "@/generated/prisma/client";
 import { addDaysKey, dateOnlyKey, isoWeekday, schoolDayEnd, todayDateOnly, toDateOnly, weekStartKey } from "@/lib/dates";
 import { enrolStudentInYearGroup } from "@/lib/admin/enrol";
 import { settleFinishedLessons } from "@/lib/lessons/service";
+import { catchUpImport } from "@/lib/curriculum/autofill";
 
 const REVIEW_MINUTES = 15;
 const MAX_REVIEWS_PER_DAY = 2;
@@ -399,7 +400,16 @@ export async function ensureDayPlanned(studentId: string, dateKey: string): Prom
 
   await planWeek(studentId, dateKey);
   await trimDayToTimetable(studentId, dayDate, student.lessonsPerDay);
-  return read();
+  const planned = await read();
+
+  // Still short after planning? Then a subject has run out of lessons, and a child is looking
+  // at the gap right now. Go and get them — without blocking this page, and without a parent
+  // having to notice and press anything.
+  const stillShort =
+    planned.filter((a) => a.kind === "LESSON" && a.status !== "MOVED").length < student.lessonsPerDay;
+  if (stillShort) void catchUpImport().catch(() => undefined);
+
+  return planned;
 }
 
 /**

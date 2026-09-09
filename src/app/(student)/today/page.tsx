@@ -4,6 +4,8 @@ import { requireStudent } from "@/lib/auth/session";
 import { SCHOOL_TIMEZONE, isoWeekday, schoolDayKey } from "@/lib/dates";
 import { ensureDayPlanned, getTodayView } from "@/lib/scheduling/planner";
 import { subjectSupply } from "@/lib/scheduling/gaps";
+import { catchUpRunning } from "@/lib/curriculum/autofill";
+import { WaitingForLessons } from "@/components/student/WaitingForLessons";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
@@ -40,6 +42,9 @@ export default async function TodayPage({
   const waiting = short
     ? (await subjectSupply(profileId).catch(() => [])).filter((s) => !s.healthy).map((s) => s.subjectTitle)
     : [];
+  // A short day starts a catch-up import by itself (see `ensureDayPlanned`). When one is
+  // running, say so and let the page bring the lessons in rather than needing a grown-up.
+  const fetching = short ? await catchUpRunning().catch(() => false) : false;
   const cards = view.assignments.filter((a) => a.status !== "MOVED");
 
   // Real clock times for the day, so it reads like a timetable rather than a to-do list.
@@ -175,7 +180,9 @@ export default async function TodayPage({
             this said so the only visible symptom was a day that looked wrong. Naming the
             subjects turns "something is broken" into "someone needs to import geography".
           */}
-          {short && waiting.length > 0 ? (
+          {short && fetching ? (
+            <WaitingForLessons subjects={waiting} />
+          ) : short && waiting.length > 0 ? (
             <Card padding="md" className="border-line bg-surface-raised">
               <p className="text-sm text-ink">
                 Today is {lessonsToday} {lessonsToday === 1 ? "lesson" : "lessons"} rather than the
