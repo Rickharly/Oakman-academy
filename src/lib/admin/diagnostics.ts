@@ -10,6 +10,7 @@
  * credentials and the real schemas, and they report the real error text — no interpretation, no
  * "should be". If a lesson will not generate, this says why in the provider's own words.
  */
+import { Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/db";
 import { getAiProvider, resolveModelId } from "@/lib/ai/provider";
 import { explainerSchema } from "@/lib/lessons/explainer";
@@ -238,6 +239,32 @@ async function curriculumCheck(): Promise<Check> {
 }
 
 /**
+ * Questions asking about a picture that never arrived.
+ *
+ * These are the ones that are impossible rather than hard, and they are counted here because
+ * "some lessons are missing images" needs a number before anyone can tell whether it is a
+ * handful or half the curriculum.
+ */
+async function pictureCheck(): Promise<Check> {
+  const name = "Questions with missing pictures";
+  const [withImage, excluded] = await Promise.all([
+    prisma.question.count({ where: { NOT: { promptImage: { equals: Prisma.DbNull } } } }),
+    prisma.question.count({ where: { excluded: true } }),
+  ]);
+  const total = await prisma.question.count();
+
+  return {
+    name,
+    status: excluded > total / 4 ? "warn" : "ok",
+    summary:
+      `${withImage} question(s) carry a picture and now show it. ` +
+      `${excluded} are hidden — questions that ask about a picture the import did not bring, ` +
+      `which a child cannot answer and should never have been shown.`,
+    detail: `${total} questions in total.`,
+  };
+}
+
+/**
  * Why a child's day is empty, in full.
  *
  * The planner produces nothing for a hundred quiet reasons — no schedule, no enrolment, a
@@ -342,6 +369,7 @@ export async function runDiagnostics(): Promise<Check[]> {
     Promise.resolve(deployCheck()),
     curriculumCheck().catch((err) => fail("Lessons ready to teach", "Check failed.", err)),
     timetableCheck().catch((err) => fail("Why today looks like this", "Check failed.", err)),
+    pictureCheck().catch((err) => fail("Questions with missing pictures", "Check failed.", err)),
     explainerCheck().catch((err) => fail("Writing a lesson (OpenAI)", "Check failed.", err)),
     oakQuotaCheck().catch((err) => fail("Curriculum provider (Oak)", "Check failed.", err)),
     videoCheck().catch((err) => fail("Playing a video", "Check failed.", err)),

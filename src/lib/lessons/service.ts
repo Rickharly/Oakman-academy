@@ -23,6 +23,7 @@ import { ApiError } from "@/lib/auth/api";
 import { gradeQuestion, type GradingContext } from "@/lib/grading/grade";
 import { teacherAgent, teacherModeForStage } from "@/lib/ai/teacher-agent";
 import { recomputeLessonProgress } from "@/lib/progress/aggregate";
+import { hideUnanswerableQuestions } from "@/lib/questions/unanswerable";
 import { parkOpenGaps } from "@/lib/lessons/understanding";
 import { afterActivityGraded } from "@/lib/progress/review";
 import { completeReview } from "@/lib/progress/review";
@@ -164,6 +165,12 @@ export async function startOrResumeAttempt(
   lessonId: string,
   assignmentId?: string
 ): Promise<LessonAttempt> {
+  // Before anything else: take out the questions that ask about a picture this lesson does not
+  // have. A child cannot tell those apart from a question they should know — they guess, get it
+  // wrong, and the app marks them down and offers to re-teach something they may understand
+  // perfectly well. Never fatal; a lesson opens either way.
+  await hideUnanswerableQuestions(lessonId).catch(() => undefined);
+
   const existing = await prisma.lessonAttempt.findFirst({
     where: { studentId, lessonId, status: "IN_PROGRESS" },
     orderBy: { attemptNumber: "desc" },
