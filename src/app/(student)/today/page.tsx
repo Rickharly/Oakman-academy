@@ -3,6 +3,7 @@ import { BookOpen, CalendarClock, CheckCircle2, PartyPopper, Sparkles } from "lu
 import { requireStudent } from "@/lib/auth/session";
 import { SCHOOL_TIMEZONE, isoWeekday, schoolDayKey } from "@/lib/dates";
 import { ensureDayPlanned, getTodayView } from "@/lib/scheduling/planner";
+import { subjectSupply } from "@/lib/scheduling/gaps";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
@@ -30,6 +31,15 @@ export default async function TodayPage({
 
   await ensureDayPlanned(profileId, dateKey);
   const view = await getTodayView(profileId, dateKey);
+
+  // A short day has a reason, and the child is the one looking at it. Better they read "two
+  // subjects are waiting on lessons" than wonder whether they have missed something.
+  const lessonsToday = view.assignments.filter((a) => a.kind === "LESSON" && a.status !== "MOVED").length;
+  const lessonsPerDay = user.studentProfile.lessonsPerDay;
+  const short = lessonsToday > 0 && lessonsToday < lessonsPerDay;
+  const waiting = short
+    ? (await subjectSupply(profileId).catch(() => [])).filter((s) => !s.healthy).map((s) => s.subjectTitle)
+    : [];
   const cards = view.assignments.filter((a) => a.status !== "MOVED");
 
   // Real clock times for the day, so it reads like a timetable rather than a to-do list.
@@ -157,6 +167,26 @@ export default async function TodayPage({
               );
             })}
           </div>
+
+          {/*
+            Why today is shorter than usual.
+
+            A day is only ever short because a subject has no lessons left to give, and until
+            this said so the only visible symptom was a day that looked wrong. Naming the
+            subjects turns "something is broken" into "someone needs to import geography".
+          */}
+          {short && waiting.length > 0 ? (
+            <Card padding="md" className="border-line bg-surface-raised">
+              <p className="text-sm text-ink">
+                Today is {lessonsToday} {lessonsToday === 1 ? "lesson" : "lessons"} rather than the
+                usual {lessonsPerDay} — {waiting.join(" and ")}{" "}
+                {waiting.length === 1 ? "is" : "are"} waiting for new lessons to be added.
+              </p>
+              <p className="mt-1 text-sm text-ink-muted">
+                Nothing you did. Do these ones, and the rest will be back.
+              </p>
+            </Card>
+          ) : null}
 
           <div className="grid gap-6 sm:grid-cols-2">
             <div className="space-y-2">

@@ -209,26 +209,42 @@ export async function planWeek(studentId: string, weekStart: string, opts?: { re
 
   for (const dayKey of dayKeys) {
     const slots = daySlots.get(dayKey)!;
-    const existingLessonCount = existing.filter(
+    const existingToday = existing.filter(
       (a) => a.kind === "LESSON" && a.status !== "MOVED" && dateOnlyKey(a.date) === dayKey,
-    ).length;
+    );
+    const existingLessonCount = existingToday.length;
 
-    // Prefer a subject the child does not already have that day, so a full timetable reads
-    // like a school week rather than four periods of the same subject.
+    /**
+     * Which subjects this day already has — including the ones already saved.
+     *
+     * Reading only the new slots is how a child ended up with three maths lessons in a day: a
+     * top-up ran, could not see the maths lesson already on the board, and cheerfully added
+     * another. A day is planned against what is actually on it, not against what this pass
+     * happens to have put there.
+     */
+    const subjectsToday = () =>
+      new Set([
+        ...existingToday.map((a) => a.subjectId).filter((id): id is string => Boolean(id)),
+        ...slots.filter((s) => s.kind === "LESSON").map((s) => s.subjectId),
+      ]);
+
     let guard = 0;
     while (slots.filter((s) => s.kind === "LESSON").length + existingLessonCount < lessonsPerDay) {
       if (guard++ > rotation.length * 3) break; // every subject is out of lessons
 
-      const subjectsToday = new Set(
-        slots.filter((s) => s.kind === "LESSON").map((s) => s.subjectId),
-      );
-      const ordered = [
-        ...rotation.filter((id) => !subjectsToday.has(id)),
-        ...rotation.filter((id) => subjectsToday.has(id)),
-      ];
+      // One period per subject per day, full stop.
+      //
+      // This used to prefer an unused subject and then fall back to doubling up, which meant a
+      // week where only maths and English had lessons imported produced days of three maths and
+      // two English. That is not a school day and it is not good teaching: a nine-year-old
+      // doing four periods of the same subject learns less than one doing two, and the child
+      // reasonably asks what is going on. When there are not enough subjects to fill the
+      // timetable the day is simply shorter, and their page says why.
+      const taken = subjectsToday();
+      const available = rotation.filter((id) => !taken.has(id));
 
       let added = false;
-      for (const subjectId of ordered) {
+      for (const subjectId of available) {
         const programmeId = programmeIdBySubjectId.get(subjectId);
         if (!programmeId) continue;
         const used = usedLessonIdsBySubject.get(subjectId) ?? new Set<string>();
@@ -369,16 +385,17 @@ export async function ensureDayPlanned(studentId: string, dateKey: string): Prom
   const student = await prisma.studentProfile.findUnique({ where: { id: studentId } });
   if (!student) return existing;
 
-  const lessonsToday = existing.filter((a) => a.kind === "LESSON" && a.status !== "MOVED").length;
+  // Repair first, always.
+  //
+  // A day that is already the right length can still be the wrong day: five periods made of
+  // three maths and two English counts as full, so checking the length first meant days like
+  // that were never looked at again. Trimming runs unconditionally now, and it removes repeated
+  // subjects as well as surplus periods.
+  await trimDayToTimetable(studentId, dayDate, student.lessonsPerDay);
+  const afterTrim = await read();
 
-  // Too many periods is as wrong as too few, and happens the same way — two plans racing pick
-  // different lessons, so the day comes out doubled rather than duplicated.
-  if (lessonsToday > student.lessonsPerDay) {
-    await trimDayToTimetable(studentId, dayDate, student.lessonsPerDay);
-    return read();
-  }
-
-  if (lessonsToday >= student.lessonsPerDay) return existing;
+  const lessonsToday = afterTrim.filter((a) => a.kind === "LESSON" && a.status !== "MOVED").length;
+  if (lessonsToday >= student.lessonsPerDay) return afterTrim;
 
   await planWeek(studentId, dateKey);
   await trimDayToTimetable(studentId, dayDate, student.lessonsPerDay);
@@ -397,9 +414,34 @@ async function trimDayToTimetable(studentId: string, dayDate: Date, cap: number)
     where: { studentId, date: dayDate, kind: "LESSON", status: { not: "MOVED" } },
     orderBy: [{ createdAt: "asc" }, { id: "asc" }],
   });
-  if (lessons.length <= cap) return;
 
-  const surplus = lessons.slice(cap).filter((a) => a.status === "PLANNED");
+  /**
+   * A day with three maths lessons on it, repaired.
+   *
+   * The planner used to double up a subject when the others had nothing to give, so days were
+   * saved with three maths and two English. Three periods of the same subject is not a school
+   * day and it is not good teaching — a child does less well in the third than they would in a
+   * first period of something else — so the extras go, oldest kept. Only untouched ones: work
+   * already started or finished is history and is never deleted.
+   */
+  const seen = new Set<string>();
+  const duplicates: string[] = [];
+  for (const lesson of lessons) {
+    if (!lesson.subjectId) continue;
+    if (seen.has(lesson.subjectId)) {
+      if (lesson.status === "PLANNED") duplicates.push(lesson.id);
+      continue;
+    }
+    seen.add(lesson.subjectId);
+  }
+  if (duplicates.length > 0) {
+    await prisma.dailyAssignment.deleteMany({ where: { id: { in: duplicates } } });
+  }
+
+  const remaining = lessons.filter((a) => !duplicates.includes(a.id));
+  if (remaining.length <= cap) return;
+
+  const surplus = remaining.slice(cap).filter((a) => a.status === "PLANNED");
   if (surplus.length === 0) return;
 
   await prisma.dailyAssignment.deleteMany({ where: { id: { in: surplus.map((a) => a.id) } } });

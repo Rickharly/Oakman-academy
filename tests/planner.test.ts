@@ -254,3 +254,86 @@ describe("planner: a student added through Settings", () => {
     expect(day.filter((a) => a.kind === "LESSON")).toHaveLength(5);
   });
 });
+
+describe("planner: a day never repeats a subject", () => {
+  beforeAll(async () => {
+    await resetDb();
+    // Only two subjects have any lessons at all. This is the real shape of the problem: the
+    // rest of the timetable has nothing imported yet.
+    const user = await prisma.user.create({
+      data: { role: "STUDENT", username: "starved", passwordHash: "x", displayName: "Eva" },
+    });
+    const profile = await prisma.studentProfile.create({
+      data: { userId: user.id, yearGroup: 7, keyStage: "ks3", lessonsPerDay: 5 },
+    });
+    studentId = profile.id;
+
+    for (const slug of ["maths", "english"] as const) {
+      const subject = await prisma.subject.create({ data: { provider: "test", slug, title: slug } });
+      const programme = await prisma.programme.create({
+        data: {
+          provider: "test",
+          providerSlug: `${slug}:7`,
+          subjectId: subject.id,
+          yearGroup: 7,
+          keyStage: "ks3",
+          title: slug,
+        },
+      });
+      const unit = await prisma.unit.create({
+        data: { provider: "test", providerSlug: `${slug}-u`, programmeId: programme.id, title: "U", order: 1 },
+      });
+      for (let i = 1; i <= 20; i++) {
+        await prisma.lesson.create({
+          data: {
+            provider: "test",
+            providerSlug: `${slug}-x${i}`,
+            unitId: unit.id,
+            title: `${slug} ${i}`,
+            order: i,
+          },
+        });
+      }
+      await prisma.studentEnrolment.create({ data: { studentId: profile.id, programmeId: programme.id } });
+      await prisma.studentSchedule.create({
+        data: { studentId: profile.id, subjectId: subject.id, weeklyFrequency: 5, priority: 1 },
+      });
+    }
+    await planWeek(studentId, MONDAY, { replace: true });
+  });
+
+  it("gives a short day rather than three maths lessons", async () => {
+    for (let i = 0; i < 5; i++) {
+      const lessons = await lessonsOn(addDaysKey(MONDAY, i));
+      const subjects = lessons.map((l) => l.subject?.title);
+      // Two subjects have material, so the day is two periods — not five made of three maths.
+      // Four periods of the same subject is not a school day, and a child rightly asks why.
+      expect(new Set(subjects).size).toBe(subjects.length);
+      expect(lessons).toHaveLength(2);
+    }
+  });
+
+  it("repairs a day that was already saved with the same subject twice", async () => {
+    const day = toDateOnly(addDaysKey(MONDAY, 0));
+    const maths = await prisma.subject.findFirstOrThrow({ where: { slug: "maths" } });
+    const spare = await prisma.lesson.findFirstOrThrow({ where: { providerSlug: "maths-x19" } });
+    await prisma.dailyAssignment.create({
+      data: {
+        studentId,
+        date: day,
+        order: 9,
+        kind: "LESSON",
+        subjectId: maths.id,
+        lessonId: spare.id,
+        estimatedMinutes: 45,
+        source: "AUTO",
+      },
+    });
+
+    await ensureDayPlanned(studentId, addDaysKey(MONDAY, 0));
+
+    const lessons = await lessonsOn(addDaysKey(MONDAY, 0));
+    const subjects = lessons.map((l) => l.subject?.title);
+    expect(new Set(subjects).size).toBe(subjects.length);
+  });
+});
