@@ -94,11 +94,20 @@ export async function generateLessons(
 ): Promise<Lesson[]> {
   if (wanted <= 0) return [];
 
-  const subject = await prisma.subject.upsert({
-    where: { provider_slug: { provider: GENERATED_PROVIDER, slug: subjectSlug } },
-    create: { provider: GENERATED_PROVIDER, slug: subjectSlug, title: titleCase(subjectSlug) },
-    update: {},
-  });
+  /**
+   * The subject the child's timetable already points at — not a new one.
+   *
+   * Subjects are unique per provider, so creating "maths" under our own provider makes a second
+   * maths with a different id. The timetable points at the first one, the written lessons hang
+   * off the second, and the planner matches subject ids: it looks straight past every lesson we
+   * just wrote and schedules nothing. Reuse whatever already exists for this slug, and only
+   * create one when the subject is genuinely new.
+   */
+  const subject =
+    (await prisma.subject.findFirst({ where: { slug: subjectSlug }, orderBy: { createdAt: "asc" } })) ??
+    (await prisma.subject.create({
+      data: { provider: GENERATED_PROVIDER, slug: subjectSlug, title: titleCase(subjectSlug) },
+    }));
 
   const programme = await prisma.programme.upsert({
     where: {

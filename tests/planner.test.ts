@@ -372,3 +372,69 @@ describe("planner: a subject that has run out", () => {
     expect(after).toBe(before);
   });
 });
+
+describe("a child enrolled on the wrong year", () => {
+  beforeAll(async () => {
+    await resetDb();
+    // Year 4 child, enrolled on Year 5 programmes. This is what taught a nine-year-old to
+    // separate mixtures, which is Year 5 science, and it would have been wrong every day.
+    const user = await prisma.user.create({
+      data: { role: "STUDENT", username: "mikhael", passwordHash: "x", displayName: "Mikhael" },
+    });
+    const profile = await prisma.studentProfile.create({
+      data: { userId: user.id, yearGroup: 4, keyStage: "ks2", lessonsPerDay: 5 },
+    });
+    studentId = profile.id;
+
+    const subject = await prisma.subject.create({ data: { provider: "test", slug: "science", title: "Science" } });
+    for (const year of [4, 5]) {
+      const programme = await prisma.programme.create({
+        data: {
+          provider: "test",
+          providerSlug: `science:${year}`,
+          subjectId: subject.id,
+          yearGroup: year,
+          keyStage: "ks2",
+          title: `Science Y${year}`,
+        },
+      });
+      const unit = await prisma.unit.create({
+        data: { provider: "test", providerSlug: `sci-u${year}`, programmeId: programme.id, title: "U", order: 1 },
+      });
+      await prisma.lesson.create({
+        data: {
+          provider: "test",
+          providerSlug: `sci-y${year}-l1`,
+          unitId: unit.id,
+          title: year === 5 ? "Separating mixtures" : "States of matter",
+          order: 1,
+        },
+      });
+      if (year === 5) {
+        await prisma.studentEnrolment.create({ data: { studentId, programmeId: programme.id } });
+      }
+    }
+    await prisma.studentSchedule.create({
+      data: { studentId, subjectId: subject.id, weeklyFrequency: 5, priority: 1 },
+    });
+  });
+
+  it("is moved onto their own year, and the wrong year's planned work goes with it", async () => {
+    await ensureDayPlanned(studentId, MONDAY);
+
+    const active = await prisma.studentEnrolment.findMany({
+      where: { studentId, active: true },
+      include: { programme: true },
+    });
+    expect(active).toHaveLength(1);
+    expect(active[0].programme.yearGroup).toBe(4);
+
+    const lessons = await lessonsOn(MONDAY);
+    const titles = await Promise.all(
+      lessons.map(async (a) =>
+        a.lessonId ? (await prisma.lesson.findUnique({ where: { id: a.lessonId } }))?.title : null,
+      ),
+    );
+    expect(titles).not.toContain("Separating mixtures");
+  });
+});

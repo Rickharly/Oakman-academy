@@ -7,7 +7,7 @@ import { prisma } from "@/lib/db";
 import type { DailyAssignment, Lesson, Programme, ReviewItem, StudentLessonProgress, Subject, Unit } from "@/generated/prisma/client";
 import { Prisma } from "@/generated/prisma/client";
 import { addDaysKey, dateOnlyKey, isoWeekday, schoolDayEnd, todayDateOnly, toDateOnly, weekStartKey } from "@/lib/dates";
-import { enrolStudentInYearGroup } from "@/lib/admin/enrol";
+import { enrolStudentInYearGroup, fixYearGroupEnrolments } from "@/lib/admin/enrol";
 import { settleFinishedLessons } from "@/lib/lessons/service";
 import { catchUpImport } from "@/lib/curriculum/autofill";
 
@@ -413,6 +413,9 @@ export async function ensureDayPlanned(studentId: string, dateKey: string): Prom
   if (isoWeekday(dateKey) > 5) return []; // weekends: plan nothing
 
   await purgeFillerReviews(studentId).catch(() => undefined);
+  // A child enrolled on the wrong year is taught the wrong curriculum every day until someone
+  // notices. Cheap to check, and it repairs itself rather than waiting to be reported again.
+  await fixYearGroupEnrolments(studentId).catch(() => undefined);
 
   const dayDate = toDateOnly(dateKey);
   const read = () =>

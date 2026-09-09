@@ -14,6 +14,7 @@ import { prisma } from "@/lib/db";
 import { getAiProvider, resolveModelId } from "@/lib/ai/provider";
 import { explainerSchema } from "@/lib/lessons/explainer";
 import { fetchProviderAsset, resolveAssetUrl } from "@/lib/curriculum/asset-fetch";
+import { todayDateOnly } from "@/lib/dates";
 
 export type CheckStatus = "ok" | "warn" | "fail" | "skip";
 
@@ -220,11 +221,111 @@ async function curriculumCheck(): Promise<Check> {
   };
 }
 
+/**
+ * Why a child's day is empty, in full.
+ *
+ * The planner produces nothing for a hundred quiet reasons — no schedule, no enrolment, a
+ * programme with no lessons, every lesson already done, a subject id that does not match. From
+ * the outside all of them look identical: a blank board. This prints every link in that chain
+ * for every child, so the broken one is visible instead of guessed at.
+ */
+async function timetableCheck(): Promise<Check> {
+  const name = "Why today looks like this";
+  const students = await prisma.studentProfile.findMany({
+    include: { user: { select: { displayName: true } } },
+  });
+  if (students.length === 0) return { name, status: "fail", summary: "No students." };
+
+  const lines: string[] = [];
+  let broken = 0;
+
+  for (const student of students) {
+    const [schedules, enrolments, today] = await Promise.all([
+      prisma.studentSchedule.findMany({ where: { studentId: student.id, active: true }, include: { subject: true } }),
+      prisma.studentEnrolment.findMany({
+        where: { studentId: student.id, active: true },
+        include: { programme: { include: { subject: true } } },
+      }),
+      prisma.dailyAssignment.findMany({
+        where: { studentId: student.id, date: todayDateOnly(), status: { not: "MOVED" } },
+        include: { subject: true },
+      }),
+    ]);
+
+    lines.push(
+      `${student.user.displayName} — Year ${student.yearGroup}, ${student.lessonsPerDay} periods/day`,
+    );
+    lines.push(
+      `  today: ${today.filter((a) => a.kind === "LESSON").length} lesson(s), ` +
+        `${today.filter((a) => a.kind === "REVIEW").length} review(s)`,
+    );
+
+    if (schedules.length === 0) {
+      lines.push("  NO TIMETABLE — nothing tells the planner which subjects to teach.");
+      broken += 1;
+    }
+
+    const programmeBySubjectId = new Map(enrolments.map((e) => [e.programme.subjectId, e.programme]));
+
+    for (const schedule of schedules) {
+      const programme = programmeBySubjectId.get(schedule.subjectId);
+      if (!programme) {
+        // The exact failure that hides a full curriculum: the timetable and the enrolment are
+        // pointing at two different rows for the same-named subject.
+        const nearby = enrolments.filter((e) => e.programme.subject.slug === schedule.subject.slug);
+        lines.push(
+          `  ${schedule.subject.title} (${schedule.subject.slug}/${schedule.subject.provider}): NOT ENROLLED` +
+            (nearby.length > 0
+              ? ` — but enrolled on ${nearby
+                  .map((e) => `${e.programme.subject.provider}:y${e.programme.yearGroup}`)
+                  .join(", ")}, which is a different subject row. The planner cannot see it.`
+              : " — no programme at all."),
+        );
+        broken += 1;
+        continue;
+      }
+
+      const lessons = await prisma.lesson.findMany({
+        where: { unit: { programmeId: programme.id } },
+        select: { id: true },
+      });
+      const done = lessons.length
+        ? await prisma.studentLessonProgress.count({
+            where: {
+              studentId: student.id,
+              lessonId: { in: lessons.map((l) => l.id) },
+              status: { in: ["COMPLETED", "MASTERED"] },
+            },
+          })
+        : 0;
+      const left = lessons.length - done;
+      if (left <= 0) broken += 1;
+      lines.push(
+        `  ${schedule.subject.title}: ${schedule.weeklyFrequency}/week · ` +
+          `programme ${programme.provider}:y${programme.yearGroup} · ` +
+          `${lessons.length} lesson(s), ${done} done, ${left} left${left <= 0 ? "  <-- NOTHING TO TEACH" : ""}`,
+      );
+    }
+    lines.push("");
+  }
+
+  return {
+    name,
+    status: broken > 0 ? "fail" : "ok",
+    summary:
+      broken > 0
+        ? `${broken} problem(s) stopping lessons being scheduled — see below.`
+        : "Every subject on every timetable has lessons to give.",
+    detail: lines.join("\n"),
+  };
+}
+
 /** Runs every check. Never throws — a broken check is itself a finding. */
 export async function runDiagnostics(): Promise<Check[]> {
   const checks = await Promise.all([
     Promise.resolve(deployCheck()),
     curriculumCheck().catch((err) => fail("Lessons ready to teach", "Check failed.", err)),
+    timetableCheck().catch((err) => fail("Why today looks like this", "Check failed.", err)),
     explainerCheck().catch((err) => fail("Writing a lesson (OpenAI)", "Check failed.", err)),
     oakQuotaCheck().catch((err) => fail("Curriculum provider (Oak)", "Check failed.", err)),
     videoCheck().catch((err) => fail("Playing a video", "Check failed.", err)),
