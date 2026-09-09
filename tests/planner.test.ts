@@ -337,3 +337,42 @@ describe("planner: a day never repeats a subject", () => {
     expect(new Set(subjects).size).toBe(subjects.length);
   });
 });
+
+describe("planner: a day is never empty", () => {
+  beforeAll(async () => {
+    await resetDb();
+    studentId = await buildStudentWithCurriculum(2);
+    // Both maths lessons already done, so maths has nothing new to give. A child with a gap in
+    // their timetable and nobody around is the thing this app exists to prevent.
+    const mathsLessons = await prisma.lesson.findMany({ where: { providerSlug: { startsWith: "maths-" } } });
+    for (const lesson of mathsLessons) {
+      await prisma.studentLessonProgress.create({
+        data: { studentId, lessonId: lesson.id, status: "COMPLETED" },
+      });
+    }
+    await planWeek(studentId, MONDAY, { replace: true });
+  });
+
+  it("fills what is left with revisiting lessons already done", async () => {
+    const day = toDateOnly(MONDAY);
+    const periods = await prisma.dailyAssignment.findMany({
+      where: { studentId, date: day, kind: { in: ["LESSON", "REVIEW"] }, status: { not: "MOVED" } },
+    });
+    // Five periods either way. Revision is not as good as new material, and the catch-up import
+    // is already running for that — but it beats an empty afternoon.
+    expect(periods.length).toBe(5);
+    expect(periods.some((p) => p.kind === "REVIEW")).toBe(true);
+  });
+
+  it("does not keep topping the day up once revision has filled it", async () => {
+    const before = await prisma.dailyAssignment.count({
+      where: { studentId, date: toDateOnly(MONDAY), status: { not: "MOVED" } },
+    });
+    await ensureDayPlanned(studentId, MONDAY);
+    await ensureDayPlanned(studentId, MONDAY);
+    const after = await prisma.dailyAssignment.count({
+      where: { studentId, date: toDateOnly(MONDAY), status: { not: "MOVED" } },
+    });
+    expect(after).toBe(before);
+  });
+});
