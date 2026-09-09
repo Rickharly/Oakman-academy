@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { AlertCircle, Check, Loader2, MinusCircle, RefreshCw, Send, XCircle } from "lucide-react";
+import { AlertCircle, Check, CalendarCheck, Loader2, MinusCircle, RefreshCw, Send, XCircle } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Textarea } from "@/components/ui/Textarea";
@@ -23,6 +23,39 @@ export function DiagnosticsPanel() {
   const [note, setNote] = useState("");
   const [sending, setSending] = useState(false);
   const [sent, setSent] = useState<{ ok: boolean; message: string } | null>(null);
+  const [rebuilding, setRebuilding] = useState(false);
+  const [rebuilt, setRebuilt] = useState<string | null>(null);
+
+  /**
+   * Replans every child's day.
+   *
+   * Every repair — the wrong year group, the placeholder curriculum, a board buried in reviews —
+   * runs when a child opens their own page. So a parent could see a broken timetable on this
+   * page and have no way to touch it, waiting for a child to reload something. This is the
+   * button that was missing.
+   */
+  async function rebuild() {
+    setRebuilding(true);
+    setRebuilt(null);
+    try {
+      const res = await fetch("/api/admin/rebuild-today", { method: "POST" });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "Could not rebuild.");
+      setRebuilt(
+        (data.results ?? [])
+          .map(
+            (r: { name: string; lessons: number; reviews: number; problem?: string }) =>
+              `${r.name}: ${r.lessons} lesson(s), ${r.reviews} review(s)${r.problem ? ` — ${r.problem}` : ""}`,
+          )
+          .join(" · "),
+      );
+      void run();
+    } catch (err) {
+      setRebuilt(err instanceof Error ? err.message : "Could not rebuild.");
+    } finally {
+      setRebuilding(false);
+    }
+  }
 
   /**
    * Sends this report to the repository, where it can actually be read.
@@ -94,6 +127,24 @@ export function DiagnosticsPanel() {
       </div>
 
       {error ? <p className="text-sm text-danger">{error}</p> : null}
+
+      <Card padding="md" className="space-y-3">
+        <div>
+          <p className="text-sm font-semibold text-ink">Rebuild today</p>
+          <p className="text-sm text-ink-muted">
+            Replans every child&apos;s day now — puts them back on their own year group, off the
+            sample curriculum, and clears a board that has filled up with reviews. Work already
+            started or finished is never touched.
+          </p>
+        </div>
+        <div className="flex flex-wrap items-center gap-3">
+          <Button onClick={() => void rebuild()} disabled={rebuilding}>
+            {rebuilding ? <Loader2 className="h-4 w-4 animate-spin" /> : <CalendarCheck className="h-4 w-4" />}
+            {rebuilding ? "Rebuilding…" : "Rebuild today's lessons"}
+          </Button>
+        </div>
+        {rebuilt ? <p className="text-sm text-ink">{rebuilt}</p> : null}
+      </Card>
 
       <Card padding="md" className="space-y-3">
         <div>
