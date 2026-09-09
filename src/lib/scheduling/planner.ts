@@ -12,7 +12,15 @@ import { settleFinishedLessons } from "@/lib/lessons/service";
 import { catchUpImport } from "@/lib/curriculum/autofill";
 
 const REVIEW_MINUTES = 15;
-const MAX_REVIEWS_PER_DAY = 2;
+/**
+ * One, not two.
+ *
+ * A review is a quarter-hour of revisiting old work. Two of them alongside a short day turned a
+ * child's board into a list of reviews with a lesson hidden among them, which is not a school
+ * day — it is what a school day looks like when the app has run out of things to teach and is
+ * covering for itself.
+ */
+const MAX_REVIEWS_PER_DAY = 1;
 /** The short reading slot that closes the day. Deliberately not a full period. */
 const READING_MINUTES = 20;
 
@@ -375,8 +383,36 @@ export async function planWeek(studentId: string, weekStart: string, opts?: { re
  * Topping up is safe to call repeatedly. `planWeek` only adds what is missing, never touches
  * work already started or set by a parent, and the database refuses a duplicate.
  */
+/**
+ * The exact note the short-day filler wrote on every review it created.
+ *
+ * That filler was a bad idea — it padded a thin day with revision instead of fixing why the day
+ * was thin — and it left behind a pile of review items that are still being scheduled. They are
+ * identifiable by this text, and they are removed rather than left to clutter a child's board
+ * with "quick review" where lessons should be.
+ */
+const FILLER_REVIEW_DETAIL = "Coming back to this to keep it fresh.";
+
+/** Removes the short-day filler's leftovers. Runs once per day view; cheap and idempotent. */
+async function purgeFillerReviews(studentId: string): Promise<void> {
+  const items = await prisma.reviewItem.findMany({
+    where: { studentId, reason: "SPACED", detail: FILLER_REVIEW_DETAIL, status: { not: "DISMISSED" } },
+    select: { id: true },
+  });
+  if (items.length === 0) return;
+  const ids = items.map((i) => i.id);
+
+  // Only ones nobody has started. Work a child actually did is history and stays.
+  await prisma.dailyAssignment.deleteMany({
+    where: { studentId, kind: "REVIEW", status: "PLANNED", reviewItemId: { in: ids } },
+  });
+  await prisma.reviewItem.updateMany({ where: { id: { in: ids } }, data: { status: "DISMISSED" } });
+}
+
 export async function ensureDayPlanned(studentId: string, dateKey: string): Promise<DailyAssignment[]> {
   if (isoWeekday(dateKey) > 5) return []; // weekends: plan nothing
+
+  await purgeFillerReviews(studentId).catch(() => undefined);
 
   const dayDate = toDateOnly(dateKey);
   const read = () =>
@@ -395,12 +431,17 @@ export async function ensureDayPlanned(studentId: string, dateKey: string): Prom
   await trimDayToTimetable(studentId, dayDate, student.lessonsPerDay);
   const afterTrim = await read();
 
-  // Periods, not just lessons: a day filled out with revision because a subject ran dry is a
-  // full day, and counting only lessons would have it topped up again every time it is opened.
-  const periodsToday = afterTrim.filter(
-    (a) => (a.kind === "LESSON" || a.kind === "REVIEW") && a.status !== "MOVED",
-  ).length;
-  if (periodsToday >= student.lessonsPerDay) return afterTrim;
+  /**
+   * Lessons, and only lessons.
+   *
+   * This briefly counted reviews as periods too, to stop a day filled with revision being topped
+   * up on every visit. The effect was catastrophic and immediate: a child whose board held five
+   * reviews counted as having a full day, so planning never ran and no lesson was ever added.
+   * The board stayed nothing but "quick review", permanently. A review sits alongside the
+   * timetable; it is not a period of it, and it can never stand in for one.
+   */
+  const lessonsToday = afterTrim.filter((a) => a.kind === "LESSON" && a.status !== "MOVED").length;
+  if (lessonsToday >= student.lessonsPerDay) return afterTrim;
 
   await planWeek(studentId, dateKey);
   await trimDayToTimetable(studentId, dayDate, student.lessonsPerDay);
@@ -450,6 +491,31 @@ async function trimDayToTimetable(studentId: string, dayDate: Date, cap: number)
   }
   if (duplicates.length > 0) {
     await prisma.dailyAssignment.deleteMany({ where: { id: { in: duplicates } } });
+  }
+
+  /**
+   * The same lesson reviewed twice in one day.
+   *
+   * Review items come from several places — a low score, a misconception, a parked gap — and
+   * nothing stopped two of them for the same lesson landing on the same day. To a child that is
+   * the same thing twice, which reads as the app being broken, and it is.
+   */
+  const reviews = await prisma.dailyAssignment.findMany({
+    where: { studentId, date: dayDate, kind: "REVIEW", status: { not: "MOVED" } },
+    orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+  });
+  const seenReviewLessons = new Set<string>();
+  const duplicateReviews: string[] = [];
+  for (const review of reviews) {
+    const key = review.lessonId ?? review.id;
+    if (seenReviewLessons.has(key)) {
+      if (review.status === "PLANNED") duplicateReviews.push(review.id);
+      continue;
+    }
+    seenReviewLessons.add(key);
+  }
+  if (duplicateReviews.length > 0) {
+    await prisma.dailyAssignment.deleteMany({ where: { id: { in: duplicateReviews } } });
   }
 
   const remaining = lessons.filter((a) => !duplicates.includes(a.id));
