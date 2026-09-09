@@ -13,6 +13,7 @@ import { Loader2, Volume2, VolumeX } from "lucide-react";
  */
 export function SpeakButton({ text, autoPlay = false }: { text: string; autoPlay?: boolean }) {
   const [state, setState] = useState<"idle" | "loading" | "playing" | "unavailable">("idle");
+  const [problem, setProblem] = useState<string | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const urlRef = useRef<string | null>(null);
   const played = useRef(false);
@@ -40,6 +41,7 @@ export function SpeakButton({ text, autoPlay = false }: { text: string; autoPlay
     }
 
     setState("loading");
+    setProblem(null);
     try {
       const res = await fetch("/api/teacher/speak", {
         method: "POST",
@@ -47,8 +49,18 @@ export function SpeakButton({ text, autoPlay = false }: { text: string; autoPlay
         body: JSON.stringify({ text }),
       });
       if (!res.ok) {
-        // No key, no credit, no network: hide the button rather than nag.
-        setState("unavailable");
+        /**
+         * Say so. Do not vanish.
+         *
+         * This used to hide the button the moment a request failed, on the reasoning that a
+         * child should not be nagged. What it actually did was make a feature Eva relies on
+         * disappear mid-lesson with no explanation and no way to try again — she could not even
+         * tell anyone what had gone, only that it was gone. A quiet button that admits it is
+         * having trouble is far kinder than one that silently deletes itself.
+         */
+        const detail = await res.json().catch(() => null);
+        setProblem(typeof detail?.error === "string" ? detail.error : "I can't read that out just now.");
+        setState("idle");
         return;
       }
       const url = URL.createObjectURL(await res.blob());
@@ -56,11 +68,15 @@ export function SpeakButton({ text, autoPlay = false }: { text: string; autoPlay
       const audio = new Audio(url);
       audioRef.current = audio;
       audio.onended = () => setState("idle");
-      audio.onerror = () => setState("unavailable");
+      audio.onerror = () => {
+        setProblem("That didn't play. Tap to try again.");
+        setState("idle");
+      };
       await audio.play();
       setState("playing");
     } catch {
-      setState("unavailable");
+      setProblem("I couldn't reach my voice. Tap to try again.");
+      setState("idle");
     }
   }
 
@@ -73,9 +89,11 @@ export function SpeakButton({ text, autoPlay = false }: { text: string; autoPlay
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autoPlay, text]);
 
-  if (state === "unavailable") return null;
+  // Only ever hidden when there is genuinely nothing to read.
+  if (!text.trim()) return null;
 
   return (
+    <div className="inline-flex flex-col items-start gap-0.5">
     <button
       type="button"
       onClick={() => void play()}
@@ -91,5 +109,7 @@ export function SpeakButton({ text, autoPlay = false }: { text: string; autoPlay
       )}
       {state === "playing" ? "Stop" : "Listen"}
     </button>
+      {problem ? <span className="px-2.5 text-xs text-ink-muted">{problem}</span> : null}
+    </div>
   );
 }

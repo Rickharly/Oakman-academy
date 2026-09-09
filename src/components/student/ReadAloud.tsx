@@ -49,7 +49,8 @@ async function fetchSpeech(text: string): Promise<string> {
 
 export function ReadAloud({ parts, className }: { parts: string[]; className?: string }) {
   const chunks = parts.flatMap(splitForSpeech);
-  const [state, setState] = useState<"idle" | "loading" | "playing" | "paused" | "unavailable">("idle");
+  const [state, setState] = useState<"idle" | "loading" | "playing" | "paused">("idle");
+  const [problem, setProblem] = useState<string | null>(null);
   const [index, setIndex] = useState(0);
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -90,9 +91,16 @@ export function ReadAloud({ parts, className }: { parts: string[]; className?: s
         setState((s) => (s === "playing" || s === "paused" ? s : "loading"));
         url = await urlFor(i);
       } catch {
-        // No key, no credit, no network. The lesson is on the screen already, so this goes
-        // quiet rather than putting an error in front of a child.
-        setState("unavailable");
+        /**
+         * Say so. Do not vanish.
+         *
+         * This used to remove itself the moment a request failed, on the reasoning that the
+         * lesson is on screen anyway. What it did was make the button a child relies on
+         * disappear mid-lesson with nothing to press and nothing to report — only that it was
+         * gone. Admitting to trouble is far kinder than deleting yourself.
+         */
+        setProblem("I can't read this out just now. Tap to try again.");
+        setState("idle");
         return;
       }
       if (stopped.current) return;
@@ -108,7 +116,8 @@ export function ReadAloud({ parts, className }: { parts: string[]; className?: s
         audio.play().catch(() => resolve(false));
       });
       if (!finished) {
-        setState("unavailable");
+        setProblem("That didn't play. Tap to try again.");
+        setState("idle");
         return;
       }
     }
@@ -136,10 +145,14 @@ export function ReadAloud({ parts, className }: { parts: string[]; className?: s
       return;
     }
     setState("playing");
-    audio.play().catch(() => setState("unavailable"));
+    audio.play().catch(() => {
+      setProblem("That didn't play. Tap to try again.");
+      setState("idle");
+    });
   }
 
-  if (chunks.length === 0 || state === "unavailable") return null;
+  // Only ever hidden when there is genuinely nothing to read.
+  if (chunks.length === 0) return null;
 
   const playing = state === "playing";
   const loading = state === "loading";
@@ -147,6 +160,7 @@ export function ReadAloud({ parts, className }: { parts: string[]; className?: s
 
   function onClick() {
     if (loading) return;
+    setProblem(null);
     if (playing) return pause();
     if (paused) return resume();
     void playFrom(index);
@@ -186,6 +200,7 @@ export function ReadAloud({ parts, className }: { parts: string[]; className?: s
           Part {index + 1} of {chunks.length}
         </span>
       ) : null}
+      {problem ? <span className="text-xs text-ink-muted">{problem}</span> : null}
     </div>
   );
 }

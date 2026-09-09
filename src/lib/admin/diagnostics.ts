@@ -181,9 +181,48 @@ async function videoCheck(): Promise<Check> {
   }
 }
 
-/** Whether the teacher can speak. Optional — silence is a smaller problem than no lesson. */
+/**
+ * Whether the teacher can actually speak.
+ *
+ * Listing voices and speaking are different permissions on the same key, so a green "voices"
+ * check proves nothing about whether a child can press Listen. Eva's Listen button vanished
+ * while this check was passing.
+ */
+async function speechCheck(): Promise<Check> {
+  const name = "Reading text aloud";
+  if (!process.env.ELEVENLABS_API_KEY) {
+    return { name, status: "skip", summary: "No ELEVENLABS_API_KEY — nothing is read aloud, which is allowed." };
+  }
+  try {
+    const { speak, DEFAULT_VOICE_ID } = await import("@/lib/ai/voice");
+    const student = await prisma.studentProfile.findFirst({ where: { voiceId: { not: null } } });
+    const voiceId = student?.voiceId ?? DEFAULT_VOICE_ID;
+    const { audio, contentType } = await speak("Testing one two three.", voiceId);
+    return {
+      name,
+      status: audio.byteLength > 0 ? "ok" : "fail",
+      summary:
+        audio.byteLength > 0
+          ? `Speech works — ${audio.byteLength} bytes of ${contentType}.`
+          : "The voice returned nothing.",
+      detail: `Voice ${voiceId}`,
+    };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    return {
+      name,
+      status: "fail",
+      summary: /permission|unauthor|401/i.test(message)
+        ? 'The key cannot speak — add the "text_to_speech" permission to it in ElevenLabs.'
+        : "The teacher cannot read anything aloud.",
+      detail: message.slice(0, 600),
+    };
+  }
+}
+
+/** Whether the voice picker can list the family's own voices. Cosmetic next to speech itself. */
 async function voiceCheck(): Promise<Check> {
-  const name = "Teacher's voice (ElevenLabs)";
+  const name = "Voice picker (ElevenLabs)";
   if (!process.env.ELEVENLABS_API_KEY) {
     return { name, status: "skip", summary: "No ELEVENLABS_API_KEY — the teacher is silent, which is allowed." };
   }
@@ -373,7 +412,8 @@ export async function runDiagnostics(): Promise<Check[]> {
     explainerCheck().catch((err) => fail("Writing a lesson (OpenAI)", "Check failed.", err)),
     oakQuotaCheck().catch((err) => fail("Curriculum provider (Oak)", "Check failed.", err)),
     videoCheck().catch((err) => fail("Playing a video", "Check failed.", err)),
-    voiceCheck().catch((err) => fail("Teacher's voice (ElevenLabs)", "Check failed.", err)),
+    speechCheck().catch((err) => fail("Reading text aloud", "Check failed.", err)),
+    voiceCheck().catch((err) => fail("Voice picker (ElevenLabs)", "Check failed.", err)),
   ]);
   return checks;
 }
