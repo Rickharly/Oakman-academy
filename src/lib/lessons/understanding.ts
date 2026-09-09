@@ -49,7 +49,7 @@ export const UNDERSTOOD_THRESHOLD = 0.7;
 
 // ───────────────────────────── diagnosis ─────────────────────────────
 
-const gapsSchema = z.object({
+export const gapsSchema = z.object({
   gaps: z
     .array(
       z.object({
@@ -159,7 +159,7 @@ export async function diagnoseGaps(lessonAttemptId: string, studentId: string): 
 
 // ───────────────────────────── re-teaching ─────────────────────────────
 
-const reteachSchema = z.object({
+export const reteachSchema = z.object({
   /** Two to six short paragraphs, spoken. */
   explanation: z.string(),
   /** One question to see whether it landed. Short answer, marked by the tutor. */
@@ -269,7 +269,7 @@ export async function reteach(gapId: string, studentId: string): Promise<Reteach
 
 // ───────────────────────────── explaining it back ─────────────────────────────
 
-const judgeSchema = z.object({
+export const judgeSchema = z.object({
   /** True only when their own words show the idea, not when they echo yours. */
   understood: z.boolean(),
   /** Said to the child. Warm, specific, never "wrong". */

@@ -92,10 +92,11 @@ const structuredQuestionSchema = z.object({
   number: z.string(),
   type: z.enum(["numeric", "short", "extended"]),
   prompt: z.string(),
-  answer: z.string().optional(),
+  // Nullable, not optional: structured outputs reject an optional field outright.
+  answer: z.string().nullable(),
 });
 
-const structuredWorksheetSchema = z.object({
+export const structuredWorksheetSchema = z.object({
   questions: z.array(structuredQuestionSchema),
 });
 
@@ -145,7 +146,7 @@ export async function structureWorksheet(input: StructureWorksheetInput, ai: AiP
     const structured = byNumber.get(q.number);
     if (!structured) return mapWorksheetQuestion({ number: q.number, text: q.text }, i + 1);
     return mapWorksheetQuestion(
-      { number: q.number, text: structured.prompt || q.text, type: structured.type, answer: structured.answer },
+      { number: q.number, text: structured.prompt || q.text, type: structured.type, answer: structured.answer ?? undefined },
       i + 1,
     );
   });

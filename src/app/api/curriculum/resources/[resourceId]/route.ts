@@ -78,6 +78,27 @@ function contentTypeFor(resource: { type: string; mimeType: string | null }, ups
   return fallback ?? "application/octet-stream";
 }
 
+/**
+ * Whether a cached file is actually the provider's JSON rather than the asset.
+ *
+ * Reads the first byte only. A video, a PDF and a slide deck all start with something that is
+ * not a brace; the provider's asset response always does.
+ */
+async function looksLikeJson(file: string): Promise<boolean> {
+  const handle = await fsp.open(file, "r").catch(() => null);
+  if (!handle) return false;
+  try {
+    const { buffer, bytesRead } = await handle.read(Buffer.alloc(1), 0, 1, 0);
+    if (bytesRead < 1) return false;
+    const first = String.fromCharCode(buffer[0]!);
+    return first === "{" || first === "[";
+  } catch {
+    return false;
+  } finally {
+    await handle.close().catch(() => undefined);
+  }
+}
+
 /** Deletes the least recently used files until the cache fits in its budget again. */
 async function evictTo(budget: number): Promise<void> {
   try {
@@ -167,9 +188,19 @@ export async function GET(req: Request, ctx: { params: Promise<{ resourceId: str
     const file = cachePathFor(resourceId, url);
 
     // Already downloaded: never touch Oak again, however much the child scrubs.
+    //
+    // Unless what was downloaded is not the file. Before the signed-link indirection was
+    // understood, every cache entry was the provider's JSON response — a few hundred bytes
+    // saved under a video's name. Serving that back is a player stuck at 0:00 for as long as
+    // the container lives, so a cached entry that is obviously not the file is thrown away and
+    // fetched again rather than trusted.
     const cached = await fsp.stat(file).catch(() => null);
     if (cached?.isFile() && cached.size > 0) {
-      return serveFromDisk(file, cached.size, contentType, req, resource.label);
+      if (await looksLikeJson(file)) {
+        await fsp.rm(file, { force: true }).catch(() => undefined);
+      } else {
+        return serveFromDisk(file, cached.size, contentType, req, resource.label);
+      }
     }
 
     const upstream = await fetchProviderAsset(url);

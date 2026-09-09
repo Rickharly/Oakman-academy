@@ -27,9 +27,16 @@ import { getAiProvider } from "@/lib/ai/provider";
  */
 export const EXPLAINER_VERSION = 2;
 
+/**
+ * The shape the model is asked for.
+ *
+ * Every field is required, on purpose. OpenAI's structured outputs run in strict mode, where an
+ * optional field is not "nice to have" — it makes the whole schema invalid, the call fails, and
+ * the lesson does not get written at all. An earlier version of this had `version` in here as
+ * an optional field and stopped every lesson from generating. Version belongs to storage, not
+ * to the model, so it is added afterwards and lives only in the stored shape below.
+ */
 export const explainerSchema = z.object({
-  /** The version of these instructions this was written under. */
-  version: z.number().optional(),
   /**
    * The one real thing this whole lesson is explained with — "a pizza cut into slices", "the
    * bar of chocolate in your bag", "the pitch at half time".
@@ -66,7 +73,12 @@ export const explainerSchema = z.object({
   thinkAbout: z.string(),
 });
 
-export type LessonExplainer = z.infer<typeof explainerSchema>;
+/** What is stored: the model's answer plus the version of the instructions that produced it. */
+export const storedExplainerSchema = explainerSchema.extend({
+  version: z.number().optional(),
+});
+
+export type LessonExplainer = z.infer<typeof storedExplainerSchema>;
 
 /**
  * A stored lesson, if it is still usable.
@@ -76,7 +88,7 @@ export type LessonExplainer = z.infer<typeof explainerSchema>;
  * explanation is the whole problem we were fixing.
  */
 export function parseExplainer(value: unknown): LessonExplainer | null {
-  const parsed = explainerSchema.safeParse(value);
+  const parsed = storedExplainerSchema.safeParse(value);
   if (!parsed.success) return null;
   if ((parsed.data.version ?? 1) < EXPLAINER_VERSION) return null;
   return parsed.data;

@@ -31,8 +31,13 @@ const taskSchema = z.object({
   /** The question as the child reads it, rewritten only as far as it must be. */
   prompt: z.string(),
   type: z.enum(["SHORT_ANSWER", "NUMERIC", "EXTENDED_TEXT"]),
-  /** Every answer a child could reasonably write. Empty for open tasks. */
-  acceptedAnswers: z.array(z.string()).default([]),
+  /**
+   * Every answer a child could reasonably write. Empty for open tasks.
+   *
+   * Required, not defaulted: structured outputs run in strict mode, and a defaulted field is an
+   * optional one, which makes the whole schema invalid and the call fail.
+   */
+  acceptedAnswers: z.array(z.string()),
   /**
    * What a good answer contains, for the open ones. This is what the teacher marks against,
    * so it has to describe understanding rather than wording.
@@ -42,7 +47,7 @@ const taskSchema = z.object({
   adapted: z.boolean(),
 });
 
-const worksheetSchema = z.object({
+export const worksheetSchema = z.object({
   /** Null when the pages hold nothing a child could actually answer. */
   tasks: z.array(taskSchema),
 });

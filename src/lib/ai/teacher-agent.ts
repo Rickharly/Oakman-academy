@@ -344,7 +344,7 @@ async function grade(args: {
 
 // ───────────────────────────── summaries ─────────────────────────────
 
-const lessonSummarySchema = z.object({
+export const lessonSummarySchema = z.object({
   forStudent: z.string(),
   forParent: z.string(),
   misconceptions: z.array(z.string()),
@@ -418,9 +418,12 @@ async function summarizeLesson(
   return data;
 }
 
-const daySummarySchema = z.object({
+export const daySummarySchema = z.object({
   content: z.string(),
-  recommendation: z.string().optional(),
+  // Nullable, not optional. Structured outputs reject a schema with an optional field before
+  // the request is even sent, so `.optional()` here does not mean "may be omitted" — it means
+  // this call always throws.
+  recommendation: z.string().nullable(),
 });
 
 /** The parent's end-of-day note (spec §38). Never shown to the child. */
@@ -494,16 +497,23 @@ async function summarizeDay(studentId: string, dateKey: string): Promise<{ conte
 
 // ───────────────────────────── generated practice ─────────────────────────────
 
-const practiceSchema = z.object({
+export const practiceSchema = z.object({
   questions: z
     .array(
       z.object({
         type: z.enum(["SHORT_ANSWER", "NUMERIC", "MULTIPLE_CHOICE"]),
         prompt: z.string(),
-        /** MULTIPLE_CHOICE only: the choices, correct one first. */
-        choices: z.array(z.string()).optional(),
+        /**
+         * MULTIPLE_CHOICE only: the choices, correct one first.
+         *
+         * Nullable rather than optional. Structured outputs run in strict mode and reject a
+         * schema containing an optional field — the SDK throws before anything is sent. These
+         * two fields being optional is why generated practice never appeared: every call to
+         * write questions failed instantly, and the failure looked like the model declining.
+         */
+        choices: z.array(z.string()).nullable(),
         /** SHORT_ANSWER / NUMERIC: every acceptable answer. */
-        acceptedAnswers: z.array(z.string()).optional(),
+        acceptedAnswers: z.array(z.string()).nullable(),
         explanation: z.string(),
       }),
     )
@@ -752,7 +762,7 @@ async function generateLessonPractice(args: {
 
 // ───────────────────────────── observations ─────────────────────────────
 
-const observationsSchema = z.object({
+export const observationsSchema = z.object({
   observations: z.array(
     z.object({
       kind: z.enum(["STRENGTH", "DEVELOPING", "MISCONCEPTION"]),
