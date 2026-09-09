@@ -83,14 +83,14 @@ async function gh(path: string, init: RequestInit): Promise<Response> {
 
 /** The one issue reports are added to, created on first use so nothing has to be set up by hand. */
 async function findOrCreateIssue({ owner, repo }: Repo): Promise<number | null> {
-  const search = await gh(
-    `/search/issues?q=${encodeURIComponent(`repo:${owner}/${repo} is:issue is:open in:title "${ISSUE_TITLE}"`)}`,
-    { method: "GET" },
-  );
-  if (search.ok) {
-    const data = (await search.json()) as { items?: { number: number }[] };
-    const existing = data.items?.[0]?.number;
-    if (existing) return existing;
+  // Listed rather than searched. The search API needs wider access than a fine-grained token
+  // scoped to one repository's issues is given, and failing at the very first step of a setup
+  // someone has just followed is the worst place to be strict.
+  const listed = await gh(`/repos/${owner}/${repo}/issues?state=open&per_page=100`, { method: "GET" });
+  if (listed.ok) {
+    const issues = (await listed.json()) as { number: number; title: string; pull_request?: unknown }[];
+    const existing = issues.find((i) => i.title === ISSUE_TITLE && !i.pull_request);
+    if (existing) return existing.number;
   }
 
   const created = await gh(`/repos/${owner}/${repo}/issues`, {
