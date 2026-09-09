@@ -13,7 +13,7 @@
 import { prisma } from "@/lib/db";
 import { getAiProvider, resolveModelId } from "@/lib/ai/provider";
 import { explainerSchema } from "@/lib/lessons/explainer";
-import { fetchProviderAsset } from "@/lib/curriculum/asset-fetch";
+import { fetchProviderAsset, resolveAssetUrl } from "@/lib/curriculum/asset-fetch";
 
 export type CheckStatus = "ok" | "warn" | "fail" | "skip";
 
@@ -126,6 +126,10 @@ async function videoCheck(): Promise<Check> {
     };
   }
 
+  // The URL it is actually about to use, printed either way. "fetch failed" without the address
+  // it failed to reach is a dead end, and that dead end cost most of a day.
+  const target = resolveAssetUrl(resource.providerUrl);
+
   try {
     const res = await fetchProviderAsset(resource.providerUrl);
     const type = res.headers.get("content-type") ?? "(none)";
@@ -158,10 +162,11 @@ async function videoCheck(): Promise<Check> {
       name,
       status: "ok",
       summary: `Video streams correctly (${type}, ${length} bytes).`,
-      detail: resource.lesson.title,
+      detail: `${resource.lesson.title}\n${target}`,
     };
   } catch (err) {
-    return fail(name, `Could not fetch the video for "${resource.lesson.title}".`, err);
+    const check = fail(name, `Could not fetch the video for "${resource.lesson.title}".`, err);
+    return { ...check, detail: `${check.detail}\n\nStored: ${resource.providerUrl}\nTried:  ${target}` };
   }
 }
 
@@ -177,11 +182,17 @@ async function voiceCheck(): Promise<Check> {
       cache: "no-store",
     });
     if (!res.ok) {
+      const body = await res.text();
+      // A key without `voices_read` can still speak. Listing voices is how a parent picks one,
+      // so this is worth fixing, but it does not stop the teacher talking.
+      const permissionOnly = /voices_read|missing_permissions/i.test(body);
       return {
         name,
-        status: "fail",
-        summary: `ElevenLabs returned ${res.status}.`,
-        detail: (await res.text()).slice(0, 300),
+        status: permissionOnly ? "warn" : "fail",
+        summary: permissionOnly
+          ? "The key cannot list voices — add the \"voices_read\" permission to it in ElevenLabs. Speaking still works; only the voice picker is affected."
+          : `ElevenLabs returned ${res.status}.`,
+        detail: body.slice(0, 400),
       };
     }
     const data = (await res.json()) as { voices?: unknown[] };

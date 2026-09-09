@@ -68,7 +68,7 @@ async function readResourceBytes(resource: {
   }
 
   const url = resource.providerUrl;
-  if (!url || !/^https:\/\//i.test(url)) return null;
+  if (!url) return null;
 
   // Through the shared fetcher: the stored URL is the provider's asset endpoint, which answers
   // with a signed link rather than the PDF. Reading that JSON as a PDF is why worksheets came

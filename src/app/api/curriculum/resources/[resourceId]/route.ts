@@ -179,10 +179,11 @@ export async function GET(req: Request, ctx: { params: Promise<{ resourceId: str
     const resource = await prisma.lessonResource.findUnique({ where: { id: resourceId } });
     if (!resource) throw new ApiError(404, "Resource not found");
 
+    // Not required to be absolute: the provider's listing gives a download endpoint, which may
+    // be a path. `fetchProviderAsset` resolves it against the API base — rejecting it here as
+    // "no downloadable file" is why lessons with a perfectly good video showed none.
     const url = resource.providerUrl;
-    if (!url || !/^https:\/\//i.test(url)) {
-      throw new ApiError(404, "This resource has no downloadable file.");
-    }
+    if (!url) throw new ApiError(404, "This resource has no downloadable file.");
 
     const contentType = contentTypeFor(resource, null);
     const file = cachePathFor(resourceId, url);

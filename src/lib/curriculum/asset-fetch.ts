@@ -12,6 +12,36 @@
  * it points at is cached.
  */
 import { ApiError } from "@/lib/auth/api";
+import { DEFAULT_OAK_BASE_URL } from "@/lib/oak/client";
+
+/**
+ * The absolute URL for a stored asset link.
+ *
+ * The provider's asset listing gives "the download endpoint for the asset", and that is not
+ * promised to be absolute. A relative one handed straight to `fetch` fails with nothing but
+ * "TypeError: fetch failed" — no status, no host, no clue — which is exactly what a lesson's
+ * video was doing. Resolving against the API's own base turns that back into a real request.
+ */
+export function resolveAssetUrl(url: string): string {
+  const trimmed = url.trim();
+  if (/^https?:\/\//i.test(trimmed)) return trimmed;
+  const base = process.env.OAK_BASE_URL || DEFAULT_OAK_BASE_URL;
+  return new URL(trimmed.replace(/^\//, ""), base.endsWith("/") ? base : `${base}/`).toString();
+}
+
+/** Node hides the real reason — ECONNREFUSED, DNS, TLS — in `cause`. Without it, every network
+ * failure reads as the same useless "fetch failed". */
+export function describeFetchError(err: unknown): string {
+  if (!(err instanceof Error)) return String(err);
+  const cause = (err as { cause?: unknown }).cause;
+  const causeText =
+    cause instanceof Error
+      ? ` (${cause.name}: ${cause.message}${(cause as { code?: string }).code ? ` [${(cause as { code?: string }).code}]` : ""})`
+      : cause
+        ? ` (${String(cause)})`
+        : "";
+  return `${err.name}: ${err.message}${causeText}`;
+}
 
 /**
  * The first https URL anywhere in the payload.
@@ -52,9 +82,13 @@ export function findUrl(value: unknown, depth = 0): string | null {
  */
 export async function fetchProviderAsset(url: string): Promise<Response> {
   const apiKey = process.env.OAK_API_KEY;
-  const first = await fetch(url, {
+  const endpoint = resolveAssetUrl(url);
+  const first = await fetch(endpoint, {
     headers: apiKey ? { Authorization: `Bearer ${apiKey}` } : {},
     cache: "no-store",
+  }).catch((err: unknown) => {
+    // Say which host could not be reached. "fetch failed" on its own is unactionable.
+    throw new ApiError(502, `Could not reach ${new URL(endpoint).host}: ${describeFetchError(err)}`);
   });
 
   if (!first.ok || !first.body) {
@@ -83,7 +117,9 @@ export async function fetchProviderAsset(url: string): Promise<Response> {
   const signed = findUrl(payload);
   if (!signed) throw new ApiError(502, "The provider did not return a link to this file.");
 
-  const second = await fetch(signed, { cache: "no-store" });
+  const second = await fetch(signed, { cache: "no-store" }).catch((err: unknown) => {
+    throw new ApiError(502, `Could not reach ${new URL(signed).host}: ${describeFetchError(err)}`);
+  });
   if (!second.ok || !second.body) throw new ApiError(502, `The file link returned ${second.status}.`);
   return second;
 }
