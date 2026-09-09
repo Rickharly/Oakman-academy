@@ -148,3 +148,92 @@ export async function publishDiagnostics(note?: string): Promise<PublishResult> 
     return { ok: false, problem: (err as Error).message };
   }
 }
+
+// ───────────────────────────── bug reports from the children ─────────────────────────────
+
+const BUG_LABEL = "reported-by-a-child";
+
+export interface BugReport {
+  /** In their own words. This is the whole point — nobody else was there. */
+  what: string;
+  /** Who is reporting, so a reply can be addressed to them. */
+  studentName: string;
+  yearGroup: number;
+  /** Where they were: the lesson, the step, the question in front of them. */
+  context: {
+    lessonTitle?: string;
+    subject?: string;
+    stage?: string;
+    questionPrompt?: string;
+    url?: string;
+  };
+}
+
+/**
+ * A child's own bug report, sent straight to where it gets fixed.
+ *
+ * Every fault this week reached me through a parent relaying what a child said, hours later,
+ * with the details worn off. The child was the only one who saw it. This lets them say what
+ * happened while they are still looking at it, and attaches where they were automatically —
+ * the lesson, the step, the question — because "it didn't work" from an eight-year-old is a
+ * complete and reasonable bug report if the app supplies the rest.
+ *
+ * It is its own issue rather than a comment, so each one can be closed when it is fixed.
+ */
+export async function reportBug(report: BugReport): Promise<PublishResult> {
+  if (!process.env.GITHUB_TOKEN) {
+    return { ok: false, problem: "No GITHUB_TOKEN on the server, so this cannot be sent yet." };
+  }
+  const repo = repoFromEnv();
+  if (!repo) return { ok: false, problem: "GITHUB_REPO is not in owner/repo form." };
+
+  const { context } = report;
+  const body = [
+    `**${report.studentName} (Year ${report.yearGroup}) says:**`,
+    "",
+    `> ${redact(report.what).split("\n").join("\n> ")}`,
+    "",
+    "---",
+    "",
+    "**Where they were**",
+    context.subject ? `- Subject: ${context.subject}` : "",
+    context.lessonTitle ? `- Lesson: ${context.lessonTitle}` : "",
+    context.stage ? `- Step: ${context.stage}` : "",
+    context.questionPrompt ? `- Question on screen: "${context.questionPrompt}"` : "",
+    context.url ? `- Page: ${context.url}` : "",
+    `- Reported: ${new Date().toISOString()}`,
+  ]
+    .filter(Boolean)
+    .join("\n");
+
+  try {
+    const created = await gh(`/repos/${repo.owner}/${repo.repo}/issues`, {
+      method: "POST",
+      body: JSON.stringify({
+        title: `${report.studentName}: ${report.what.slice(0, 70).replace(/\s+/g, " ").trim()}`,
+        body,
+        labels: [BUG_LABEL],
+      }),
+    });
+    if (!created.ok) {
+      // A label that does not exist yet makes GitHub refuse the whole issue. The report matters
+      // more than the label, so it goes again without one.
+      const retry = await gh(`/repos/${repo.owner}/${repo.repo}/issues`, {
+        method: "POST",
+        body: JSON.stringify({
+          title: `${report.studentName}: ${report.what.slice(0, 70).replace(/\s+/g, " ").trim()}`,
+          body,
+        }),
+      });
+      if (!retry.ok) {
+        return { ok: false, problem: `GitHub returned ${retry.status}: ${(await retry.text()).slice(0, 200)}` };
+      }
+      const issue = (await retry.json()) as { html_url?: string };
+      return { ok: true, url: issue.html_url };
+    }
+    const issue = (await created.json()) as { html_url?: string };
+    return { ok: true, url: issue.html_url };
+  } catch (err) {
+    return { ok: false, problem: (err as Error).message };
+  }
+}

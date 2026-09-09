@@ -17,6 +17,7 @@ import { LessonTimer } from "@/components/student/LessonTimer";
 import { BreakTimer } from "@/components/student/BreakTimer";
 import { ReadAloud } from "@/components/student/ReadAloud";
 import { UnderstandingLoop } from "@/components/student/UnderstandingLoop";
+import { ReportBug } from "@/components/student/ReportBug";
 import { formatMinutes } from "@/components/student/format";
 import type { LessonExplainer } from "@/lib/lessons/explainer";
 import { cn } from "@/lib/cn";
@@ -788,6 +789,16 @@ export function LessonPlayer(props: LessonPlayerProps) {
       }
       setExtraResults(next);
       setExtraSubmitted(true);
+
+      /**
+       * Finishing the extra practice finishes the Practice step.
+       *
+       * It did not, so Practice never went green and Check stayed locked behind it — and the
+       * only way out of the extra round jumped straight to Feedback, skipping the quiz
+       * entirely. A child did the work, got no credit for it, and was carried past the
+       * assessment without being asked a single question.
+       */
+      if (currentStage === "PRACTICE") await submitGraded("PRACTICE");
     } catch (err) {
       setSubmitError(err instanceof Error ? err.message : "Could not mark that.");
     } finally {
@@ -871,8 +882,18 @@ export function LessonPlayer(props: LessonPlayerProps) {
               <Button variant="secondary" onClick={() => void practiseMore()} disabled={generatingPractice}>
                 {generatingPractice ? "Writing more…" : "More like these"}
               </Button>
-              <Button variant="ghost" onClick={() => setViewStage("FEEDBACK")}>
-                Back to my feedback
+              {/*
+                Where they actually are, not always Feedback.
+                
+                This jumped to Feedback whatever stage the lesson was at, which is how the quiz
+                got skipped: it walked straight past Check without it ever being unlocked.
+              */}
+              <Button variant="ghost" onClick={() => setViewStage(currentStage)}>
+                {currentStage === "CHECK"
+                  ? "On to the quiz"
+                  : currentStage === "FEEDBACK" || currentStage === "COMPLETE"
+                    ? "Back to my feedback"
+                    : "Back to my lesson"}
               </Button>
             </>
           )}
@@ -1574,6 +1595,20 @@ export function LessonPlayer(props: LessonPlayerProps) {
             })}
           </div>
         ) : null}
+      </div>
+
+      {/*
+        The child is the only person who sees most of what goes wrong, and until now had no way
+        to say so. It sits on the lesson page rather than in a menu because that is where the
+        thing they noticed is.
+      */}
+      <div className="mb-4 flex justify-end">
+        <ReportBug
+          lessonTitle={lesson.title}
+          subject={subjectTitle}
+          stage={viewStage}
+          questionPrompt={teacherView.questionPrompt}
+        />
       </div>
 
       <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_360px] lg:items-start lg:gap-6">
