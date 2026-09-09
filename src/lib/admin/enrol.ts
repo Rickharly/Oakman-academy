@@ -151,17 +151,23 @@ export async function fixYearGroupEnrolments(studentId: string): Promise<{ remov
   }
 
   /**
-   * Make sure their own year has something in it before moving them onto it.
+   * Their own year has to have something in it before they are moved onto it.
    *
-   * Mikhael was on Year 5 placeholders. Taking those away without Year 4 material existing
-   * would leave him with no enrolments at all — a worse day than the wrong one he had. So the
-   * subjects on his timetable are imported for his actual year first, and only then is he
-   * moved.
+   * Mikhael was on Year 5 placeholders. Taking those away with no Year 4 material to replace
+   * them leaves him with nothing at all, which is a worse day than the wrong one he had. So the
+   * import is started, and the move waits for it to land.
+   *
+   * Started, not awaited. Importing five subjects is a couple of hundred requests to the
+   * provider taking minutes, and this runs while a child is waiting for their page to render —
+   * doing that work inline is how the server got taken down this morning. It runs behind the
+   * page, and the next visit finds the material and completes the move.
    */
   const schedules = await prisma.studentSchedule.findMany({
     where: { studentId, active: true },
     include: { subject: true },
   });
+
+  const missing: string[] = [];
   for (const schedule of schedules) {
     const exists = await prisma.programme.findFirst({
       where: {
@@ -170,11 +176,14 @@ export async function fixYearGroupEnrolments(studentId: string): Promise<{ remov
         subject: { slug: schedule.subject.slug },
       },
     });
-    if (exists) continue;
-    // Bounded: enough to start, and the ordinary top-up carries on from there.
-    await syncProgramme({ subjectSlug: schedule.subject.slug, yearGroup: student.yearGroup }, { maxLessons: 8 }).catch(
-      () => undefined,
-    );
+    if (!exists) missing.push(schedule.subject.slug);
+  }
+
+  if (missing.length > 0) {
+    void importYearInBackground(student.yearGroup, missing);
+    // Nothing to move them onto yet. Leave them where they are — the wrong year taught is still
+    // better than an empty timetable — and finish the job on the next visit.
+    return { removed: 0, added: 0 };
   }
 
   await prisma.studentEnrolment.updateMany({
@@ -184,4 +193,26 @@ export async function fixYearGroupEnrolments(studentId: string): Promise<{ remov
 
   const { programmes } = await enrolStudentInYearGroup(studentId);
   return { removed: wrong.length, added: programmes };
+}
+
+/** Year groups already being imported, so a burst of page loads starts one job, not twenty. */
+const importing = new Set<number>();
+
+/**
+ * Imports a year group's subjects without anybody waiting on it.
+ *
+ * Deliberately small per subject: enough to start a child off, with the ordinary weekly top-up
+ * carrying on from there. The provider's quota is a fixed budget and a child needs the first
+ * few lessons today far more than they need the whole year by tonight.
+ */
+async function importYearInBackground(yearGroup: number, subjectSlugs: string[]): Promise<void> {
+  if (importing.has(yearGroup)) return;
+  importing.add(yearGroup);
+  try {
+    for (const subjectSlug of subjectSlugs) {
+      await syncProgramme({ subjectSlug, yearGroup }, { maxLessons: 6 }).catch(() => undefined);
+    }
+  } finally {
+    importing.delete(yearGroup);
+  }
 }
