@@ -26,13 +26,39 @@ export type EnrolResult = { programmes: number; subjects: number };
  * default week. Safe to run again: everything is an upsert, and a schedule a parent has since
  * changed is left alone.
  */
+/**
+ * The bundled placeholder curriculum.
+ *
+ * It exists so a fresh install has something to show. It is not real teaching material: its
+ * lessons are invented, and its "videos" are `fixture://` addresses that point at nothing. A
+ * child on it is doing made-up lessons with a broken video player, which is exactly what has
+ * been happening.
+ */
+export const PLACEHOLDER_PROVIDER = "fixture";
+
+/** Real material for a subject-year, if any exists. Placeholder only when nothing else does. */
+async function bestProgrammesFor(yearGroup: number) {
+  const all = await prisma.programme.findMany({ where: { yearGroup }, include: { subject: true } });
+
+  const realBySlug = new Map<string, (typeof all)[number]>();
+  for (const programme of all) {
+    if (programme.provider === PLACEHOLDER_PROVIDER) continue;
+    const current = realBySlug.get(programme.subject.slug);
+    // Oak first where both exist: it is the material an actual teacher wrote.
+    if (!current || (current.provider !== "oak" && programme.provider === "oak")) {
+      realBySlug.set(programme.subject.slug, programme);
+    }
+  }
+
+  return all.filter(
+    (p) => p.provider !== PLACEHOLDER_PROVIDER || !realBySlug.has(p.subject.slug),
+  );
+}
+
 export async function enrolStudentInYearGroup(studentId: string): Promise<EnrolResult> {
   const student = await prisma.studentProfile.findUniqueOrThrow({ where: { id: studentId } });
 
-  const programmes = await prisma.programme.findMany({
-    where: { yearGroup: student.yearGroup },
-    include: { subject: true },
-  });
+  const programmes = await bestProgrammesFor(student.yearGroup);
 
   let subjects = 0;
   for (const programme of programmes) {
@@ -82,10 +108,32 @@ export async function fixYearGroupEnrolments(studentId: string): Promise<{ remov
   const student = await prisma.studentProfile.findUnique({ where: { id: studentId } });
   if (!student) return { removed: 0, added: 0 };
 
-  const wrong = await prisma.studentEnrolment.findMany({
-    where: { studentId, active: true, programme: { yearGroup: { not: student.yearGroup } } },
-    include: { programme: true },
+  const active = await prisma.studentEnrolment.findMany({
+    where: { studentId, active: true },
+    include: { programme: { include: { subject: true } } },
   });
+
+  // Real material for the subjects this child is currently taking, so a placeholder enrolment
+  // can be told apart from the only thing available.
+  const real = await prisma.programme.findMany({
+    where: {
+      yearGroup: student.yearGroup,
+      provider: { not: PLACEHOLDER_PROVIDER },
+      subject: { slug: { in: active.map((e) => e.programme.subject.slug) } },
+    },
+    include: { subject: true },
+  });
+  const realSlugs = new Set(real.map((p) => p.subject.slug));
+
+  const wrong = active.filter(
+    (e) =>
+      // The wrong year — a Year 4 child on Year 5 material.
+      e.programme.yearGroup !== student.yearGroup ||
+      // Or the bundled placeholders, when real material for that subject exists. Invented
+      // lessons with `fixture://` videos are not a curriculum, and a child on them is being
+      // given made-up work and a broken player.
+      (e.programme.provider === PLACEHOLDER_PROVIDER && realSlugs.has(e.programme.subject.slug)),
+  );
   if (wrong.length === 0) return { removed: 0, added: 0 };
 
   const lessons = await prisma.lesson.findMany({

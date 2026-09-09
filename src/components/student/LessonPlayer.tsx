@@ -47,6 +47,26 @@ function explainerSpeech(explainer: LessonExplainer): string[] {
   return parts;
 }
 
+/**
+ * Whether a resource points at something that can actually be fetched.
+ *
+ * The bundled placeholder curriculum lists its videos as `fixture://…`, which is not an address
+ * — nothing can fetch it, and the failure is "unknown scheme" deep inside a stream. Treating
+ * those rows as a video gave a child a black player stuck at 0:00 on every lesson, which looks
+ * exactly like a real video failing to load. That is why "the video is broken" was the story
+ * for days when the truth was that there was no video.
+ *
+ * A stored file is fine. An http(s) address is fine. A path with no scheme is fine — the server
+ * resolves it against the provider's base. Anything else is a placeholder pretending.
+ */
+function isPlayable(resource: LessonPlayerResource): boolean {
+  if (resource.storedPath) return true;
+  const url = resource.providerUrl;
+  if (!url) return false;
+  if (/^https?:\/\//i.test(url)) return true;
+  return !url.includes("://");
+}
+
 // ───────────────────────────── props ─────────────────────────────
 
 export type LessonPlayerResource = {
@@ -914,7 +934,7 @@ export function LessonPlayer(props: LessonPlayerProps) {
   function renderLearn() {
     // Served through our own route: Oak's URLs need the API key, which the browser must
     // never have. `storedPath` wins when the asset was downloaded at sync time.
-    const video = lesson.resources.find((r) => r.type === "VIDEO" && Boolean(r.providerUrl || r.storedPath));
+    const video = lesson.resources.find((r) => r.type === "VIDEO" && isPlayable(r));
     const learnDone = stageIndex(currentStage) > stageIndex("LEARN");
     const teaching = explainerState === "loading";
 

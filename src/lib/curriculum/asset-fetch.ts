@@ -25,6 +25,11 @@ import { DEFAULT_OAK_BASE_URL } from "@/lib/oak/client";
 export function resolveAssetUrl(url: string): string {
   const trimmed = url.trim();
   if (/^https?:\/\//i.test(trimmed)) return trimmed;
+  // A scheme we do not speak — `fixture://` from the bundled placeholders — is not a path to be
+  // resolved. Saying so beats "unknown scheme" from somewhere inside a stream.
+  if (trimmed.includes("://")) {
+    throw new ApiError(404, `"${trimmed}" is not a real file — this is placeholder content, not a lesson resource.`);
+  }
   const base = process.env.OAK_BASE_URL || DEFAULT_OAK_BASE_URL;
   return new URL(trimmed.replace(/^\//, ""), base.endsWith("/") ? base : `${base}/`).toString();
 }

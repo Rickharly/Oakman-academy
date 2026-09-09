@@ -115,15 +115,24 @@ async function oakQuotaCheck(): Promise<Check> {
  */
 async function videoCheck(): Promise<Check> {
   const name = "Playing a video";
+  // A real one. Testing a `fixture://` placeholder proves nothing except that placeholders are
+  // placeholders, and reports a failure that sends someone hunting a bug that does not exist.
   const resource = await prisma.lessonResource.findFirst({
-    where: { type: "VIDEO", providerUrl: { not: null } },
+    where: { type: "VIDEO", providerUrl: { startsWith: "http" } },
     include: { lesson: { select: { title: true } } },
+  });
+
+  const placeholders = await prisma.lessonResource.count({
+    where: { type: "VIDEO", NOT: { providerUrl: { startsWith: "http" } } },
   });
   if (!resource?.providerUrl) {
     return {
       name,
-      status: "warn",
-      summary: "No lesson has a video resource yet — nothing to test. Import lessons first.",
+      status: "fail",
+      summary:
+        placeholders > 0
+          ? `No real videos at all — ${placeholders} lesson(s) carry placeholder "fixture://" videos from the bundled sample curriculum. These children are not on real material.`
+          : "No lesson has a video resource yet. Import lessons first.",
     };
   }
 
@@ -206,18 +215,25 @@ async function voiceCheck(): Promise<Check> {
 /** What the children actually have to work with, right now. */
 async function curriculumCheck(): Promise<Check> {
   const name = "Lessons ready to teach";
-  const [total, withQuestions, withVideo] = await Promise.all([
+  const [total, withQuestions, withVideo, placeholderLessons] = await Promise.all([
     prisma.lesson.count(),
     prisma.lesson.count({ where: { questions: { some: {} } } }),
     prisma.lesson.count({ where: { resources: { some: { type: "VIDEO" } } } }),
+    // The bundled sample curriculum. Counted separately because "621 lessons have a video" is a
+    // reassuring number that means nothing if the videos are `fixture://` addresses.
+    prisma.lesson.count({ where: { provider: "fixture" } }),
   ]);
   if (total === 0) {
     return { name, status: "fail", summary: "No lessons imported at all." };
   }
   return {
     name,
-    status: withQuestions === 0 ? "fail" : withQuestions < total / 2 ? "warn" : "ok",
-    summary: `${withQuestions} of ${total} lessons have questions; ${withVideo} have a video.`,
+    status: placeholderLessons > total / 2 ? "fail" : withQuestions === 0 ? "fail" : "ok",
+    summary:
+      `${withQuestions} of ${total} lessons have questions; ${withVideo} have a video.` +
+      (placeholderLessons > 0
+        ? ` ${placeholderLessons} are placeholders from the bundled sample curriculum, not real teaching material.`
+        : ""),
   };
 }
 
