@@ -16,7 +16,19 @@ function pct(done: number, total: number): number {
   return total > 0 ? Math.round((done / total) * 100) : 0;
 }
 
-const COMPLETE_STATUSES = new Set(["COMPLETED", "MASTERED"]);
+/**
+ * Whether a child has been through this lesson.
+ *
+ * Deliberately not "did well at it". A lesson finished below 70%, or with a gap the tutoring
+ * loop parked for tomorrow, is saved as NEEDS_REVIEW — and counting only COMPLETED and MASTERED
+ * meant that lesson showed as not done: a child who worked through every step, with everything
+ * on the page green, watched the subject bar stay where it was. Whether they need to revisit it
+ * is a separate question with its own answer (`needsReview`, and the review engine), and doing a
+ * lesson imperfectly is still doing it.
+ */
+export function isLessonDone(row: { status: string; completedAt?: Date | null }): boolean {
+  return row.status === "COMPLETED" || row.status === "MASTERED" || row.status === "NEEDS_REVIEW" || row.completedAt != null;
+}
 
 /**
  * Recomputes the denormalised `StudentLessonProgress` row for one student+lesson
@@ -114,7 +126,7 @@ export async function getStudentOverview(studentId: string): Promise<{
   const totalLessons = enrolments.length
     ? await prisma.lesson.count({ where: { unit: { programmeId: { in: enrolments.map((e) => e.programmeId) } } } })
     : 0;
-  const completedLessons = progressRows.filter((p) => COMPLETE_STATUSES.has(p.status)).length;
+  const completedLessons = progressRows.filter(isLessonDone).length;
   const completionPct = pct(completedLessons, totalLessons);
 
   return { today, week, averageMastery, needsReview, completionPct };
@@ -136,7 +148,7 @@ export async function getSubjectProgress(studentId: string): Promise<
     const progressRows = lessonIds.length
       ? await prisma.studentLessonProgress.findMany({ where: { studentId, lessonId: { in: lessonIds } } })
       : [];
-    const lessonsDone = progressRows.filter((p) => COMPLETE_STATUSES.has(p.status)).length;
+    const lessonsDone = progressRows.filter(isLessonDone).length;
     const mastery = mean(progressRows.map((p) => p.mastery).filter((m): m is number => m != null));
 
     results.push({
@@ -170,7 +182,7 @@ export async function getUnitProgress(
 
   return units.map((unit) => {
     const lessons = unit.lessons.map((l) => ({ ...l, progress: progressByLesson.get(l.id) ?? null }));
-    const lessonsDone = lessons.filter((l) => l.progress && COMPLETE_STATUSES.has(l.progress.status)).length;
+    const lessonsDone = lessons.filter((l) => l.progress && isLessonDone(l.progress)).length;
     const mastery = mean(lessons.map((l) => l.progress?.mastery).filter((m): m is number => m != null));
     return { unit, lessonsDone, lessonsTotal: unit.lessons.length, mastery, lessons };
   });

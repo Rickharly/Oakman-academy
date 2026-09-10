@@ -643,8 +643,16 @@ async function generateLessonPractice(args: {
   missedPrompts?: string[];
   /** True when the child finished early and wants harder work on the same topic. */
   extension?: boolean;
+  /**
+   * A short test on the lesson, for a child who finished the period early.
+   *
+   * Filling the time left with more practice treats a child who has understood the lesson the
+   * same as one who has not. A test answers the question first: get them all right and the
+   * lesson is finished, whatever the clock says; get one wrong and that is what they practise.
+   */
+  finalTest?: boolean;
 }): Promise<Question[]> {
-  const count = args.count ?? 5;
+  const count = args.count ?? (args.finalTest ? 4 : 5);
 
   const lesson = await prisma.lesson.findUnique({
     where: { id: args.lessonId },
@@ -661,7 +669,7 @@ async function generateLessonPractice(args: {
   const aimed = (args.missedPrompts ?? []).filter((p) => p.trim().length > 0);
   // Extension work is always fresh: a child who has finished the lesson has seen the stored
   // set already, and handing it back is not more work, it is the same work.
-  if (aimed.length === 0 && !args.extension) {
+  if (aimed.length === 0 && !args.extension && !args.finalTest) {
     const existing = await prisma.question.findMany({
       where: { lessonId: lesson.id, stage: "PRACTICE", source: "AI_GENERATED" },
       orderBy: { order: "asc" },
@@ -709,7 +717,15 @@ async function generateLessonPractice(args: {
       `Write ${count} practice questions on the lesson "${lesson.title}" for a Year`,
       `${student.yearGroup} child studying ${lesson.unit.programme.subject.title}.`,
       "",
-      args.extension
+      args.finalTest
+        ? [
+            "This is a short test at the end of the lesson, for a child who has finished the",
+            "work with time left in the period. Test whether they have actually understood it:",
+            "cover the lesson's main ideas, one question each, at the level the lesson taught",
+            "them — not harder, not easier. Nothing they have already been asked, and nothing",
+            "that needs anything the lesson did not cover.",
+          ].join(" ")
+        : args.extension
         ? [
             "This child has finished the lesson comfortably and has time left in the period.",
             "Write questions that go FURTHER than the lesson's own quiz: apply the idea in an",

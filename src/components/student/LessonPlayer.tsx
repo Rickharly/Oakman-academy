@@ -333,6 +333,16 @@ export function LessonPlayer(props: LessonPlayerProps) {
   const [extraDrafts, setExtraDrafts] = useState<Record<string, unknown>>({});
   const [extraResults, setExtraResults] = useState<Record<string, QuestionResult>>({});
   const [extraSubmitted, setExtraSubmitted] = useState(false);
+  /**
+   * What the extra round on screen is: more practice, or the end-of-lesson test.
+   *
+   * A child who finishes the period early used to be handed "more practice" regardless — the
+   * same offer whether they had understood the lesson or not. The test comes first now, and
+   * what it finds decides the rest of the period.
+   */
+  const [extraMode, setExtraMode] = useState<"PRACTICE" | "TEST">("PRACTICE");
+  /** Set once the end-of-lesson test comes back with nothing wrong. */
+  const [testPassed, setTestPassed] = useState(false);
   const [retryError, setRetryError] = useState<Record<string, string>>({});
   // The period clock, ticking. `elapsedSeconds` is only the value at page load, so anything
   // that asks "how much of the lesson is left" has to keep counting.
@@ -513,25 +523,26 @@ export function LessonPlayer(props: LessonPlayerProps) {
     setRetryingIds(new Set());
   }
 
-  // ── FEEDBACK → COMPLETE ──
+  /**
+   * Finishes the lesson. One request.
+   *
+   * This used to send two — "leave FEEDBACK", then "COMPLETE" — and each was refused unless the
+   * record already agreed about which step the child was on. When it disagreed, the child got
+   * "Stage mismatch" over a lesson they had just done with every step green, the lesson stayed
+   * unfinished, and the planner handed them the same one again tomorrow. The server settles the
+   * stage now; finishing is one call and it is safe to press twice.
+   */
   async function finishLesson() {
     setSubmitting(true);
     setSubmitError(null);
     try {
-      const r1 = await fetch(`/api/attempts/${attemptId}/stage`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ stage: "FEEDBACK", action: "complete" }),
-      });
-      if (!r1.ok) throw new Error(await extractError(r1));
-
-      const r2 = await fetch(`/api/attempts/${attemptId}/stage`, {
+      const res = await fetch(`/api/attempts/${attemptId}/stage`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ stage: "COMPLETE", action: "complete" }),
       });
-      if (!r2.ok) throw new Error(await extractError(r2));
-      const data: { attempt: FinalAttempt } = await r2.json();
+      if (!res.ok) throw new Error(await extractError(res));
+      const data: { attempt: FinalAttempt } = await res.json();
 
       setFinalAttempt(data.attempt);
       setCurrentStage("COMPLETE");
@@ -758,12 +769,69 @@ export function LessonPlayer(props: LessonPlayerProps) {
   }
 
   /** Puts a new set of extra questions on screen, cleared of any previous round. */
-  function startExtraRound(questions: LessonPlayerQuestion[]) {
+  function startExtraRound(questions: LessonPlayerQuestion[], mode: "PRACTICE" | "TEST" = "PRACTICE") {
     setExtraPractice(questions);
     setExtraDrafts({});
     setExtraResults({});
     setExtraSubmitted(false);
+    setExtraMode(mode);
     setViewStage("PRACTICE");
+  }
+
+  /**
+   * The end-of-lesson test, for a child who finished the period with time left.
+   *
+   * The rule, in order: test them; practise whatever they got wrong; if they got it all right
+   * the lesson is finished, however many minutes are left on the clock. Time in the chair is
+   * not the thing being measured.
+   */
+  async function takeFinalTest() {
+    if (generatingPractice) return;
+    setGeneratingPractice(true);
+    setPracticeError(null);
+    try {
+      const res = await fetch(`/api/lessons/${lesson.id}/practice`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ finalTest: true }),
+      });
+      const data = (await res.json()) as { questions?: LessonPlayerQuestion[]; error?: string };
+      if (!res.ok) throw new Error(data.error ?? "Couldn't write the test. Try again in a moment.");
+      if (!data.questions?.length) {
+        // Nothing left to ask is not a failure — the lesson is finished either way.
+        setTestPassed(true);
+        return;
+      }
+      startExtraRound(data.questions, "TEST");
+    } catch (err) {
+      setPracticeError(
+        err instanceof Error
+          ? `${err.message} The lesson is finished — you can take your break.`
+          : "Couldn't write the test. The lesson is finished.",
+      );
+    } finally {
+      setGeneratingPractice(false);
+    }
+  }
+
+  /** Practice on exactly what the end-of-lesson test caught, and nothing else. */
+  async function practiseTestMistakes(wrongPrompts: string[]) {
+    setGeneratingPractice(true);
+    setPracticeError(null);
+    try {
+      const res = await fetch(`/api/lessons/${lesson.id}/practice`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ missedPrompts: wrongPrompts }),
+      });
+      const data = (await res.json()) as { questions?: LessonPlayerQuestion[]; error?: string };
+      if (!res.ok || !data.questions?.length) return; // the marked test stays on screen
+      startExtraRound(data.questions, "PRACTICE");
+    } catch {
+      // Nothing to add. What they got wrong is on screen with the teacher's feedback beside it.
+    } finally {
+      setGeneratingPractice(false);
+    }
   }
 
   /** Marks the extra questions. Graded on their own, never mixed into the lesson's scores. */
@@ -789,6 +857,18 @@ export function LessonPlayer(props: LessonPlayerProps) {
       }
       setExtraResults(next);
       setExtraSubmitted(true);
+
+      /**
+       * The end-of-lesson test decides what the rest of the period is for.
+       *
+       * All right: the lesson is finished, and finished means finished — no filler to use up
+       * the clock. Anything wrong: that is what they practise, and only that.
+       */
+      if (extraMode === "TEST") {
+        const wrong = extraPractice.filter((q) => next[q.id]?.isCorrect === false).map((q) => q.prompt);
+        if (wrong.length === 0) setTestPassed(true);
+        else void practiseTestMistakes(wrong);
+      }
 
       /**
        * Finishing the extra practice finishes the Practice step.
@@ -837,9 +917,13 @@ export function LessonPlayer(props: LessonPlayerProps) {
     return (
       <div className="space-y-5">
         <Card padding="lg" className="space-y-1 bg-accent-soft">
-          <h2 className="text-base font-semibold text-ink">More practice on this topic</h2>
+          <h2 className="text-base font-semibold text-ink">
+            {extraMode === "TEST" ? "A quick test on this lesson" : "More practice on this topic"}
+          </h2>
           <p className="text-sm text-ink-muted">
-            These don&apos;t change your lesson score — they are here so the idea sticks.
+            {extraMode === "TEST"
+              ? "Get these right and you're done for this lesson. Anything you miss, we'll practise."
+              : "These don't change your lesson score — they are here so the idea sticks."}
           </p>
         </Card>
 
@@ -879,9 +963,13 @@ export function LessonPlayer(props: LessonPlayerProps) {
             </Button>
           ) : (
             <>
-              <Button variant="secondary" onClick={() => void practiseMore()} disabled={generatingPractice}>
-                {generatingPractice ? "Writing more…" : "More like these"}
-              </Button>
+              {extraMode === "TEST" && testPassed ? (
+                <Button onClick={() => setViewStage("COMPLETE")}>All right — finish the lesson</Button>
+              ) : (
+                <Button variant="secondary" onClick={() => void practiseMore()} disabled={generatingPractice}>
+                  {generatingPractice ? "Writing more…" : "More like these"}
+                </Button>
+              )}
               {/*
                 Where they actually are, not always Feedback.
                 
@@ -1406,23 +1494,44 @@ export function LessonPlayer(props: LessonPlayerProps) {
         {attempt?.masteryScore != null ? (
           <p className="text-sm text-ink-muted">Mastery {Math.round(attempt.masteryScore * 100)}%</p>
         ) : null}
-        {finishedEarly ? (
+        {/*
+          Time left is a question, not a sentence.
+
+          A child who finished in twenty minutes was handed more practice to use up the clock —
+          the same offer whether they had understood the lesson or not, which teaches the quick
+          ones that working hard buys more work. So the period ends with a short test instead:
+          all right and the lesson is over, whatever the clock says; anything wrong and that,
+          specifically, is what the rest of the period is for.
+        */}
+        {testPassed ? (
+          <div className="space-y-2 rounded-2xl bg-success-soft p-5 text-left">
+            <p className="text-base font-medium text-ink">
+              You got every one of those right. This lesson is finished.
+            </p>
+            <p className="text-sm text-ink-muted">
+              You knew it, so there is nothing to practise. Take your break.
+            </p>
+          </div>
+        ) : finishedEarly ? (
           <div className="space-y-3 rounded-2xl bg-accent-soft p-5 text-left">
             <p className="text-base font-medium text-ink">
               That took {minutesSpent} minutes — you&apos;ve still got about {timeLeft} in this
               period.
             </p>
             <p className="text-sm text-ink-muted">
-              Your teacher can set you more on the same topic. It counts towards this lesson.
+              Let&apos;s check it stuck. A few quick questions: get them right and you&apos;re
+              done, and anything you miss we&apos;ll go over.
             </p>
             {extraPractice.length > 0 ? (
-              <Button onClick={() => setViewStage("PRACTICE")}>Go to your extra practice</Button>
+              <Button onClick={() => setViewStage("PRACTICE")}>
+                {extraMode === "TEST" ? "Back to your test" : "Back to your practice"}
+              </Button>
             ) : (
-              <Button onClick={() => void practiseMore()} disabled={generatingPractice}>
-                {generatingPractice ? "Writing your questions…" : "Give me more practice"}
+              <Button onClick={() => void takeFinalTest()} disabled={generatingPractice}>
+                {generatingPractice ? "Writing your questions…" : "Test me on this lesson"}
               </Button>
             )}
-            {practiceError ? <p className="text-sm text-danger">{practiceError}</p> : null}
+            {practiceError ? <p className="text-sm text-ink-muted">{practiceError}</p> : null}
           </div>
         ) : null}
 

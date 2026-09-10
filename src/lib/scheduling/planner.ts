@@ -9,6 +9,7 @@ import { Prisma } from "@/generated/prisma/client";
 import { addDaysKey, dateOnlyKey, isoWeekday, schoolDayEnd, todayDateOnly, toDateOnly, weekStartKey } from "@/lib/dates";
 import { alignSchedulesToEnrolments, enrolStudentInYearGroup, fixYearGroupEnrolments } from "@/lib/admin/enrol";
 import { settleFinishedLessons } from "@/lib/lessons/service";
+import { isLessonDone } from "@/lib/progress/aggregate";
 import { catchUpImport } from "@/lib/curriculum/autofill";
 
 const REVIEW_MINUTES = 15;
@@ -65,7 +66,21 @@ async function getIncompleteLessonSequence(studentId: string, programmeId: strin
   const progressRows = await prisma.studentLessonProgress.findMany({
     where: { studentId, lessonId: { in: lessons.map((l) => l.id) } },
   });
-  const doneIds = new Set(progressRows.filter((p) => p.status === "COMPLETED" || p.status === "MASTERED").map((p) => p.lessonId));
+
+  /**
+   * Taught once. A lesson a child has been through does not come round again.
+   *
+   * This counted only COMPLETED and MASTERED as done — and a lesson finished below 70%, or with
+   * any gap the tutoring loop had parked, is saved as NEEDS_REVIEW. Which is most of them. So
+   * the planner could not see that they had done it, and set the same lesson, on the same
+   * topic, the next morning: "we did this yesterday" for weeks.
+   *
+   * NEEDS_REVIEW means it needs revisiting, not re-teaching, and revisiting is what the review
+   * engine is for — it brings back the specific thing they got wrong, spaced, as a short item.
+   * Re-running the whole lesson instead is both boring and dishonest about what they know.
+   * Anything with a finish time on it is behind them.
+   */
+  const doneIds = new Set(progressRows.filter(isLessonDone).map((p) => p.lessonId));
   return lessons.filter((l) => !doneIds.has(l.id));
 }
 

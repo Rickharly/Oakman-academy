@@ -539,8 +539,35 @@ export async function completeStage(attemptId: string, studentId: string, stage:
   if (isGradedStage(stage)) throw new ApiError(400, "Use submitStage for graded stages");
 
   const attempt = await loadOwnedAttempt(attemptId, studentId);
+
+  /**
+   * Finishing is idempotent, and it does not care which step the bookkeeping thinks you are on.
+   *
+   * A child who has answered every question and read their feedback has finished the lesson.
+   * Whether the record says FEEDBACK or CHECK or COMPLETE is our problem, not theirs — and it
+   * was being made theirs: pressing Finish sent two requests, each demanding the attempt be on
+   * exactly the stage it named, and either one refusing meant "Stage mismatch" and a lesson
+   * that stayed unfinished with everything on it green. Then it came round again the next day.
+   *
+   * So: finishing works from wherever they are once the quiz has been marked, and finishing an
+   * already-finished lesson is a success, not an error. Nothing about a lesson someone has
+   * done should depend on which of two buttons went through.
+   */
+  if (stage === "COMPLETE") {
+    if (attempt.status !== "IN_PROGRESS") return attempt; // already done — say so happily
+    const marked = await prisma.activityAttempt.count({
+      where: { lessonAttemptId: attempt.id, stage: "CHECK", status: "GRADED" },
+    });
+    if (marked === 0) throw new ApiError(400, "The quiz has not been marked yet.");
+    return finaliseAttempt(attempt);
+  }
+
   if (attempt.status !== "IN_PROGRESS") throw new ApiError(400, "Lesson attempt is not in progress");
-  if (attempt.currentStage !== stage) throw new ApiError(400, "Stage mismatch");
+  // Moving on from a step you have already left is not a failure; it is a repeated click.
+  if (attempt.currentStage !== stage) {
+    if (stageIndex(attempt.currentStage) > stageIndex(stage)) return attempt;
+    throw new ApiError(400, "Stage mismatch");
+  }
 
   if (stage === "LEARN") {
     return prisma.lessonAttempt.update({
@@ -559,7 +586,6 @@ export async function completeStage(attemptId: string, studentId: string, stage:
     });
   }
 
-  // COMPLETE
   return finaliseAttempt(attempt);
 }
 

@@ -23,14 +23,24 @@ export async function POST(req: Request, ctx: { params: Promise<{ lessonId: stri
     // practice beats another round of the same quiz.
     const body = await req
       .json()
-      .then((v) => z.object({ missedPrompts: z.array(z.string()).max(20), extension: z.boolean() }).partial().parse(v))
-      .catch(() => ({ missedPrompts: undefined, extension: undefined }));
+      .then((v) =>
+        z
+          .object({
+            missedPrompts: z.array(z.string()).max(20),
+            extension: z.boolean(),
+            /** The end-of-lesson test for a child who finished the period early. */
+            finalTest: z.boolean(),
+          })
+          .partial()
+          .parse(v),
+      )
+      .catch(() => ({ missedPrompts: undefined, extension: undefined, finalTest: undefined }));
 
     // The lesson's own worksheet first. Questions invented from the lesson are a reasonable
     // stand-in for a worksheet we cannot read; they are not better than the worksheet the
     // teacher who wrote the lesson chose. Only for plain practice — a child asking for more, or
     // for practice on what they missed, wants something new.
-    if (!body.extension && !body.missedPrompts?.length) {
+    if (!body.extension && !body.finalTest && !body.missedPrompts?.length) {
       const fromWorksheet = await buildWorksheetPractice(lessonId).catch((err: unknown) => {
         console.error("[practice] worksheet could not be read; falling back", err);
         return [];
@@ -59,6 +69,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ lessonId: stri
         lessonId,
         missedPrompts: body.missedPrompts,
         extension: body.extension,
+        finalTest: body.finalTest,
       })
       .catch((err: unknown) => {
         // A child with twenty minutes left and a finished lesson must not be left with a dead
@@ -68,7 +79,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ lessonId: stri
         return [] as Awaited<ReturnType<typeof teacherAgent.generateLessonPractice>>;
       });
 
-    if (questions.length === 0) {
+    if (questions.length === 0 && !body.finalTest) {
       questions = await prisma.question.findMany({
         where: { lessonId, stage: "PRACTICE", excluded: false },
         orderBy: { order: "asc" },

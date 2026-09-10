@@ -561,3 +561,64 @@ describe("a timetable pointing at a different row for the same subject", () => {
     expect(schedules.every((s) => s.weeklyFrequency === 5)).toBe(true);
   });
 });
+
+describe("a lesson they did yesterday", () => {
+  /**
+   * "We did this yesterday — same lesson, same topic."
+   *
+   * A lesson finished below 70%, or with any gap the tutoring loop parked, is saved as
+   * NEEDS_REVIEW — which is most of them. The planner counted only COMPLETED and MASTERED as
+   * done, so it could not see that the child had been through it, and set the same lesson again
+   * the next morning. Needing review means revisiting, which the review engine does in short
+   * spaced items; it never means teaching the whole lesson again from the top.
+   */
+  beforeAll(async () => {
+    await resetDb();
+    studentId = await buildStudentWithCurriculum(12);
+
+    const maths = await prisma.programme.findFirstOrThrow({ where: { providerSlug: "maths:7" } });
+    const first = await prisma.lesson.findFirstOrThrow({ where: { providerSlug: "maths-l1" } });
+
+    // Yesterday: worked through, finished, and not brilliantly.
+    const attempt = await prisma.lessonAttempt.create({
+      data: {
+        studentId,
+        lessonId: first.id,
+        attemptNumber: 1,
+        currentStage: "COMPLETE",
+        status: "NEEDS_REVIEW",
+        masteryScore: 0.6,
+        completedAt: new Date(),
+      },
+    });
+    await prisma.studentLessonProgress.create({
+      data: {
+        studentId,
+        lessonId: first.id,
+        status: "NEEDS_REVIEW",
+        attempts: 1,
+        bestScorePct: 60,
+        latestScorePct: 60,
+        mastery: 0.6,
+        completedAt: attempt.completedAt,
+        needsReview: true,
+      },
+    });
+    void maths;
+  });
+
+  it("is not set again today", async () => {
+    await ensureDayPlanned(studentId, MONDAY);
+
+    const lessons = await lessonsOn(MONDAY);
+    const titles = await Promise.all(
+      lessons.map(async (a) =>
+        a.lessonId ? (await prisma.lesson.findUnique({ where: { id: a.lessonId } }))?.title : null,
+      ),
+    );
+    // The maths period today is the next lesson, not the one they sat through yesterday.
+    const done = await prisma.lesson.findFirstOrThrow({ where: { providerSlug: "maths-l1" } });
+    expect(titles).not.toContain(done.title);
+    expect(lessons.length).toBe(5);
+  });
+});

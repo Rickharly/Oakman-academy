@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { prisma } from "@/lib/db";
 import { resetDb } from "./helpers/db";
-import { settleFinishedLessons } from "@/lib/lessons/service";
+import { completeStage, settleFinishedLessons } from "@/lib/lessons/service";
 
 /**
  * A lesson someone actually did should be on the board as done.
@@ -113,5 +113,45 @@ describe("a lesson finished but never signed off", () => {
     expect(await settleFinishedLessons(studentId)).toBe(0);
     const attempt = await prisma.lessonAttempt.findUniqueOrThrow({ where: { id: attemptId } });
     expect(attempt.status).toBe("IN_PROGRESS");
+  });
+});
+
+describe("pressing Finish", () => {
+  beforeEach(async () => {
+    await resetDb();
+  });
+
+  it("works from whichever step the record thinks they are on", async () => {
+    // The player used to send two requests — leave FEEDBACK, then COMPLETE — and each was
+    // refused unless the record already agreed about the stage. When it did not, the child got
+    // "Stage mismatch" over a lesson they had just done with every step green.
+    const { studentId, attemptId, assignmentId, lessonId } = await buildAttempt({ gradedMinutesAgo: 1 });
+    await prisma.lessonAttempt.update({ where: { id: attemptId }, data: { currentStage: "CHECK" } });
+
+    const done = await completeStage(attemptId, studentId, "COMPLETE");
+    expect(done.status).toBe("COMPLETED");
+
+    const assignment = await prisma.dailyAssignment.findUniqueOrThrow({ where: { id: assignmentId } });
+    expect(assignment.status).toBe("COMPLETED");
+
+    const progress = await prisma.studentLessonProgress.findUniqueOrThrow({
+      where: { studentId_lessonId: { studentId, lessonId } },
+    });
+    expect(progress.completedAt).not.toBeNull();
+  });
+
+  it("is safe to press twice", async () => {
+    const { studentId, attemptId } = await buildAttempt({ gradedMinutesAgo: 1 });
+
+    await completeStage(attemptId, studentId, "COMPLETE");
+    // A second press — a double tap, a slow connection, a retry — is not an error to show a
+    // child over a lesson that is already finished.
+    const again = await completeStage(attemptId, studentId, "COMPLETE");
+    expect(again.status).toBe("COMPLETED");
+  });
+
+  it("refuses only when the quiz has genuinely not been marked", async () => {
+    const { studentId, attemptId } = await buildAttempt({ gradedMinutesAgo: null });
+    await expect(completeStage(attemptId, studentId, "COMPLETE")).rejects.toThrow();
   });
 });

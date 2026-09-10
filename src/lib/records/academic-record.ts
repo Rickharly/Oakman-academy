@@ -17,6 +17,7 @@
  *   parent. A principal who discovers that for themselves stops believing the rest of the page.
  */
 import { prisma } from "@/lib/db";
+import { isLessonDone } from "@/lib/progress/aggregate";
 import { z } from "zod";
 import { getAiProvider } from "@/lib/ai/provider";
 import { dateOnlyKey, schoolDayEnd, schoolDayStart } from "@/lib/dates";
@@ -131,7 +132,9 @@ export async function buildAcademicRecord(
     orderBy: { completedAt: "asc" },
   });
 
-  const worked = progress.filter((p) => p.status === "COMPLETED" || p.status === "MASTERED");
+  // A lesson worked through is a lesson worked through, whatever the score — see
+  // `isLessonDone`. The score is reported separately, and honestly.
+  const worked = progress.filter(isLessonDone);
 
   // ── Attendance, from the days that were actually worked ──
   const days = await prisma.schoolDay.findMany({
@@ -167,7 +170,7 @@ export async function buildAcademicRecord(
   for (const rows of bySubject.values()) {
     const subject = rows[0].lesson.unit.programme.subject;
     const programme = rows[0].lesson.unit.programme;
-    const done = rows.filter((r) => r.status === "COMPLETED" || r.status === "MASTERED");
+    const done = rows.filter(isLessonDone);
 
     const byUnit = new Map<string, typeof rows>();
     for (const row of rows) {
@@ -180,10 +183,8 @@ export async function buildAcademicRecord(
       .map((unitRows) => ({
         title: unitRows[0].lesson.unit.title,
         lessonsTotal: unitRows.length,
-        lessonsCompleted: unitRows.filter((r) => r.status === "COMPLETED" || r.status === "MASTERED").length,
-        lessonTitles: unitRows
-          .filter((r) => r.status === "COMPLETED" || r.status === "MASTERED")
-          .map((r) => r.lesson.title),
+        lessonsCompleted: unitRows.filter(isLessonDone).length,
+        lessonTitles: unitRows.filter(isLessonDone).map((r) => r.lesson.title),
       }))
       .filter((u) => u.lessonsCompleted > 0);
 
