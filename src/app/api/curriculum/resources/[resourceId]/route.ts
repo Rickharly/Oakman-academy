@@ -32,8 +32,15 @@ import { fetchProviderAsset } from "@/lib/curriculum/asset-fetch";
 export const dynamic = "force-dynamic";
 
 const CACHE_DIR = process.env.MEDIA_CACHE_DIR ?? path.join(os.tmpdir(), "oakman-media");
-/** Anything larger than this is streamed through rather than cached, to protect the disk. */
-const MAX_CACHE_BYTES = 64 * 1024 * 1024;
+/**
+ * Anything larger than this is streamed through rather than cached, to protect the disk.
+ *
+ * This was 64MB, and a lesson video is bigger than that: the one the checks measure is 101MB.
+ * So no video was ever cached, and every seek in a 45-minute lesson went back to Oak for the
+ * whole file again — a request from a quota of a thousand per window, per scrub, per child.
+ * The cache existed and never once held the thing it was built for.
+ */
+const MAX_CACHE_BYTES = Number(process.env.MEDIA_CACHE_MAX_FILE_BYTES ?? 256 * 1024 * 1024);
 /**
  * The whole cache stays under this.
  *
@@ -41,7 +48,17 @@ const MAX_CACHE_BYTES = 64 * 1024 * 1024;
  * cache of lesson videos will eventually fill it, and a full disk does not degrade a service —
  * it kills it. Better to re-fetch a video occasionally than to take the school offline.
  */
-const MAX_CACHE_TOTAL_BYTES = Number(process.env.MEDIA_CACHE_MAX_BYTES ?? 256 * 1024 * 1024);
+const MAX_CACHE_TOTAL_BYTES = Number(process.env.MEDIA_CACHE_MAX_BYTES ?? 1024 * 1024 * 1024);
+
+/**
+ * Downloads already running, by cache path.
+ *
+ * A video player does not send one request. It asks for the metadata, then a range, then
+ * another the moment the child scrubs — several in the same second, all before anything has
+ * been cached. Each of those used to start its own download of the same hundred-megabyte file
+ * from Oak. One download, and everybody else waits for it.
+ */
+const inFlight = new Map<string, Promise<void>>();
 
 /**
  * What this file actually is, for the browser.
@@ -179,6 +196,28 @@ export async function GET(req: Request, ctx: { params: Promise<{ resourceId: str
     const resource = await prisma.lessonResource.findUnique({ where: { id: resourceId } });
     if (!resource) throw new ApiError(404, "Resource not found");
 
+    /**
+     * A copy downloaded at sync time, if there still is one.
+     *
+     * `storedPath` is a path on this machine's disk, and the player used to hand it straight to
+     * the browser as a `src`. That asks the browser to fetch a filesystem path from the website:
+     * a 404, an onError, and the pale "the video won't play" panel where the lesson should be.
+     * Read here instead — and only when it is really there, since the file belongs to whichever
+     * container downloaded it and does not survive a deploy.
+     */
+    if (resource.storedPath) {
+      const local = await fsp.stat(resource.storedPath).catch(() => null);
+      if (local?.isFile() && local.size > 0 && !(await looksLikeJson(resource.storedPath))) {
+        return serveFromDisk(
+          resource.storedPath,
+          local.size,
+          contentTypeFor(resource, null),
+          req,
+          resource.label,
+        );
+      }
+    }
+
     // Not required to be absolute: the provider's listing gives a download endpoint, which may
     // be a path. `fetchProviderAsset` resolves it against the API base — rejecting it here as
     // "no downloadable file" is why lessons with a perfectly good video showed none.
@@ -195,13 +234,66 @@ export async function GET(req: Request, ctx: { params: Promise<{ resourceId: str
     // saved under a video's name. Serving that back is a player stuck at 0:00 for as long as
     // the container lives, so a cached entry that is obviously not the file is thrown away and
     // fetched again rather than trusted.
-    const cached = await fsp.stat(file).catch(() => null);
-    if (cached?.isFile() && cached.size > 0) {
+    const servedFromCache = async (): Promise<Response | null> => {
+      const cached = await fsp.stat(file).catch(() => null);
+      if (!cached?.isFile() || cached.size === 0) return null;
       if (await looksLikeJson(file)) {
         await fsp.rm(file, { force: true }).catch(() => undefined);
-      } else {
-        return serveFromDisk(file, cached.size, contentType, req, resource.label);
+        return null;
       }
+      return serveFromDisk(file, cached.size, contentType, req, resource.label);
+    };
+
+    const fromCache = await servedFromCache();
+    if (fromCache) return fromCache;
+
+    /**
+     * Somebody else is already downloading this. Wait for them.
+     *
+     * Without this, a player opening a lesson starts three or four downloads of the same
+     * hundred-megabyte video within a second of each other — one per request it makes — and a
+     * child scrubbing starts another every time they drag the bar. Waiting is slower for this
+     * one request and enormously cheaper for the lesson.
+     */
+    const running = inFlight.get(file);
+    if (running) {
+      await running.catch(() => undefined);
+      const afterWait = await servedFromCache();
+      if (afterWait) return afterWait;
+    }
+
+    /**
+     * A request for part of a file we do not have yet.
+     *
+     * Answering a Range request by streaming the whole file from the start is a seek that never
+     * arrives: the player asked for the middle and is being sent the beginning. So the file is
+     * fetched once, in full, and then the range is served off the disk like any other.
+     */
+    if (req.headers.get("range")) {
+      const download = (async () => {
+        const res = await fetchProviderAsset(url);
+        if (!res.body) throw new ApiError(502, "The provider returned an empty file.");
+        await fsp.mkdir(CACHE_DIR, { recursive: true });
+        await evictTo(Math.max(0, MAX_CACHE_TOTAL_BYTES - MAX_CACHE_BYTES));
+        const temp = `${file}.${process.pid}.${Date.now()}.part`;
+        try {
+          await pipeline(Readable.fromWeb(res.body as WebReadableStream), fs.createWriteStream(temp));
+          await fsp.rename(temp, file);
+        } catch (err) {
+          await fsp.rm(temp, { force: true }).catch(() => undefined);
+          throw err;
+        }
+      })();
+      inFlight.set(file, download);
+      try {
+        await download;
+      } catch {
+        // Fall through and stream it live: a lesson without a seek bar beats no lesson.
+      } finally {
+        inFlight.delete(file);
+      }
+      const afterDownload = await servedFromCache();
+      if (afterDownload) return afterDownload;
     }
 
     const upstream = await fetchProviderAsset(url);
@@ -234,7 +326,7 @@ export async function GET(req: Request, ctx: { params: Promise<{ resourceId: str
     const [toClient, toDisk] = upstream.body.tee();
 
     if (declared <= MAX_CACHE_BYTES) {
-      void (async () => {
+      const writing = (async () => {
         try {
           await fsp.mkdir(CACHE_DIR, { recursive: true });
           // Make room before writing, not after: the disk has to hold this file either way.
@@ -246,8 +338,12 @@ export async function GET(req: Request, ctx: { params: Promise<{ resourceId: str
           });
         } catch {
           // A cache that will not write is a slower lesson, not a broken one.
+        } finally {
+          inFlight.delete(file);
         }
       })();
+      // The player's next request waits for this one rather than fetching the file again.
+      inFlight.set(file, writing);
     } else {
       void toDisk.cancel().catch(() => undefined);
     }

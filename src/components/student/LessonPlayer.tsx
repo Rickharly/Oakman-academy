@@ -910,7 +910,8 @@ export function LessonPlayer(props: LessonPlayerProps) {
     const qs = questionsByStage.PRACTICE;
     const submitted = submittedStage.PRACTICE;
     const worksheetUrl = worksheetFallback
-      ? (worksheetFallback.storedPath ?? `/api/curriculum/resources/${worksheetFallback.id}`)
+      ? // Same reason as the video: a server path is not an address a browser can fetch.
+        `/api/curriculum/resources/${worksheetFallback.id}`
       : null;
 
     // Some Oak lessons ship their practice as a worksheet PDF. A PDF cannot be marked and
@@ -961,8 +962,16 @@ export function LessonPlayer(props: LessonPlayerProps) {
   }
 
   function renderLearn() {
-    // Served through our own route: Oak's URLs need the API key, which the browser must
-    // never have. `storedPath` wins when the asset was downloaded at sync time.
+    /**
+     * Always through our own route — never `storedPath`.
+     *
+     * `storedPath` is a path on the server's disk (`/app/storage/assets/…/VIDEO.mp4`). Handing
+     * it to a `<video>` element asks the browser to fetch that path from the website, which is
+     * a 404, which fires onError, which replaces the player with the pale "it won't play" panel
+     * — a blob of light where the lesson's video should be. Worse, the file is on whichever
+     * container downloaded it and is gone after the next deploy, so it cannot be right even in
+     * principle. The route knows how to find the file; the browser does not need to.
+     */
     const video = lesson.resources.find((r) => r.type === "VIDEO" && isPlayable(r));
     const learnDone = stageIndex(currentStage) > stageIndex("LEARN");
     const teaching = explainerState === "loading";
@@ -1085,7 +1094,7 @@ export function LessonPlayer(props: LessonPlayerProps) {
               playsInline
               preload="metadata"
               className="aspect-video w-full rounded-xl bg-stone-900"
-              src={video.storedPath ?? `/api/curriculum/resources/${video.id}`}
+              src={`/api/curriculum/resources/${video.id}`}
               onTimeUpdate={handleVideoTimeUpdate}
               onEnded={handleVideoEnded}
               onError={() => setVideoFailed(true)}

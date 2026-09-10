@@ -10,6 +10,7 @@
  * credentials and the real schemas, and they report the real error text — no interpretation, no
  * "should be". If a lesson will not generate, this says why in the provider's own words.
  */
+import fsp from "node:fs/promises";
 import { Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/db";
 import { getAiProvider, resolveModelId } from "@/lib/ai/provider";
@@ -142,6 +143,36 @@ async function videoCheck(): Promise<Check> {
   // it failed to reach is a dead end, and that dead end cost most of a day.
   const target = resolveAssetUrl(resource.providerUrl);
 
+  /**
+   * A stored copy that is no longer there.
+   *
+   * `storedPath` names a file on the container that downloaded it. Containers are replaced on
+   * every deploy, so those paths go stale silently — and the player used to hand the path
+   * straight to the browser, which is a 404 and a pale "the video won't play" panel where the
+   * lesson should be. It is read through the resource route now, but a row pointing at a file
+   * that has gone is still worth saying out loud.
+   */
+  const stale = await prisma.lessonResource.count({ where: { type: "VIDEO", NOT: { storedPath: null } } });
+  const staleNote =
+    stale > 0
+      ? await (async () => {
+          const rows = await prisma.lessonResource.findMany({
+            where: { type: "VIDEO", NOT: { storedPath: null } },
+            select: { storedPath: true },
+            take: 20,
+          });
+          let missing = 0;
+          for (const row of rows) {
+            if (!row.storedPath) continue;
+            const exists = await fsp.stat(row.storedPath).then(() => true).catch(() => false);
+            if (!exists) missing += 1;
+          }
+          return missing > 0
+            ? `\n${missing} of ${rows.length} checked video rows name a downloaded file that is no longer on this machine; those are served from the provider instead.`
+            : "";
+        })()
+      : "";
+
   try {
     const res = await fetchProviderAsset(resource.providerUrl);
     const type = res.headers.get("content-type") ?? "(none)";
@@ -174,7 +205,7 @@ async function videoCheck(): Promise<Check> {
       name,
       status: "ok",
       summary: `Video streams correctly (${type}, ${length} bytes).`,
-      detail: `${resource.lesson.title}\n${target}`,
+      detail: `${resource.lesson.title}\n${target}${staleNote}`,
     };
   } catch (err) {
     const check = fail(name, `Could not fetch the video for "${resource.lesson.title}".`, err);

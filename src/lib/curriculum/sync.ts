@@ -7,6 +7,11 @@
  * Student learning data is never touched.
  */
 import fs from "node:fs/promises";
+import { createWriteStream } from "node:fs";
+import { Readable } from "node:stream";
+import { pipeline } from "node:stream/promises";
+import type { ReadableStream as WebReadableStream } from "node:stream/web";
+import { fetchProviderAsset } from "./asset-fetch";
 import { OakRateLimitError } from "@/lib/oak/client";
 import path from "node:path";
 import { prisma } from "@/lib/db";
@@ -110,12 +115,18 @@ async function downloadAsset(
   asset: ProviderAsset,
   log: (line: string) => void,
 ): Promise<string | null> {
-  if (!/^https?:/i.test(asset.url)) return null;
   const baseDir = process.env.ASSET_STORAGE_DIR || "./storage/assets";
   const dir = path.resolve(baseDir, lessonSlug);
   try {
-    const res = await fetch(asset.url);
-    if (!res.ok) {
+    /**
+     * Fetched the way the app fetches anything from the provider: with the key, and through
+     * the signed-link indirection.
+     *
+     * A plain `fetch` of the asset endpoint gets Oak's "API token not provided" JSON, and this
+     * happily saved those few hundred bytes as `VIDEO.bin` — a stored file that is not a file.
+     */
+    const res = await fetchProviderAsset(asset.url);
+    if (!res.ok || !res.body) {
       log(`  asset ${asset.type}: HTTP ${res.status}, keeping the provider URL`);
       return null;
     }
@@ -129,7 +140,14 @@ async function downloadAsset(
           : "bin";
     await fs.mkdir(dir, { recursive: true });
     const filePath = path.join(/* turbopackIgnore: true */ dir, `${asset.type}.${ext}`);
-    await fs.writeFile(filePath, Buffer.from(await res.arrayBuffer()));
+    /**
+     * Streamed, never buffered.
+     *
+     * `arrayBuffer()` on a lesson video puts a hundred megabytes into the web process's heap,
+     * and importing a subject downloads dozens of them. That is how the server stopped
+     * responding twice in one morning while children were mid-lesson.
+     */
+    await pipeline(Readable.fromWeb(res.body as WebReadableStream), createWriteStream(filePath));
     return filePath;
   } catch (err) {
     log(`  asset ${asset.type}: download failed (${(err as Error).message}), keeping the provider URL`);
