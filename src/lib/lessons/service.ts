@@ -4,6 +4,7 @@
  * for the exact exported signatures.
  */
 import { prisma } from "@/lib/db";
+import { plainQuestion } from "@/lib/questions/display";
 import { recordAttemptPunctuality } from "@/lib/engagement/service";
 import { Prisma } from "@/generated/prisma/client";
 import type {
@@ -233,7 +234,10 @@ export async function getAttemptView(attemptId: string, studentId: string): Prom
     const { answerKey: _answerKey, rubric: _rubric, ...rest } = q;
     void _answerKey;
     void _rubric;
-    questionsByStage[q.stage as "STARTER" | "PRACTICE" | "CHECK"].push(rest);
+    // Read on the way out, never on the way in: the stored question keeps the provider's own
+    // words, and what a child sees is that made legible. A maths question arriving as
+    // `$$\frac{3}{4}$$` is not a question anybody can answer.
+    questionsByStage[q.stage as "STARTER" | "PRACTICE" | "CHECK"].push(plainQuestion(rest));
   }
 
   const activities = await prisma.activityAttempt.findMany({

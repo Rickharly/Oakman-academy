@@ -116,6 +116,7 @@ export async function diagnoseGaps(lessonAttemptId: string, studentId: string): 
       "say so as the misunderstanding rather than inventing a conceptual gap.",
       "",
       "UK English. No markdown.",
+      "Write maths in ordinary symbols, mid-sentence: 3/4, 6 × 7, x², √9. Never LaTeX or dollar signs — it does not render and gets read aloud symbol by symbol.",
     ].join("\n"),
     messages: [
       {
@@ -236,6 +237,7 @@ export async function reteach(gapId: string, studentId: string): Promise<Reteach
       "- 'checkLooksLike' describes what a good answer demonstrates they understand, in terms of",
       "  meaning rather than particular words. A child who says it their own way is right.",
       "- UK English, plain prose, no markdown, no bullet points — this gets read aloud.",
+      "- Write maths in ordinary symbols, mid-sentence: 3/4, 6 × 7, x², √9. Never LaTeX or dollar signs — it does not render and gets read aloud symbol by symbol.",
     ]
       .filter(Boolean)
       .join("\n"),
@@ -322,6 +324,7 @@ export async function judgeExplainBack(
       "even when the verdict is no — there is almost always one. Never 'wrong', never 'incorrect'.",
       "",
       "UK English, two or three sentences, no markdown.",
+      "Write maths in ordinary symbols, mid-sentence: 3/4, 6 × 7, x², √9. Never LaTeX or dollar signs — it does not render and gets read aloud symbol by symbol.",
     ].join("\n"),
     messages: [
       {

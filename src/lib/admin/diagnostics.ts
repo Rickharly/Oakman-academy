@@ -376,6 +376,54 @@ async function questionImageCheck(): Promise<Check> {
 }
 
 /**
+ * Whether a child's bug report can actually leave the building.
+ *
+ * "Something's wrong here" deliberately never shows a child a send failure — being told your
+ * report failed is worse than not reporting — which means a broken channel is silent by design.
+ * Eva sent several reports about maths lessons full of dollar signs; not one of them arrived,
+ * and nothing anywhere said so. A silent channel needs a loud check.
+ */
+async function bugReportCheck(): Promise<Check> {
+  const name = "Sending a bug report";
+  const full = process.env.GITHUB_REPO ?? "Rickharly/Oakman-academy";
+
+  if (!process.env.GITHUB_TOKEN) {
+    return {
+      name,
+      status: "fail",
+      summary:
+        "No GITHUB_TOKEN on the server — the children's bug reports have nowhere to go, and they are told they sent fine.",
+      detail: "Add a GitHub token with Issues: read and write on this repository, as GITHUB_TOKEN.",
+    };
+  }
+
+  try {
+    const res = await fetch(`https://api.github.com/repos/${full}`, {
+      headers: {
+        Authorization: `Bearer ${process.env.GITHUB_TOKEN}`,
+        Accept: "application/vnd.github+json",
+      },
+      cache: "no-store",
+    });
+    if (!res.ok) {
+      return {
+        name,
+        status: "fail",
+        summary: `GitHub answered ${res.status} for ${full}. Reports are being lost.`,
+        detail: (await res.text()).slice(0, 300),
+      };
+    }
+    const repo = (await res.json()) as { has_issues?: boolean; permissions?: { push?: boolean } };
+    if (!repo.has_issues) {
+      return { name, status: "fail", summary: `Issues are turned off on ${full}, so nothing can be filed.` };
+    }
+    return { name, status: "ok", summary: `Reports reach ${full}.` };
+  } catch (err) {
+    return fail(name, "Could not reach GitHub at all.", err);
+  }
+}
+
+/**
  * Why a child's day is empty, in full.
  *
  * The planner produces nothing for a hundred quiet reasons — no schedule, no enrolment, a
@@ -521,6 +569,7 @@ export async function runDiagnostics(): Promise<Check[]> {
     videoCheck().catch((err) => fail("Playing a video", "Check failed.", err)),
     speechCheck().catch((err) => fail("Reading text aloud", "Check failed.", err)),
     voiceCheck().catch((err) => fail("Voice picker (ElevenLabs)", "Check failed.", err)),
+    bugReportCheck().catch((err) => fail("Sending a bug report", "Check failed.", err)),
   ]);
   return checks;
 }

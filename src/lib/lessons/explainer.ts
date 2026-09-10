@@ -15,6 +15,7 @@
  * and stands in for it when there is none.
  */
 import { z } from "zod";
+import { plainMathsDeep } from "@/lib/text/maths";
 import { prisma } from "@/lib/db";
 import { getAiProvider } from "@/lib/ai/provider";
 
@@ -91,7 +92,9 @@ export function parseExplainer(value: unknown): LessonExplainer | null {
   const parsed = storedExplainerSchema.safeParse(value);
   if (!parsed.success) return null;
   if ((parsed.data.version ?? 1) < EXPLAINER_VERSION) return null;
-  return parsed.data;
+  // Legible, on the way out. A model asked for maths writes LaTeX by habit whatever it is told,
+  // and a lesson that opens with `$$\frac{1}{2}$$` teaches a child that maths is gibberish.
+  return plainMathsDeep(parsed.data);
 }
 
 function asStrings(value: unknown): string[] {
@@ -233,6 +236,9 @@ export async function getOrCreateExplainer(
       "  is thin, teach what is there properly rather than padding it out.",
       "- UK English. Plain prose. No markdown, no headings inside a body, no bullet characters,",
       "  no lists — this gets read aloud.",
+      "- Maths is written the way you would write it on paper, in the middle of a sentence: 3/4",
+      "  or three quarters, 6 × 7, x², √9. Never LaTeX, never dollar signs, never \\frac — none of",
+      "  it renders, so the child reads the code and the voice reads it out symbol by symbol.",
     ].join("\n"),
     messages: [
       {
@@ -268,5 +274,6 @@ export async function getOrCreateExplainer(
     data: { explainer: stamped, explainerAt: new Date() },
   });
 
-  return stamped;
+  // Stored as written, shown as read — the same rule as everywhere else.
+  return plainMathsDeep(stamped);
 }

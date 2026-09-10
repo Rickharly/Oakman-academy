@@ -10,6 +10,7 @@
  * for who the child is or which lesson they are on.
  */
 import { z } from "zod";
+import { plainMathsDeep } from "@/lib/text/maths";
 import { prisma } from "@/lib/db";
 import { ApiError, jsonError, requireStudentApi } from "@/lib/auth/api";
 import {
@@ -54,26 +55,30 @@ export async function POST(req: Request, ctx: { params: Promise<{ lessonId: stri
     switch (body.action) {
       case "diagnose": {
         const gaps = await diagnoseGaps(body.attemptId, studentId);
+        // The tutor's own words, in notation the page can draw. This is the part of the app a
+        // child reads when they have already said they do not understand.
         return Response.json({
-          gaps: gaps.map((g) => ({
-            id: g.id,
-            concept: g.concept,
-            status: g.status,
-            round: g.round,
-            explanation: g.lastExplanation,
-          })),
+          gaps: gaps.map((g) =>
+            plainMathsDeep({
+              id: g.id,
+              concept: g.concept,
+              status: g.status,
+              round: g.round,
+              explanation: g.lastExplanation,
+            }),
+          ),
         });
       }
       case "reteach": {
         const result = await reteach(body.gapId, studentId);
         // Null means every approach has been tried. Grinding on is not tutoring.
-        return Response.json({ explanation: result, exhausted: result === null });
+        return Response.json({ explanation: plainMathsDeep(result), exhausted: result === null });
       }
       case "explain": {
         const verdict = await judgeExplainBack(body.gapId, studentId, body.text);
         if (!verdict) throw new ApiError(404, "That is not one of your gaps");
         const remaining = await openGaps(body.attemptId, studentId);
-        return Response.json({ verdict, remaining: remaining.length });
+        return Response.json({ verdict: plainMathsDeep(verdict), remaining: remaining.length });
       }
       case "park": {
         const parked = await parkOpenGaps(body.attemptId, studentId);

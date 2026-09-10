@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { prisma } from "@/lib/db";
+import { plainQuestion } from "@/lib/questions/display";
 import { requireStudentApi, jsonError } from "@/lib/auth/api";
 import { teacherAgent } from "@/lib/ai/teacher-agent";
 import { buildWorksheetPractice } from "@/lib/lessons/worksheet";
@@ -37,15 +38,17 @@ export async function POST(req: Request, ctx: { params: Promise<{ lessonId: stri
       if (fromWorksheet.length > 0) {
         return Response.json({
           source: "worksheet",
-          questions: fromWorksheet.map((q) => ({
-            id: q.id,
-            type: q.type,
-            stage: "PRACTICE" as const,
-            prompt: q.prompt,
-            promptImage: q.promptImage,
-            options: q.options,
-            maxScore: q.maxScore,
-          })),
+          questions: fromWorksheet.map((q) =>
+            plainQuestion({
+              id: q.id,
+              type: q.type,
+              stage: "PRACTICE" as const,
+              prompt: q.prompt,
+              promptImage: q.promptImage,
+              options: q.options,
+              maxScore: q.maxScore,
+            }),
+          ),
         });
       }
     }
@@ -77,15 +80,18 @@ export async function POST(req: Request, ctx: { params: Promise<{ lessonId: stri
     return Response.json({
       // An empty list is a valid answer: the player says there is nothing more to practise
       // and offers to finish, rather than showing an error beside a button that never works.
-      questions: questions.map((q) => ({
-        id: q.id,
-        type: q.type,
-        stage: "PRACTICE" as const,
-        prompt: q.prompt,
-        promptImage: q.promptImage,
-        options: q.options,
-        maxScore: q.maxScore,
-      })),
+      // Read the same way the lesson's own questions are: notation the page can draw.
+      questions: questions.map((q) =>
+        plainQuestion({
+          id: q.id,
+          type: q.type,
+          stage: "PRACTICE" as const,
+          prompt: q.prompt,
+          promptImage: q.promptImage,
+          options: q.options,
+          maxScore: q.maxScore,
+        }),
+      ),
     });
   } catch (err) {
     return jsonError(err);

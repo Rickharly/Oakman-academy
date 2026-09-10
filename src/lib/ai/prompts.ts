@@ -84,6 +84,9 @@ const OUTPUT_STYLE = [
   "Use plain language and UK English spelling.",
   "Do not use markdown headers, bullet lists, or bold/italic formatting — write in plain prose as you would speak.",
   "Keep replies under about 120 words, unless you are walking through a worked example step by step, in which case take the space you need.",
+  // Nothing on the page draws LaTeX. A fraction written as `$$\\frac{3}{4}$$` reaches a child as
+  // dollar signs and a backslash, and the read-aloud voice says it out letter by letter.
+  "Write maths the way you would write it on paper: 3/4 or three quarters, 6 × 7, x², √9. Never use LaTeX, dollar signs, \\frac, or any other typesetting notation — it does not render and the child sees the code.",
 ].map((line) => `- ${line}`).join("\n");
 
 export interface SystemPromptContext {

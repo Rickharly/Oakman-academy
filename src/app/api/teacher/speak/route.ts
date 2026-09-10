@@ -2,6 +2,7 @@ import { z } from "zod";
 import { createHash } from "node:crypto";
 import { requireStudentApi, jsonError } from "@/lib/auth/api";
 import { speak, DEFAULT_VOICE_ID, VoiceUnavailable } from "@/lib/ai/voice";
+import { spokenMaths } from "@/lib/text/maths";
 
 /**
  * Reads a piece of the teacher's text aloud, in this child's own voice.
@@ -18,7 +19,14 @@ export async function POST(req: Request) {
     const { text } = z.object({ text: z.string().min(1).max(2500) }).parse(await req.json());
 
     const voiceId = user.studentProfile.voiceId ?? DEFAULT_VOICE_ID;
-    const { audio, contentType } = await speak(text, voiceId);
+    /**
+     * Said the way a teacher says it.
+     *
+     * A voice given `$$\frac{3}{4}$$` says "dollar dollar frac three four", which is worse than
+     * silence — and this is the button a child leans on when the reading is hard. Symbols
+     * become words first: three quarters, times, the square root of.
+     */
+    const { audio, contentType } = await speak(spokenMaths(text), voiceId);
 
     return new Response(audio, {
       headers: {

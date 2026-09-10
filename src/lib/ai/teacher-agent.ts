@@ -12,6 +12,7 @@
  */
 import { z } from "zod";
 import { prisma } from "@/lib/db";
+import { plainMaths } from "@/lib/text/maths";
 import type {
   AiLearningObservation,
   LessonStage,
@@ -333,6 +334,9 @@ async function grade(args: {
 
   return {
     ...data,
+    // The words a child reads the moment they get something wrong. Written in LaTeX they say
+    // nothing at all, and this is the worst moment of the lesson to hand someone gibberish.
+    feedbackForStudent: plainMaths(data.feedbackForStudent),
     score,
     maxScore,
     mastery,
@@ -550,6 +554,7 @@ async function generatePractice(args: {
       "minute. Use only SHORT_ANSWER, NUMERIC or MULTIPLE_CHOICE. For MULTIPLE_CHOICE give 3 or 4",
       "choices with the correct one first and plausible wrong ones. For SHORT_ANSWER and NUMERIC",
       "list every acceptable answer. Include a one-sentence explanation of the correct answer.",
+      "Write maths in ordinary symbols a page can show: 3/4, 6 × 7, x², √9. Never LaTeX, never dollar signs — the child sees the raw code.",
     ].join("\n"),
     messages: [{ role: "user", content: `Misconception: ${args.misconception}` }],
   });
@@ -738,6 +743,7 @@ async function generateLessonPractice(args: {
       "",
       "explanation: why the answer is right, in one or two sentences, addressed to the child.",
       "UK English.",
+      "Write maths in ordinary symbols a page can show: 3/4, 6 × 7, x², √9. Never LaTeX, never dollar signs — the child sees the raw code and cannot answer it.",
       "",
       alreadyAsked.length > 0
         ? "They have already answered the questions listed at the end. Do not write any of them again, and do not write the same question with the numbers or the wording changed — they will recognise it, and it teaches nothing. Take a different angle on the same skill."

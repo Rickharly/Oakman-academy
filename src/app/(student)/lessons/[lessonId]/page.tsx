@@ -9,6 +9,7 @@ import {
   type LessonPlayerQuestion,
 } from "@/components/student/LessonPlayer";
 import { parseExplainer } from "@/lib/lessons/explainer";
+import { plainMaths, plainMathsDeep } from "@/lib/text/maths";
 
 type RawQuestion = {
   id: string;
@@ -31,6 +32,8 @@ function mapQuestion(q: RawQuestion): LessonPlayerQuestion {
     maxScore: q.maxScore,
   };
 }
+// The questions themselves are made readable in `getAttemptView`, so every consumer gets the
+// same text — this page only has to do the lesson's own words.
 
 export default async function LessonPage({
   params,
@@ -97,7 +100,7 @@ export default async function LessonPage({
         isCorrect: qa.isCorrect,
         score: qa.score,
         maxScore: qa.maxScore,
-        feedback: qa.feedback,
+        feedback: qa.feedback ? plainMaths(qa.feedback) : qa.feedback,
       })),
     }));
 
@@ -107,10 +110,14 @@ export default async function LessonPage({
       currentStage={view.attempt.currentStage}
       lesson={{
         id: lesson.id,
-        title: lesson.title,
-        keyLearningPoints: (lesson.keyLearningPoints as string[] | null) ?? [],
-        keywords: (lesson.keywords as { keyword: string; description: string }[] | null) ?? [],
-        transcript: lesson.transcript,
+        title: plainMaths(lesson.title),
+        // The provider writes these in LaTeX too — "Add $$\\frac{1}{2}$$ and $$\\frac{1}{4}$$" as a
+        // learning point is the first thing a child reads when the lesson opens.
+        keyLearningPoints: plainMathsDeep((lesson.keyLearningPoints as string[] | null) ?? []),
+        keywords: plainMathsDeep(
+          (lesson.keywords as { keyword: string; description: string }[] | null) ?? [],
+        ),
+        transcript: lesson.transcript ? plainMaths(lesson.transcript) : lesson.transcript,
         estimatedMinutes: lesson.estimatedMinutes,
         // The lesson taught in words. Already written for a lesson someone has reached before,
         // so it is on screen with the page rather than after a wait; null means the player
@@ -152,7 +159,9 @@ export default async function LessonPage({
             }
           : null
       }
-      feedbackSummary={view.attempt.feedbackSummary}
+      feedbackSummary={
+        view.attempt.feedbackSummary ? plainMaths(view.attempt.feedbackSummary) : view.attempt.feedbackSummary
+      }
       masteryScore={view.attempt.masteryScore}
       nextLessonId={nextLessonId}
       lessonMinutes={user.studentProfile.lessonMinutes}

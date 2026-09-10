@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/Button";
 import { SpeakButton } from "./SpeakButton";
 import { MicButton } from "./MicButton";
 import { cn } from "@/lib/cn";
+import { plainMaths } from "@/lib/text/maths";
 
 /**
  * What the child can see. Passed down from the player and sent with every message, so the
@@ -200,7 +201,16 @@ export function TeacherPanel({ lessonAttemptId, questionId, stage, className, vo
                 )}
               >
                 {m.content ? (
-                  m.content
+                  /**
+                   * Rendered legibly as it arrives.
+                   *
+                   * The teacher is told to write maths in plain symbols, and mostly does — but a
+                   * model asked about fractions reaches for LaTeX out of habit, and a child
+                   * watching `\frac{3}{4}` appear in the chat has no way to know that is the
+                   * answer to their question. Done here rather than in the stream because a
+                   * `$$` can arrive split across two chunks.
+                   */
+                  plainMaths(m.content)
                 ) : m.role === "assistant" ? (
                   <TypingDots />
                 ) : null}
