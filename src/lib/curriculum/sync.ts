@@ -604,3 +604,54 @@ export async function syncMany(
 
   return { jobIds, programmeIds, failures };
 }
+
+
+/**
+ * Makes sure this one lesson has its video and worksheet, now.
+ *
+ * Importing a subject is rationed: the provider's quota is a fixed budget per window, so a
+ * lesson arrives with its questions and its assets are left for a later run to go back for.
+ * That later run is a bulk job that may be days away, or may never reach this lesson — and in
+ * the meantime a child opens it and there is no video. Not a broken player: no video row at all,
+ * which is why it kept looking like the player was at fault when nothing had ever been imported
+ * for it to play.
+ *
+ * One lesson, one provider request, when a child is about to sit down in front of it. That is
+ * the cheapest possible way to spend a request and by far the most valuable.
+ *
+ * Safe to call on every lesson open: a lesson whose assets are stamped returns immediately, and
+ * a failure leaves the stamp null so the next attempt tries again.
+ */
+export async function ensureLessonAssets(lessonId: string): Promise<number> {
+  const lesson = await prisma.lesson.findUnique({
+    where: { id: lessonId },
+    select: { id: true, provider: true, providerSlug: true, assetsSyncedAt: true },
+  });
+  if (!lesson || lesson.assetsSyncedAt) return 0;
+  // The bundled placeholder curriculum has nothing to fetch — its assets are made up.
+  if (lesson.provider === "fixture") return 0;
+
+  const provider = getCurriculumProvider();
+  const fetched = await provider.getAssets(lesson.providerSlug).catch(() => null);
+  if (!fetched) return 0;
+
+  const written = await writeResources(
+    lesson.id,
+    lesson.providerSlug,
+    fetched.assets,
+    fetched.attribution,
+    false,
+    () => undefined,
+  );
+  await prisma.lesson.update({
+    where: { id: lesson.id },
+    data: {
+      assetsSyncedAt: new Date(),
+      estimatedMinutes: estimateMinutes(
+        fetched.assets.some((a) => a.type === "video"),
+        fetched.assets.some((a) => a.type === "worksheet"),
+      ),
+    },
+  });
+  return written;
+}

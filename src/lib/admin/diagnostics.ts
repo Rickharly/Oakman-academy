@@ -407,6 +407,80 @@ async function questionImageCheck(): Promise<Check> {
 }
 
 /**
+ * Whether the lessons on the children's boards today actually have a video.
+ *
+ * "Playing a video" proves the pipeline works by streaming *a* video — any video, from any
+ * lesson in the database. It has been green for days while children opened lesson after lesson
+ * with nothing in the player, because the lessons they were given had no video row at all: they
+ * were imported against a rationed quota with their assets left for a later run that never
+ * reached them. A working pipeline and an empty lesson look identical from the outside.
+ *
+ * So this asks the only question that matters: the five lessons in front of this child today —
+ * do they have a video, and is it one we can fetch?
+ */
+async function todaysVideosCheck(): Promise<Check> {
+  const name = "Videos in today's lessons";
+  const assignments = await prisma.dailyAssignment.findMany({
+    where: { date: todayDateOnly(), kind: "LESSON", status: { not: "MOVED" } },
+    include: {
+      student: { include: { user: { select: { displayName: true } } } },
+      lesson: { include: { resources: true } },
+    },
+    orderBy: [{ studentId: "asc" }, { order: "asc" }],
+  });
+
+  if (assignments.length === 0) {
+    return { name, status: "warn", summary: "No lessons on any board today, so there is nothing to check." };
+  }
+
+  const lines: string[] = [];
+  let missing = 0;
+  let current = "";
+
+  for (const assignment of assignments) {
+    const who = assignment.student.user.displayName;
+    if (who !== current) {
+      if (current) lines.push("");
+      lines.push(who);
+      current = who;
+    }
+    const lesson = assignment.lesson;
+    if (!lesson) continue;
+
+    const video = lesson.resources.find((r) => r.type === "VIDEO");
+    // A real address: absolute, or a path we resolve against the provider. `fixture://` is the
+    // bundled placeholder pretending to be a video, and it is why players sat black for days.
+    const url = video?.providerUrl ?? "";
+    const usable = Boolean(url) && (/^https?:\/\//i.test(url) || !url.includes("://"));
+
+    if (!video) {
+      missing += 1;
+      lines.push(
+        `  ${lesson.title}: NO VIDEO ROW` +
+          (lesson.assetsSyncedAt
+            ? " — the provider was asked and had none."
+            : " — its assets were never fetched. Opening the lesson now fetches them."),
+      );
+    } else if (!usable) {
+      missing += 1;
+      lines.push(`  ${lesson.title}: placeholder video (${video.providerUrl ?? "no address"}) — not a real one.`);
+    } else {
+      lines.push(`  ${lesson.title}: video ok`);
+    }
+  }
+
+  return {
+    name,
+    status: missing > 0 ? "fail" : "ok",
+    summary:
+      missing > 0
+        ? `${missing} of today's ${assignments.length} lesson(s) have no video a child could watch.`
+        : `All ${assignments.length} of today's lessons have a video.`,
+    detail: lines.join("\n"),
+  };
+}
+
+/**
  * Whether a child's bug report can actually leave the building.
  *
  * "Something's wrong here" deliberately never shows a child a send failure — being told your
@@ -601,6 +675,7 @@ export async function runDiagnostics(): Promise<Check[]> {
     speechCheck().catch((err) => fail("Reading text aloud", "Check failed.", err)),
     voiceCheck().catch((err) => fail("Voice picker (ElevenLabs)", "Check failed.", err)),
     bugReportCheck().catch((err) => fail("Sending a bug report", "Check failed.", err)),
+    todaysVideosCheck().catch((err) => fail("Videos in today's lessons", "Check failed.", err)),
   ]);
   return checks;
 }

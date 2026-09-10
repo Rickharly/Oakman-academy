@@ -10,6 +10,7 @@ import { addDaysKey, dateOnlyKey, isoWeekday, schoolDayEnd, todayDateOnly, toDat
 import { alignSchedulesToEnrolments, enrolStudentInYearGroup, fixYearGroupEnrolments } from "@/lib/admin/enrol";
 import { settleFinishedLessons } from "@/lib/lessons/service";
 import { isLessonDone } from "@/lib/progress/aggregate";
+import { ensureLessonAssets } from "@/lib/curriculum/sync";
 import { catchUpImport } from "@/lib/curriculum/autofill";
 
 const REVIEW_MINUTES = 15;
@@ -483,6 +484,20 @@ export async function ensureDayPlanned(studentId: string, dateKey: string): Prom
   // New material specifically: a day propped up with revision still needs its real lessons.
   const lessonsPlanned = planned.filter((a) => a.kind === "LESSON" && a.status !== "MOVED").length;
   if (lessonsPlanned < student.lessonsPerDay) void catchUpImport(studentId).catch(() => undefined);
+
+  /**
+   * Today's videos, collected before anybody opens them.
+   *
+   * A lesson's assets are fetched on demand when it is opened, which works but costs the child
+   * the wait. Doing today's five while they are still looking at their board means the video is
+   * already there when they get to it. Behind the page, and failure changes nothing — the open
+   * itself will try again.
+   */
+  void Promise.all(
+    planned
+      .filter((a) => a.kind === "LESSON" && a.lessonId)
+      .map((a) => ensureLessonAssets(a.lessonId!).catch(() => 0)),
+  ).catch(() => undefined);
 
   return planned;
 }

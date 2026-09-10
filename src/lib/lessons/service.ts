@@ -379,12 +379,21 @@ export async function submitStage(
     },
   };
 
+  /**
+   * All the questions at once, not one after another.
+   *
+   * Marking was a loop: question one graded, then question two, then question three, each its
+   * own call to a model taking several seconds. Five questions and a child is sitting in front
+   * of a button that has done nothing visible for the best part of a minute, so they press it
+   * again, and again. They are not being impatient — nothing told them it had started.
+   *
+   * The questions do not depend on each other, so there is no reason to make them queue.
+   */
   const results: (QuestionAttempt & { question: Question })[] = [];
   let scoreSum = 0;
   let maxScoreSum = 0;
 
-  for (const question of questions) {
-    maxScoreSum += question.maxScore;
+  const gradeOne = async (question: Question): Promise<QuestionAttempt & { question: Question }> => {
     const existing = await prisma.questionAttempt.findFirst({
       where: { activityAttemptId: activity.id, questionId: question.id },
       orderBy: { attemptNumber: "desc" },
@@ -434,8 +443,13 @@ export async function submitStage(
         },
       });
     }
+    return { ...row, question };
+  };
+
+  for (const row of await Promise.all(questions.map(gradeOne))) {
+    maxScoreSum += row.question.maxScore;
     scoreSum += row.score ?? 0;
-    results.push({ ...row, question });
+    results.push(row);
   }
 
   const percentage = maxScoreSum > 0 ? (scoreSum / maxScoreSum) * 100 : null;
@@ -470,28 +484,41 @@ export async function submitStage(
     }
   }
 
+  /**
+   * The end-of-lesson note is written after they are told their score, not before it.
+   *
+   * This was the last thing a submit did, and it is a whole model call of its own — so the
+   * child's marks, which were ready, sat waiting on a paragraph nobody had asked for yet. Their
+   * score and the feedback on every question come back now; the note follows a few seconds
+   * later and the page picks it up.
+   */
   if (isCurrent && nextStage(stage) === "FEEDBACK") {
-    try {
-      const summary = await teacherAgent.summarizeLesson(attempt.id);
-      await prisma.lessonAttempt.update({ where: { id: attempt.id }, data: { feedbackSummary: summary.forStudent } });
-      if (summary.forParent) {
-        await prisma.teacherFeedback.create({
-          data: {
-            studentId,
-            lessonAttemptId: attempt.id,
-            authorType: "AI",
-            content: summary.forParent,
-            visibleToStudent: false,
-          },
-        });
-      }
-    } catch (err) {
-      // Never fail the submit because AI summarisation failed.
+    void writeLessonSummary(attempt.id, studentId).catch((err) => {
       console.error("summarizeLesson failed", err);
-    }
+    });
   }
 
   return { activity: gradedActivity, results };
+}
+
+/** The teacher's note on the whole lesson. Runs behind the submit that triggered it. */
+async function writeLessonSummary(attemptId: string, studentId: string): Promise<void> {
+  const summary = await teacherAgent.summarizeLesson(attemptId);
+  await prisma.lessonAttempt.update({
+    where: { id: attemptId },
+    data: { feedbackSummary: summary.forStudent },
+  });
+  if (summary.forParent) {
+    await prisma.teacherFeedback.create({
+      data: {
+        studentId,
+        lessonAttemptId: attemptId,
+        authorType: "AI",
+        content: summary.forParent,
+        visibleToStudent: false,
+      },
+    });
+  }
 }
 
 export async function retryQuestion(attemptId: string, studentId: string, questionId: string): Promise<void> {

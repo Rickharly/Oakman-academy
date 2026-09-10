@@ -252,6 +252,8 @@ export function LessonPlayer(props: LessonPlayerProps) {
     PRACTICE: pickLatest(props.activities, "PRACTICE"),
     CHECK: pickLatest(props.activities, "CHECK"),
   }));
+  /** The teacher's note, which arrives after the marks do. */
+  const [lessonSummary, setLessonSummary] = useState<string | null>(props.feedbackSummary);
   const [submittedStage, setSubmittedStage] = useState<Record<"STARTER" | "PRACTICE" | "CHECK", boolean>>(() => ({
     STARTER: pickLatest(props.activities, "STARTER")?.status === "GRADED",
     PRACTICE: pickLatest(props.activities, "PRACTICE")?.status === "GRADED",
@@ -398,8 +400,36 @@ export function LessonPlayer(props: LessonPlayerProps) {
     );
   }
 
+  /**
+   * Picks up the end-of-lesson note once the teacher has written it.
+   *
+   * A handful of tries a few seconds apart, then it gives up quietly — the note is a bonus on
+   * top of the marks and the per-question feedback, and a child must never be made to wait on
+   * one, nor told that anything failed if it does not arrive.
+   */
+  async function collectSummary(): Promise<void> {
+    for (let attempt = 0; attempt < 6; attempt += 1) {
+      await new Promise((resolve) => setTimeout(resolve, 3000));
+      try {
+        const res = await fetch(`/api/attempts/${attemptId}/summary`, { cache: "no-store" });
+        if (!res.ok) return;
+        const data = (await res.json()) as { feedbackSummary?: string | null };
+        if (data.feedbackSummary) {
+          setLessonSummary(data.feedbackSummary);
+          return;
+        }
+      } catch {
+        return;
+      }
+    }
+  }
+
   // ── graded stage submit (STARTER / PRACTICE / CHECK) ──
   async function submitGraded(stage: "STARTER" | "PRACTICE" | "CHECK") {
+    // One submit at a time. The button is disabled while it runs, but a double tap on a slow
+    // tablet can land twice before React has painted the disabled state — and two submits of
+    // the same answers is two rounds of marking for one child pressing one button.
+    if (submitting) return;
     setSubmitting(true);
     setSubmitError(null);
     try {
@@ -431,6 +461,10 @@ export function LessonPlayer(props: LessonPlayerProps) {
       });
       setActivityScore((prev) => ({ ...prev, [stage]: data.activity }));
       setSubmittedStage((prev) => ({ ...prev, [stage]: true }));
+
+      // The teacher's note on the lesson is written behind the submit so the marks are not held
+      // up by it. Collect it when it lands; its absence changes nothing on the page.
+      if (stage === "CHECK") void collectSummary();
 
       const wasCurrent = currentStage === stage;
       const emptyStage = questionsByStage[stage].length === 0;
@@ -1330,8 +1364,8 @@ export function LessonPlayer(props: LessonPlayerProps) {
               <Badge status={masteryBadge} />
             </div>
           ) : null}
-          {props.feedbackSummary ? (
-            <p className="mx-auto max-w-prose pt-2 text-sm text-ink">{props.feedbackSummary}</p>
+          {lessonSummary ? (
+            <p className="mx-auto max-w-prose pt-2 text-sm text-ink">{lessonSummary}</p>
           ) : null}
         </Card>
 

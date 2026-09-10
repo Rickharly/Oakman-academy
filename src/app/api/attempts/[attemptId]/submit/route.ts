@@ -5,6 +5,9 @@ import { countGradedAttempts, submitStage } from "@/lib/lessons/service";
 
 const bodySchema = z.object({ stage: z.enum(["STARTER", "PRACTICE", "CHECK"]) });
 
+/** Marking a written answer is a model call. A whole quiz of them needs room to finish. */
+export const maxDuration = 120;
+
 /** STARTER/PRACTICE always reveal; CHECK reveals only once no retry remains. */
 async function shouldReveal(
   stage: "STARTER" | "PRACTICE" | "CHECK",

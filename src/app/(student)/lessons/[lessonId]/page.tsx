@@ -10,6 +10,7 @@ import {
 } from "@/components/student/LessonPlayer";
 import { parseExplainer } from "@/lib/lessons/explainer";
 import { plainMaths, plainMathsDeep } from "@/lib/text/maths";
+import { ensureLessonAssets } from "@/lib/curriculum/sync";
 
 type RawQuestion = {
   id: string;
@@ -49,6 +50,22 @@ export default async function LessonPage({
 
   const lessonExists = await prisma.lesson.findUnique({ where: { id: lessonId }, select: { id: true } });
   if (!lessonExists) notFound();
+
+  /**
+   * The video, fetched for this lesson if nobody has fetched it yet.
+   *
+   * Lessons are imported in batches against a rationed quota, and their assets are left for a
+   * later bulk run to collect. When that run has not reached this lesson, there is no video row
+   * at all — which looks exactly like a broken player and is not. One provider request, for the
+   * lesson a child is opening right now, is the cheapest and most useful request we can make.
+   *
+   * Bounded: if the provider is slow the page renders without waiting, and the next open tries
+   * again. A lesson that starts late is worse than a lesson that starts without its video.
+   */
+  await Promise.race([
+    ensureLessonAssets(lessonId).catch(() => 0),
+    new Promise((resolve) => setTimeout(resolve, 4000)),
+  ]);
 
   // A REVIEW assignment re-runs the CHECK stage; anything else starts/resumes normally.
   const attempt =

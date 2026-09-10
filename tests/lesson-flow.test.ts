@@ -44,6 +44,16 @@ const { startOrResumeAttempt, getAttemptView, saveDraftAnswer, submitStage, retr
   "@/lib/lessons/service"
 );
 
+/** Waits briefly for something written behind the request that produced it. */
+async function waitFor<T>(read: () => Promise<T | null>, tries = 40): Promise<T> {
+  for (let i = 0; i < tries; i += 1) {
+    const value = await read();
+    if (value) return value;
+    await new Promise((resolve) => setTimeout(resolve, 25));
+  }
+  throw new Error("Nothing arrived in time");
+}
+
 describe("lesson flow", () => {
   let studentId: string;
   let lessonId: string;
@@ -284,9 +294,23 @@ describe("lesson flow", () => {
     expect(afterCheck.assessmentCompletedAt).not.toBeNull();
     expect(afterCheck.currentStage).toBe("FEEDBACK");
     expect(afterCheck.masteryScore).toBeCloseTo(0.8 * (2 / 3) + 0.2 * 1, 5);
-    expect(afterCheck.feedbackSummary).toContain("Great work");
 
-    const parentFeedback = await prisma.teacherFeedback.findFirst({ where: { lessonAttemptId: attempt.id } });
+    /**
+     * The teacher's note follows the marks; it does not hold them up.
+     *
+     * Writing it is a model call, and doing it inside the submit meant a child's score — which
+     * was ready — waited on a paragraph nobody had asked for yet. It still gets written, and
+     * this still checks that it does; it just no longer has to be there before the marks are.
+     */
+    const summarised = await waitFor(async () => {
+      const row = await prisma.lessonAttempt.findUniqueOrThrow({ where: { id: attempt.id } });
+      return row.feedbackSummary ? row : null;
+    });
+    expect(summarised.feedbackSummary).toContain("Great work");
+
+    const parentFeedback = await waitFor(() =>
+      prisma.teacherFeedback.findFirst({ where: { lessonAttemptId: attempt.id } }),
+    );
     expect(parentFeedback).not.toBeNull();
 
     // mastery record appended
