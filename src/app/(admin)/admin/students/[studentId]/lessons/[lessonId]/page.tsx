@@ -15,6 +15,7 @@ const STATUS_BADGE: Record<string, BadgeStatus> = {
   COMPLETED: "completed",
   NEEDS_REVIEW: "needs-review",
   MASTERED: "mastered",
+  ALREADY_KNOWN: "already-known",
 };
 
 const STAGE_FIELD: { stage: string; field: "starterCompletedAt" | "instructionCompletedAt" | "practiceCompletedAt" | "assessmentCompletedAt" | "completedAt" }[] = [

@@ -237,3 +237,72 @@ export async function reportBug(report: BugReport): Promise<PublishResult> {
     return { ok: false, problem: (err as Error).message };
   }
 }
+
+// ───────────────────────────── "I already know this" ─────────────────────────────
+
+export interface AlreadyKnownReport {
+  studentName: string;
+  yearGroup: number;
+  lessonTitle: string;
+  subject: string;
+  unitTitle: string;
+  note: string | null;
+  /** Whether the app can see them finishing a lesson of this name before. */
+  seenBefore: boolean;
+  earlierTitles: string[];
+}
+
+/**
+ * A child saying a lesson was already taught to them.
+ *
+ * Filed rather than counted, because the interesting half is which kind it is. `seenBefore`
+ * true means the planner set a lesson they had already done — that is a bug, in the app, that
+ * cost them part of a morning, and it wants fixing today. `seenBefore` false is worth a
+ * parent's glance and nothing more urgent than that.
+ *
+ * The title says which, so neither has to be opened to be triaged.
+ */
+export async function reportAlreadyKnown(report: AlreadyKnownReport): Promise<PublishResult> {
+  if (!process.env.GITHUB_TOKEN) {
+    return { ok: false, problem: "No GITHUB_TOKEN on the server, so this cannot be sent yet." };
+  }
+  const repo = repoFromEnv();
+  if (!repo) return { ok: false, problem: "GITHUB_REPO is not in owner/repo form." };
+
+  const title = report.seenBefore
+    ? `Repeat lesson set: "${report.lessonTitle}" (${report.studentName})`
+    : `${report.studentName} says they already know "${report.lessonTitle}"`;
+
+  const body = [
+    `**${report.studentName} (Year ${report.yearGroup})** marked a lesson as already learned.`,
+    "",
+    `- Lesson: ${report.lessonTitle}`,
+    `- Subject: ${report.subject}`,
+    `- Unit: ${report.unitTitle}`,
+    report.note ? `- In their words: "${redact(report.note)}"` : "",
+    "",
+    report.seenBefore
+      ? "**They are right — this app has them finishing a lesson of this name before.** " +
+        "The planner set it anyway, which is a bug worth chasing now." +
+        (report.earlierTitles.length > 0 ? `\n\nEarlier: ${report.earlierTitles.join("; ")}` : "")
+      : "No earlier record of this lesson for this child — worth a parent's glance rather than a fix.",
+    "",
+    `- Reported: ${new Date().toISOString()}`,
+  ]
+    .filter(Boolean)
+    .join("\n");
+
+  try {
+    const created = await gh(`/repos/${repo.owner}/${repo.repo}/issues`, {
+      method: "POST",
+      body: JSON.stringify({ title, body }),
+    });
+    if (!created.ok) {
+      return { ok: false, problem: `GitHub returned ${created.status}: ${(await created.text()).slice(0, 200)}` };
+    }
+    const issue = (await created.json()) as { html_url?: string };
+    return { ok: true, url: issue.html_url };
+  } catch (err) {
+    return { ok: false, problem: (err as Error).message };
+  }
+}

@@ -167,6 +167,8 @@ export default async function LessonPage({
       lessonMinutes={user.studentProfile.lessonMinutes}
       breakMinutes={user.studentProfile.breakMinutes}
       elapsedSeconds={view.attempt.timeSpentSeconds}
+      // So "I've already learned this" can take today's period off the board with it.
+      assignmentId={assignmentId ?? view.attempt.assignmentId}
     />
   );
 }

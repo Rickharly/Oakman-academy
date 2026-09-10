@@ -18,6 +18,7 @@ import { BreakTimer } from "@/components/student/BreakTimer";
 import { ReadAloud } from "@/components/student/ReadAloud";
 import { UnderstandingLoop } from "@/components/student/UnderstandingLoop";
 import { ReportBug } from "@/components/student/ReportBug";
+import { AlreadyLearned } from "@/components/student/AlreadyLearned";
 import { formatMinutes } from "@/components/student/format";
 import type { LessonExplainer } from "@/lib/lessons/explainer";
 import { cn } from "@/lib/cn";
@@ -133,6 +134,8 @@ export type LessonPlayerProps = {
   breakMinutes: number;
   /** Seconds already spent in this lesson. */
   elapsedSeconds: number;
+  /** Today's assignment this lesson was opened from, when it came from the board. */
+  assignmentId?: string | null;
   /** Whether the teacher reads her replies aloud for this child. */
   voiceEnabled?: boolean;
   /**
@@ -232,6 +235,7 @@ export function LessonPlayer(props: LessonPlayerProps) {
     lessonMinutes,
     breakMinutes,
     elapsedSeconds,
+    assignmentId,
     offerPreCheck = false,
     voiceEnabled = false,
   } =
@@ -1720,7 +1724,19 @@ export function LessonPlayer(props: LessonPlayerProps) {
         to say so. It sits on the lesson page rather than in a menu because that is where the
         thing they noticed is.
       */}
-      <div className="mb-4 flex justify-end">
+      <div className="mb-4 flex flex-wrap justify-end gap-1">
+        {/*
+          Only before they have worked through it. Offering "I already know this" to someone who
+          has just finished the quiz is nonsense, and offering it on a lesson they are halfway
+          through invites using it as a door out of a hard question.
+        */}
+        {viewStage !== "COMPLETE" && currentStage !== "COMPLETE" && !submittedStage.CHECK ? (
+          <AlreadyLearned
+            lessonId={lesson.id}
+            assignmentId={assignmentId}
+            lessonTitle={lesson.title}
+          />
+        ) : null}
         <ReportBug
           lessonTitle={lesson.title}
           subject={subjectTitle}

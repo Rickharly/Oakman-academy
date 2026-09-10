@@ -27,7 +27,26 @@ function pct(done: number, total: number): number {
  * lesson imperfectly is still doing it.
  */
 export function isLessonDone(row: { status: string; completedAt?: Date | null }): boolean {
-  return row.status === "COMPLETED" || row.status === "MASTERED" || row.status === "NEEDS_REVIEW" || row.completedAt != null;
+  return (
+    row.status === "COMPLETED" ||
+    row.status === "MASTERED" ||
+    row.status === "NEEDS_REVIEW" ||
+    // A child's own "I've already learned this". It is not work we watched them do, but it is
+    // behind them: setting it again is precisely what they were telling us to stop doing.
+    row.status === "ALREADY_KNOWN" ||
+    row.completedAt != null
+  );
+}
+
+/**
+ * Whether this lesson was actually taught here, with work to show for it.
+ *
+ * The narrower question, and the one a record has to answer. A lesson a child said they already
+ * knew is not evidence of anything we did, and counting it as a lesson completed in a document
+ * a school or a province may one day read would be a lie told on their behalf.
+ */
+export function isLessonTaught(row: { status: string; completedAt?: Date | null }): boolean {
+  return row.status !== "ALREADY_KNOWN" && isLessonDone(row);
 }
 
 /**

@@ -6,7 +6,9 @@ export type BadgeStatus =
   | "in-progress"
   | "completed"
   | "needs-review"
-  | "mastered";
+  | "mastered"
+  /** The child said they had already been taught this. A claim, not a result. */
+  | "already-known";
 
 export type BadgeTone = "neutral" | "accent" | "success" | "warning" | "danger";
 
@@ -16,6 +18,7 @@ const statusTone: Record<BadgeStatus, BadgeTone> = {
   completed: "success",
   "needs-review": "warning",
   mastered: "success",
+  "already-known": "neutral",
 };
 
 const statusLabel: Record<BadgeStatus, string> = {
@@ -24,6 +27,7 @@ const statusLabel: Record<BadgeStatus, string> = {
   completed: "Completed",
   "needs-review": "Needs review",
   mastered: "Mastered",
+  "already-known": "Already known",
 };
 
 const toneClasses: Record<BadgeTone, string> = {

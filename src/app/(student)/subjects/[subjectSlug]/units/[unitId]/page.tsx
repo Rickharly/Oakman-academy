@@ -14,6 +14,7 @@ const STATUS_ICON = {
   COMPLETED: CheckCircle2,
   NEEDS_REVIEW: RotateCcw,
   MASTERED: Star,
+  ALREADY_KNOWN: CheckCircle2,
 } as const;
 
 export default async function UnitPage({

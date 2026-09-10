@@ -559,6 +559,9 @@ enum LessonStatus {
   COMPLETED
   NEEDS_REVIEW
   MASTERED
+  /// The child says they already know this one. A claim, not evidence: it stops the lesson
+  /// being set again and is reported for a person to check, but it is never counted as work done.
+  ALREADY_KNOWN
 }
 
 model LessonAttempt {

@@ -46,8 +46,8 @@ export function firstName(displayName: string): string {
 
 /** `LessonStatus` (SCREAMING_SNAKE) → the kebab-case token `Badge` expects. */
 export function lessonStatusToBadge(
-  status: "NOT_STARTED" | "IN_PROGRESS" | "COMPLETED" | "NEEDS_REVIEW" | "MASTERED"
-): "not-started" | "in-progress" | "completed" | "needs-review" | "mastered" {
+  status: "NOT_STARTED" | "IN_PROGRESS" | "COMPLETED" | "NEEDS_REVIEW" | "MASTERED" | "ALREADY_KNOWN"
+): "not-started" | "in-progress" | "completed" | "needs-review" | "mastered" | "already-known" {
   switch (status) {
     case "NOT_STARTED":
       return "not-started";
@@ -57,6 +57,8 @@ export function lessonStatusToBadge(
       return "completed";
     case "NEEDS_REVIEW":
       return "needs-review";
+    case "ALREADY_KNOWN":
+      return "already-known";
     case "MASTERED":
       return "mastered";
   }
