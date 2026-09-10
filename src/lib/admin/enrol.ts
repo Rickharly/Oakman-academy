@@ -72,8 +72,17 @@ export async function enrolStudentInYearGroup(studentId: string): Promise<EnrolR
     const rule = DEFAULT_SCHEDULE.find((r) => r.subject === programme.subject.slug);
     if (!rule) continue;
 
-    const existing = await prisma.studentSchedule.findUnique({
-      where: { studentId_subjectId: { studentId, subjectId: programme.subjectId } },
+    /**
+     * By subject name, not by row.
+     *
+     * Looking this up by `subjectId` alone is what put two Maths lines on a child's timetable:
+     * moving them off the placeholder curriculum enrolled them on Oak's `maths` row, found no
+     * schedule for *that* row, and added a second one beside the placeholder's. Matched on the
+     * slug, an existing timetable line is recognised whichever provider's row it names — and
+     * `alignSchedulesToEnrolments` moves it across.
+     */
+    const existing = await prisma.studentSchedule.findFirst({
+      where: { studentId, subject: { slug: programme.subject.slug } },
     });
     // A parent who has already set this subject's frequency keeps their choice.
     if (existing) continue;
@@ -215,4 +224,91 @@ async function importYearInBackground(yearGroup: number, subjectSlugs: string[])
   } finally {
     importing.delete(yearGroup);
   }
+}
+
+/**
+ * Points the timetable at the subjects the child is actually enrolled on.
+ *
+ * Two rows can be called Maths. `Subject` is unique on (provider, slug), so the bundled
+ * placeholder curriculum has its own `maths/fixture` row and Oak has `maths/oak`. A timetable
+ * written against one and an enrolment written against the other are, to the planner, two
+ * unrelated subjects: `planWeek` matches on `subjectId`, finds no programme for the scheduled
+ * subject, and plans nothing.
+ *
+ * That is exactly what happened to Mikhael. Moving him off the placeholders corrected his
+ * enrolments and left his timetable pointing at the rows nobody teaches any more, so a child
+ * with 240 Year 4 lessons waiting for him opened Today to an empty board. Nothing in the app
+ * said why, because from every angle it looked correct — the subjects were there, the material
+ * was there, and they could not see each other.
+ *
+ * So the timetable follows the enrolment. The parent's choices — how often, which days, what
+ * order — are the part that matters and they are carried across unchanged; only the row the
+ * subject points at changes. Where both rows are already scheduled the parent's settings win
+ * and the orphan is retired, because two Maths lines on a timetable is one of them being wrong.
+ */
+export async function alignSchedulesToEnrolments(studentId: string): Promise<number> {
+  const [allSchedules, enrolments] = await Promise.all([
+    prisma.studentSchedule.findMany({ where: { studentId }, include: { subject: true } }),
+    prisma.studentEnrolment.findMany({
+      where: { studentId, active: true },
+      include: { programme: { include: { subject: true } } },
+    }),
+  ]);
+  if (allSchedules.length === 0 || enrolments.length === 0) return 0;
+
+  const enrolledSubjectIds = new Set(enrolments.map((e) => e.programme.subjectId));
+  // Where a slug has more than one enrolment, prefer the real material over the placeholder.
+  const subjectIdBySlug = new Map<string, string>();
+  for (const enrolment of enrolments) {
+    const { slug, provider } = enrolment.programme.subject;
+    const current = subjectIdBySlug.get(slug);
+    if (!current || provider !== PLACEHOLDER_PROVIDER) subjectIdBySlug.set(slug, enrolment.programme.subjectId);
+  }
+
+  // Every row, active or not: the timetable is unique on (student, subject), so an old retired
+  // row on the subject we are moving to would refuse the move rather than allow a duplicate.
+  const bySubjectId = new Map(allSchedules.map((s) => [s.subjectId, s]));
+  let moved = 0;
+
+  for (const schedule of allSchedules) {
+    if (!schedule.active) continue;
+    if (enrolledSubjectIds.has(schedule.subjectId)) continue; // already pointing somewhere taught
+
+    const target = subjectIdBySlug.get(schedule.subject.slug);
+    if (!target || target === schedule.subjectId) continue; // nothing to move it to
+
+    const occupant = bySubjectId.get(target);
+    if (occupant?.active) {
+      // Both rows are on the timetable — a duplicate of the same subject. The one that is
+      // taught stays; this one is retired, not deleted, so a parent can see what happened.
+      await prisma.studentSchedule.update({ where: { id: schedule.id }, data: { active: false } });
+      moved += 1;
+      continue;
+    }
+
+    if (occupant) {
+      // A retired row already holds that subject. Give it this timetable's settings and bring
+      // it back, so the parent's frequency and preferred days survive the move.
+      await prisma.studentSchedule.update({
+        where: { id: occupant.id },
+        data: {
+          active: true,
+          weeklyFrequency: schedule.weeklyFrequency,
+          priority: schedule.priority,
+          preferredDays: schedule.preferredDays ?? [],
+        },
+      });
+      await prisma.studentSchedule.update({ where: { id: schedule.id }, data: { active: false } });
+      occupant.active = true;
+      moved += 1;
+      continue;
+    }
+
+    await prisma.studentSchedule.update({ where: { id: schedule.id }, data: { subjectId: target } });
+    bySubjectId.delete(schedule.subjectId);
+    bySubjectId.set(target, { ...schedule, subjectId: target });
+    moved += 1;
+  }
+
+  return moved;
 }

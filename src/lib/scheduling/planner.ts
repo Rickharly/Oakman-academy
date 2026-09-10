@@ -7,7 +7,7 @@ import { prisma } from "@/lib/db";
 import type { DailyAssignment, Lesson, Programme, ReviewItem, StudentLessonProgress, Subject, Unit } from "@/generated/prisma/client";
 import { Prisma } from "@/generated/prisma/client";
 import { addDaysKey, dateOnlyKey, isoWeekday, schoolDayEnd, todayDateOnly, toDateOnly, weekStartKey } from "@/lib/dates";
-import { enrolStudentInYearGroup, fixYearGroupEnrolments } from "@/lib/admin/enrol";
+import { alignSchedulesToEnrolments, enrolStudentInYearGroup, fixYearGroupEnrolments } from "@/lib/admin/enrol";
 import { settleFinishedLessons } from "@/lib/lessons/service";
 import { catchUpImport } from "@/lib/curriculum/autofill";
 
@@ -425,6 +425,9 @@ export async function ensureDayPlanned(studentId: string, dateKey: string): Prom
   // A child enrolled on the wrong year is taught the wrong curriculum every day until someone
   // notices. Cheap to check, and it repairs itself rather than waiting to be reported again.
   await fixYearGroupEnrolments(studentId).catch(() => undefined);
+  // And that the timetable is pointing at the subjects they are enrolled on. Two rows can be
+  // called Maths; a timetable on one and an enrolment on the other is an empty school day.
+  await alignSchedulesToEnrolments(studentId).catch(() => undefined);
 
   const dayDate = toDateOnly(dateKey);
   const read = () =>

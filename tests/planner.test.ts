@@ -482,3 +482,82 @@ describe("planner: a day that has collected reviews", () => {
     expect(lessons.length).toBe(5);
   });
 });
+
+describe("a timetable pointing at a different row for the same subject", () => {
+  /**
+   * Mikhael's morning: five subjects on his timetable, 240 Year 4 lessons imported and waiting,
+   * and an empty board.
+   *
+   * `Subject` is unique on (provider, slug), so the bundled placeholder curriculum has its own
+   * `maths/fixture` row and Oak has `maths/oak`. His timetable was written against the first and
+   * his enrolments moved to the second, and the planner — which matches on subject id — could
+   * not see a single lesson. Nothing anywhere said so: both halves looked perfectly correct.
+   */
+  const SLUGS = ["maths", "english", "science", "history", "geography"] as const;
+
+  beforeAll(async () => {
+    await resetDb();
+    const user = await prisma.user.create({
+      data: { role: "STUDENT", username: "mikhael2", passwordHash: "x", displayName: "Mikhael" },
+    });
+    const profile = await prisma.studentProfile.create({
+      data: { userId: user.id, yearGroup: 4, keyStage: "ks2", lessonsPerDay: 5 },
+    });
+    studentId = profile.id;
+
+    for (const slug of SLUGS) {
+      // The placeholder row: on his timetable, enrolled on nothing, teaching nothing.
+      const placeholder = await prisma.subject.create({
+        data: { provider: "fixture", slug, title: slug },
+      });
+      await prisma.studentSchedule.create({
+        data: { studentId, subjectId: placeholder.id, weeklyFrequency: 5, priority: 1 },
+      });
+
+      // The real row: what he is actually enrolled on, with lessons ready to teach.
+      const real = await prisma.subject.create({ data: { provider: "oak", slug, title: slug } });
+      const programme = await prisma.programme.create({
+        data: {
+          provider: "oak",
+          providerSlug: `${slug}:4`,
+          subjectId: real.id,
+          yearGroup: 4,
+          keyStage: "ks2",
+          title: slug,
+        },
+      });
+      const unit = await prisma.unit.create({
+        data: { provider: "oak", providerSlug: `${slug}-u1`, programmeId: programme.id, title: "U", order: 1 },
+      });
+      for (let i = 1; i <= 6; i++) {
+        await prisma.lesson.create({
+          data: {
+            provider: "oak",
+            providerSlug: `${slug}-l${i}`,
+            unitId: unit.id,
+            title: `${slug} ${i}`,
+            order: i,
+          },
+        });
+      }
+      await prisma.studentEnrolment.create({ data: { studentId, programmeId: programme.id } });
+    }
+  });
+
+  it("moves the timetable onto the subjects he is enrolled on, and he gets his day", async () => {
+    await ensureDayPlanned(studentId, MONDAY);
+
+    const lessons = await lessonsOn(MONDAY);
+    expect(lessons.length).toBe(5);
+
+    // One line per subject, on the row that is actually taught — not two Maths, one of them dead.
+    const schedules = await prisma.studentSchedule.findMany({
+      where: { studentId, active: true },
+      include: { subject: true },
+    });
+    expect(schedules).toHaveLength(SLUGS.length);
+    expect(schedules.every((s) => s.subject.provider === "oak")).toBe(true);
+    // The parent's choices came across with it.
+    expect(schedules.every((s) => s.weeklyFrequency === 5)).toBe(true);
+  });
+});

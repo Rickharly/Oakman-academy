@@ -16,7 +16,7 @@ import { getAiProvider, resolveModelId } from "@/lib/ai/provider";
 import { explainerSchema } from "@/lib/lessons/explainer";
 import { describeFetchError, fetchProviderAsset, resolveAssetUrl } from "@/lib/curriculum/asset-fetch";
 import { imageSchema } from "@/lib/questions/types";
-import { todayDateOnly } from "@/lib/dates";
+import { dateOnlyKey, toDateOnly, todayDateOnly, weekStartKey } from "@/lib/dates";
 
 export type CheckStatus = "ok" | "warn" | "fail" | "skip";
 
@@ -314,25 +314,36 @@ async function pictureCheck(): Promise<Check> {
  */
 async function questionImageCheck(): Promise<Check> {
   const name = "Showing a question's picture";
-  const question = await prisma.question.findFirst({
-    where: { NOT: { promptImage: { equals: Prisma.DbNull } } },
+  /**
+   * A picture we could actually show, not merely a column that is not empty.
+   *
+   * `NOT: { promptImage: { equals: DbNull } }` reads as "has a picture" and is not: a column
+   * holding the JSON value `null` passes it. So the check picked a question with nothing in it,
+   * failed to parse the nothing, and reported a broken picture pipeline that was working — the
+   * one thing a diagnostic must never do, because a false alarm here costs a morning.
+   */
+  const candidates = await prisma.question.findMany({
+    where: { promptImage: { not: Prisma.AnyNull } },
     select: { id: true, prompt: true, promptImage: true },
+    take: 50,
   });
-  if (!question) {
+  const usable = candidates.find((q) => imageSchema.safeParse(q.promptImage).success);
+
+  if (!usable) {
+    const unreadable = candidates.find((q) => q.promptImage !== null);
+    if (unreadable) {
+      return {
+        name,
+        status: "fail",
+        summary: "A question's picture is stored in a shape we cannot read.",
+        detail: JSON.stringify(unreadable.promptImage).slice(0, 300),
+      };
+    }
     return { name, status: "warn", summary: "No question has a picture stored, so there is nothing to test." };
   }
 
-  const parsed = imageSchema.safeParse(question.promptImage);
-  if (!parsed.success) {
-    return {
-      name,
-      status: "fail",
-      summary: "A question's picture is stored in a shape we cannot read.",
-      detail: JSON.stringify(question.promptImage).slice(0, 300),
-    };
-  }
-
-  const url = parsed.data.url;
+  const question = usable;
+  const url = imageSchema.parse(question.promptImage).url;
   try {
     const isProvider = /thenational\.academy$/i.test(new URL(url).hostname);
     const res = await fetch(url, {
@@ -409,6 +420,7 @@ async function timetableCheck(): Promise<Check> {
     }
 
     const programmeBySubjectId = new Map(enrolments.map((e) => [e.programme.subjectId, e.programme]));
+    let subjectsWithMaterial = 0;
 
     for (const schedule of schedules) {
       const programme = programmeBySubjectId.get(schedule.subjectId);
@@ -448,7 +460,40 @@ async function timetableCheck(): Promise<Check> {
           `programme ${programme.provider}:y${programme.yearGroup} · ` +
           `${lessons.length} lesson(s), ${done} done, ${left} left${left <= 0 ? "  <-- NOTHING TO TEACH" : ""}`,
       );
+      subjectsWithMaterial += left > 0 ? 1 : 0;
     }
+
+    /**
+     * The day itself, when every part of it checks out.
+     *
+     * A timetable and material that both look right, and a board with nothing on it, is the
+     * hardest failure to see from outside and the one that has cost the most mornings. When it
+     * happens the week is printed: which days did get lessons tells you whether the planner ran
+     * at all, ran and placed them elsewhere, or ran and produced nothing.
+     */
+    const lessonsToday = today.filter((a) => a.kind === "LESSON").length;
+    if (lessonsToday < student.lessonsPerDay && subjectsWithMaterial > 0) {
+      broken += 1;
+      const week = await prisma.dailyAssignment.groupBy({
+        by: ["date"],
+        where: {
+          studentId: student.id,
+          kind: "LESSON",
+          status: { not: "MOVED" },
+          date: { gte: toDateOnly(weekStartKey(dateOnlyKey(todayDateOnly()))) },
+        },
+        _count: { _all: true },
+        orderBy: { date: "asc" },
+      });
+      lines.push(
+        `  SHORT DAY — ${lessonsToday} of ${student.lessonsPerDay} periods, with ` +
+          `${subjectsWithMaterial} subject(s) that still have lessons to give.`,
+      );
+      lines.push(
+        `  this week: ${week.length ? week.map((d) => `${dateOnlyKey(d.date)}=${d._count._all}`).join(", ") : "nothing planned"}`,
+      );
+    }
+
     lines.push("");
   }
 
