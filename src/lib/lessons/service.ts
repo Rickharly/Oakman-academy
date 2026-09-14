@@ -333,6 +333,22 @@ export async function saveDraftAnswer(
   }
 }
 
+/**
+ * Marks today's period done. Idempotent, and it never touches a period somebody already closed.
+ *
+ * Called the moment a CHECK is marked, because that is when the child finished the lesson —
+ * not when they later find and press a button on the feedback screen.
+ */
+async function tickTheBoard(assignmentId: string | null): Promise<void> {
+  if (!assignmentId) return;
+  await prisma.dailyAssignment
+    .updateMany({
+      where: { id: assignmentId, status: { in: ["PLANNED", "IN_PROGRESS"] } },
+      data: { status: "COMPLETED", completedAt: new Date() },
+    })
+    .catch(() => undefined);
+}
+
 export async function submitStage(
   attemptId: string,
   studentId: string,
@@ -363,6 +379,8 @@ export async function submitStage(
       },
     });
     await finalizeStageAdvance(attempt, stage, isCurrent);
+    // A quiz with nothing in it is still a quiz they got to the end of.
+    if (stage === "CHECK") await tickTheBoard(attempt.assignmentId);
     return { activity, results: [] };
   }
 
@@ -467,6 +485,22 @@ export async function submitStage(
 
   if (stage === "CHECK") {
     await recomputeMasteryScore(attempt.id);
+
+    /**
+     * The tick belongs to the child the moment the quiz is marked.
+     *
+     * Finishing the work and being *recorded* as finishing it were two different events, and
+     * the second one needed a button on a later screen. A child who did every question, got
+     * their marks and went back to their board found it still saying "Continue" — so they had
+     * finished the lesson and been told they had not. They are trying to complete the day and
+     * the day will not let them.
+     *
+     * Everything after the quiz — reading the feedback, practising what they missed, the
+     * tutoring loop — is worth doing and none of it is what makes the lesson done. The board
+     * ticks here. `finaliseAttempt` still runs when they leave properly, and setting the same
+     * row to the same value twice costs nothing.
+     */
+    await tickTheBoard(attempt.assignmentId);
   }
 
   await finalizeStageAdvance(attempt, stage, isCurrent);
@@ -668,9 +702,10 @@ export async function finaliseAttempt(attempt: LessonAttempt): Promise<LessonAtt
  *
  * Long enough that a child reading their feedback, retrying a question, or doing the extra
  * practice is not cut off mid-thought; short enough that a lesson done this morning is on the
- * board as done by the next one.
+ * board as done by the next one. The board itself ticks as soon as the quiz is marked — this is
+ * only the backstop that closes the attempt behind them.
  */
-const SETTLE_AFTER_MINUTES = 15;
+const SETTLE_AFTER_MINUTES = 5;
 
 /**
  * Marks as done the lessons a child finished but never pressed Finish on.

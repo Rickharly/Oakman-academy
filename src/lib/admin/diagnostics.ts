@@ -481,6 +481,72 @@ async function todaysVideosCheck(): Promise<Check> {
 }
 
 /**
+ * What the children have actually reported, in their own words.
+ *
+ * This is here because the answer to "do you even see the tickets?" was no. Reports went
+ * straight to GitHub and nowhere else, and with no token on the server they failed into a log
+ * line nobody reads — destroyed on arrival, while the app thanked the child for sending them.
+ *
+ * They are kept in the database now, and printed here. A report that could not be sent is still
+ * a report, and this page can be copied and pasted by a parent, which needs no token and no
+ * permissions and works on the worst day.
+ */
+async function childReportsCheck(): Promise<Check> {
+  const name = "What the children have reported";
+  const logs = await prisma.activityLog.findMany({
+    where: { kind: { in: ["bug_report", "lesson_already_known"] } },
+    include: { student: { include: { user: { select: { displayName: true } } } } },
+    orderBy: { createdAt: "desc" },
+    take: 25,
+  });
+
+  if (logs.length === 0) {
+    return { name, status: "ok", summary: "Nothing reported." };
+  }
+
+  const lines: string[] = [];
+  let unsent = 0;
+
+  for (const log of logs) {
+    const data = (log.data ?? {}) as Record<string, unknown>;
+    const who = log.student?.user.displayName ?? "someone";
+    const when = log.createdAt.toISOString().slice(0, 16).replace("T", " ");
+
+    if (log.kind === "lesson_already_known") {
+      lines.push(`${when} — ${who} said they already knew "${String(data.lessonTitle ?? "a lesson")}"`);
+      if (data.note) lines.push(`   "${redactish(String(data.note))}"`);
+      lines.push(data.seenBefore ? "   (they had done it before — a repeat we set)" : "   (no earlier record)");
+      lines.push("");
+      continue;
+    }
+
+    if (data.sent !== true) unsent += 1;
+    lines.push(`${when} — ${who}${data.sent === true ? "" : "  [NOT SENT]"}`);
+    lines.push(`   "${redactish(String(data.what ?? ""))}"`);
+    if (data.lessonTitle) lines.push(`   Lesson: ${String(data.lessonTitle)}${data.stage ? ` (${String(data.stage)})` : ""}`);
+    if (data.questionPrompt) lines.push(`   Question: ${String(data.questionPrompt)}`);
+    if (data.videoState) lines.push(`   Where the video goes: ${String(data.videoState)}`);
+    if (data.problem) lines.push(`   Could not send: ${String(data.problem)}`);
+    lines.push("");
+  }
+
+  return {
+    name,
+    status: unsent > 0 ? "fail" : "ok",
+    summary:
+      unsent > 0
+        ? `${logs.length} report(s) from the children — ${unsent} never reached anyone. Copy this section and send it.`
+        : `${logs.length} report(s) from the children.`,
+    detail: lines.join("\n"),
+  };
+}
+
+/** Keeps anything key-shaped out of a child's own words. Belt and braces. */
+function redactish(text: string): string {
+  return text.replace(/\b(sk|xi|ghp|github_pat)[-_][A-Za-z0-9_-]{12,}/g, "[redacted]").slice(0, 500);
+}
+
+/**
  * Whether a child's bug report can actually leave the building.
  *
  * "Something's wrong here" deliberately never shows a child a send failure — being told your
@@ -676,6 +742,7 @@ export async function runDiagnostics(): Promise<Check[]> {
     voiceCheck().catch((err) => fail("Voice picker (ElevenLabs)", "Check failed.", err)),
     bugReportCheck().catch((err) => fail("Sending a bug report", "Check failed.", err)),
     todaysVideosCheck().catch((err) => fail("Videos in today's lessons", "Check failed.", err)),
+    childReportsCheck().catch((err) => fail("What the children have reported", "Check failed.", err)),
   ]);
   return checks;
 }

@@ -166,6 +166,8 @@ export interface BugReport {
     stage?: string;
     questionPrompt?: string;
     url?: string;
+    /** What was on screen where the video goes, in the player's own words. */
+    videoState?: string;
   };
 }
 
@@ -200,6 +202,7 @@ export async function reportBug(report: BugReport): Promise<PublishResult> {
     context.lessonTitle ? `- Lesson: ${context.lessonTitle}` : "",
     context.stage ? `- Step: ${context.stage}` : "",
     context.questionPrompt ? `- Question on screen: "${context.questionPrompt}"` : "",
+    context.videoState ? `- Where the video goes: ${context.videoState}` : "",
     context.url ? `- Page: ${context.url}` : "",
     `- Reported: ${new Date().toISOString()}`,
   ]

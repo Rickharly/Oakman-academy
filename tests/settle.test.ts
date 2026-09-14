@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { prisma } from "@/lib/db";
 import { resetDb } from "./helpers/db";
-import { completeStage, settleFinishedLessons } from "@/lib/lessons/service";
+import { completeStage, settleFinishedLessons, submitStage } from "@/lib/lessons/service";
 
 /**
  * A lesson someone actually did should be on the board as done.
@@ -153,5 +153,27 @@ describe("pressing Finish", () => {
   it("refuses only when the quiz has genuinely not been marked", async () => {
     const { studentId, attemptId } = await buildAttempt({ gradedMinutesAgo: null });
     await expect(completeStage(attemptId, studentId, "COMPLETE")).rejects.toThrow();
+  });
+});
+
+describe("the tick on the board", () => {
+  beforeEach(async () => {
+    await resetDb();
+  });
+
+  it("appears as soon as the quiz is marked, not when a button is pressed", async () => {
+    // A child who answered every question and got their marks has finished the lesson. Making
+    // the board wait for a button on a later screen told them they had not.
+    const { studentId, attemptId, assignmentId } = await buildAttempt({ gradedMinutesAgo: null });
+    await prisma.lessonAttempt.update({ where: { id: attemptId }, data: { currentStage: "CHECK" } });
+
+    const before = await prisma.dailyAssignment.findUniqueOrThrow({ where: { id: assignmentId } });
+    expect(before.status).toBe("PLANNED");
+
+    await submitStage(attemptId, studentId, "CHECK");
+
+    const after = await prisma.dailyAssignment.findUniqueOrThrow({ where: { id: assignmentId } });
+    expect(after.status).toBe("COMPLETED");
+    expect(after.completedAt).not.toBeNull();
   });
 });

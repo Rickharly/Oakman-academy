@@ -281,6 +281,25 @@ export function LessonPlayer(props: LessonPlayerProps) {
   // "this lesson has no video" and leaves a child staring at a black rectangle. When it fails,
   // say so and give them the way through.
   const [videoFailed, setVideoFailed] = useState(false);
+
+  /**
+   * What is in the video slot, in one sentence.
+   *
+   * "The video is blurred out" has been the report for a week and every reading of it was a
+   * guess: a black player, a pale panel where a player should be, and a lesson with no video row
+   * at all look much the same to anybody describing them. So the page says which it is — on the
+   * screen for the child, and attached to anything they report, so the next message about a
+   * video comes with the answer already in it.
+   */
+  const videoResource = lesson.resources.find((r) => r.type === "VIDEO");
+  const videoState = !videoResource
+    ? "no video was imported for this lesson"
+    : !isPlayable(videoResource)
+      ? `placeholder address (${videoResource.providerUrl ?? "none"}) — not a real video`
+      : videoFailed
+        ? "a real video that would not play in the browser"
+        : "a working player";
+
   // Set when the tutoring loop reports nothing left open, so the lesson stops holding them.
   const [gapsClosed, setGapsClosed] = useState(false);
   // The lesson taught in words. Present on the page when it has been written before; asked for
@@ -1248,6 +1267,24 @@ export function LessonPlayer(props: LessonPlayerProps) {
           ) : (
             <>
               {/*
+                Say which of these it is.
+
+                A lesson with no video imported, a placeholder address, and a player that failed
+                all looked the same from the outside — an empty rectangle — and "the video is
+                blurred out" could not be told apart from "there is no video". Now the page says
+                so in a sentence, so a child knows it is not their tablet and nobody has to guess.
+              */}
+              {!videoResource ? (
+                <div className="space-y-1 rounded-2xl border border-line bg-stone-50 p-5">
+                  <p className="text-base font-medium text-ink">There&apos;s no video for this one.</p>
+                  <p className="text-sm text-ink-muted">
+                    Not a broken player — this lesson came without one. Everything you need is
+                    written out below, and I can read it to you.
+                  </p>
+                </div>
+              ) : null}
+
+              {/*
                 No video file for this lesson, so send them to Oak's own page rather than
                 pretending the lesson has no teaching in it.
 
@@ -1776,6 +1813,7 @@ export function LessonPlayer(props: LessonPlayerProps) {
           subject={subjectTitle}
           stage={viewStage}
           questionPrompt={teacherView.questionPrompt}
+          videoState={videoState}
         />
       </div>
 

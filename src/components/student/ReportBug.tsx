@@ -23,11 +23,14 @@ export function ReportBug({
   subject,
   stage,
   questionPrompt,
+  videoState,
 }: {
   lessonTitle?: string;
   subject?: string;
   stage?: string;
   questionPrompt?: string;
+  /** What the page has where the video goes, so "the video is broken" arrives with its answer. */
+  videoState?: string;
 }) {
   const [open, setOpen] = useState(false);
   const [what, setWhat] = useState("");
@@ -47,6 +50,7 @@ export function ReportBug({
           subject,
           stage,
           questionPrompt,
+          videoState,
           url: typeof window !== "undefined" ? window.location.href : undefined,
         }),
       });
