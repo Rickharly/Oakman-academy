@@ -3,6 +3,7 @@
 import { CheckCircle2, XCircle } from "lucide-react";
 import { Input } from "@/components/ui/Input";
 import { cn } from "@/lib/cn";
+import { plainMaths } from "@/lib/text/maths";
 import type { QuestionRendererProps } from "./types";
 
 type Value = { text: string } | undefined;
@@ -43,7 +44,10 @@ export function ShortAnswer({ question, value, onChange, disabled, result }: Que
       </div>
       {graded && result?.isCorrect === false && (answerKey?.modelAnswer || answerKey?.accepted?.length) ? (
         <p className="text-sm text-ink-muted">
-          Model answer: <span className="font-medium text-ink">{answerKey.modelAnswer ?? answerKey.accepted[0]}</span>
+          {/* The provider's own text, LaTeX and all — `plainMaths` is what stands between a
+              revealed answer like "$$\frac{3}{4}$$" and a child reading it as gibberish. */}
+          Model answer:{" "}
+          <span className="font-medium text-ink">{plainMaths(answerKey.modelAnswer ?? answerKey.accepted[0])}</span>
         </p>
       ) : null}
     </div>
