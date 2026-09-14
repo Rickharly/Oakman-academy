@@ -29,16 +29,34 @@ const NEEDS_A_PICTURE =
 
 const optionsSchema = z.object({ choices: z.array(optionSchema) }).partial();
 
+/**
+ * True when a stored image url points at an actual picture rather than placeholder content.
+ *
+ * `{url: string}` alone isn't proof there is a picture: fixture curriculum stores a
+ * `fixture://…` marker in the same field, and that is not a fetchable image any more than an
+ * empty one is — treating it as "there's a picture" hid the exact questions this file exists to
+ * catch. A real http(s) link or a relative one (resolved against the provider by
+ * `curriculum/image/route.ts`) both count; any other scheme does not.
+ */
+function isRealPicture(url: string): boolean {
+  const trimmed = url.trim();
+  if (!trimmed) return false;
+  if (/^https?:\/\//i.test(trimmed)) return true;
+  return !trimmed.includes("://");
+}
+
 /** True when the question talks about a picture and has none — its own or on its answers. */
 export function isUnanswerableWithoutPicture(question: {
   prompt: string;
   promptImage: unknown;
   options: unknown;
 }): boolean {
-  if (imageSchema.safeParse(question.promptImage).success) return false;
+  const promptImage = imageSchema.safeParse(question.promptImage);
+  if (promptImage.success && isRealPicture(promptImage.data.url)) return false;
 
   const options = optionsSchema.safeParse(question.options);
-  const optionHasImage = options.success && (options.data.choices ?? []).some((c) => c.image?.url);
+  const optionHasImage =
+    options.success && (options.data.choices ?? []).some((c) => c.image?.url && isRealPicture(c.image.url));
   if (optionHasImage) return false;
 
   return NEEDS_A_PICTURE.test(question.prompt);

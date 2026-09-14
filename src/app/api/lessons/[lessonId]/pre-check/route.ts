@@ -18,13 +18,24 @@ export async function POST(req: Request, ctx: { params: Promise<{ lessonId: stri
       .object({ answers: z.record(z.string(), z.unknown()) })
       .parse(await req.json());
 
-    const ids = Object.keys(body.answers);
-    if (ids.length === 0) {
+    if (Object.keys(body.answers).length === 0) {
       return Response.json({ error: "Answer at least one question first." }, { status: 400 });
     }
 
+    // The pre-check is the lesson's own CHECK-stage questions (see pre-check.ts): the same set
+    // `questionsByStage.CHECK` puts on screen, loaded fresh here rather than trusted from the
+    // request. Grading only `body.answers`' keys made the total the count *answered*, not the
+    // count *shown* — a child who answered 1 of 4 and left the rest blank scored "1 of 1".
     const [questions, lesson] = await Promise.all([
-      prisma.question.findMany({ where: { id: { in: ids }, lessonId } }),
+      prisma.question.findMany({
+        where: {
+          lessonId,
+          stage: "CHECK",
+          excluded: false,
+          OR: [{ source: { not: "AI_GENERATED" } }, { generatedForStudentId: user.studentProfile.id }],
+        },
+        orderBy: { order: "asc" },
+      }),
       prisma.lesson.findUniqueOrThrow({ where: { id: lessonId } }),
     ]);
 
@@ -41,11 +52,17 @@ export async function POST(req: Request, ctx: { params: Promise<{ lessonId: stri
       },
     };
 
-    const results = await Promise.all(
-      questions.map((q) => gradeQuestion(q, body.answers[q.id], gradingContext)),
+    // Full marks only: a partially right answer is not "already knows this". A question with
+    // nothing in `body.answers` is one they left blank — counted as wrong, and never handed to
+    // AI grading (which would otherwise be asked to mark a non-answer and could be generous).
+    const verdicts = await Promise.all(
+      questions.map(async (q) => {
+        if (!Object.prototype.hasOwnProperty.call(body.answers, q.id)) return false;
+        const graded = await gradeQuestion(q, body.answers[q.id], gradingContext);
+        return graded.score >= (q.maxScore ?? 1);
+      }),
     );
-    // Full marks only: a partially right answer is not "already knows this".
-    const correct = results.filter((r, i) => r.score >= (questions[i].maxScore ?? 1)).length;
+    const correct = verdicts.filter(Boolean).length;
 
     const outcome = await judgePreCheck({
       studentId: user.studentProfile.id,

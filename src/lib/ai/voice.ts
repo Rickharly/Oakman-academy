@@ -150,6 +150,30 @@ export async function listVoices(): Promise<VoiceListing> {
   };
 }
 
+/**
+ * Cuts text down to at most `maxLen` characters at the end of a sentence rather than mid-word.
+ *
+ * ElevenLabs (like most TTS) has a practical limit per call, and a reply that ran past it used
+ * to be refused outright — "Nothing to read aloud" for the exact replies most worth hearing, the
+ * longer explanations. Reading as much as fits, stopping cleanly, is better than reading none of
+ * it. Falls back to a word boundary, and only cuts mid-word as a last resort.
+ */
+export function truncateAtSentenceBoundary(text: string, maxLen: number): string {
+  if (text.length <= maxLen) return text;
+  const slice = text.slice(0, maxLen);
+  const sentenceEnd = Math.max(
+    slice.lastIndexOf(". "),
+    slice.lastIndexOf("! "),
+    slice.lastIndexOf("? "),
+    slice.lastIndexOf(".\n"),
+  );
+  // Only trust a sentence break that isn't so early it throws most of the text away.
+  if (sentenceEnd > maxLen * 0.4) return slice.slice(0, sentenceEnd + 1).trim();
+  const wordBoundary = slice.lastIndexOf(" ");
+  if (wordBoundary > maxLen * 0.4) return slice.slice(0, wordBoundary).trim();
+  return slice.trim();
+}
+
 export class VoiceUnavailable extends Error {
   constructor(message: string) {
     super(message);
@@ -191,7 +215,7 @@ export async function speak(text: string, voiceId: string): Promise<{ audio: Arr
   const apiKey = process.env.ELEVENLABS_API_KEY;
   if (!apiKey) throw new VoiceUnavailable("No ELEVENLABS_API_KEY is set on the server.");
 
-  const trimmed = text.trim().slice(0, 2500);
+  const trimmed = truncateAtSentenceBoundary(text.trim(), 2500);
   if (!trimmed) throw new VoiceUnavailable("Nothing to say.");
 
   let res = await requestSpeech(trimmed, voiceId, PREFERRED_MODEL, apiKey);

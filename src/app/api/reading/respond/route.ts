@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { jsonError, requireStudentApi } from "@/lib/auth/api";
-import { submitReadingResponse } from "@/lib/reading/service";
+import { retryStaleReadingReplies, submitReadingResponse } from "@/lib/reading/service";
 
 const bodySchema = z.object({
   readingTextId: z.string().min(1),
@@ -25,6 +25,11 @@ export async function POST(req: Request) {
       assignmentId: input.assignmentId,
       readingSeconds: input.readingSeconds,
     });
+
+    // A previous reply that failed (a blip, a brief outage) has nothing else watching it —
+    // this student's next visit to reading is the natural moment to give it a second go, so
+    // "Your teacher will reply soon" eventually comes true rather than staying a promise.
+    await retryStaleReadingReplies(user.studentProfile.id);
 
     // Only what the child is allowed to see: the parent-facing reasoning stays server-side.
     return Response.json({

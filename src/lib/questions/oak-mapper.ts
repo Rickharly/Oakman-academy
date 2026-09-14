@@ -105,6 +105,47 @@ function sha1(value: unknown): string {
   return createHash("sha1").update(JSON.stringify(value)).digest("hex");
 }
 
+/** A small, stable PRNG seeded from a string hash — the same seed always produces the same
+ * sequence, so a question shuffles the same way every re-sync and every re-render rather than
+ * reshuffling under the child on every page load. Not for anything security-sensitive. */
+function seededRandom(seed: string): () => number {
+  let h = 0;
+  for (let i = 0; i < seed.length; i++) {
+    h = (Math.imul(31, h) + seed.charCodeAt(i)) | 0;
+  }
+  let state = (h >>> 0) || 1;
+  return () => {
+    state = (state + 0x6d2b79f5) | 0;
+    let t = Math.imul(state ^ (state >>> 15), 1 | state);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+/**
+ * A Fisher-Yates shuffle seeded from the question's own identity (its `providerRef`).
+ *
+ * Oak lists an ORDERING question's steps already in the correct sequence and a MATCHING
+ * question's right-hand column already lined up beside its left-hand partner, so a question a
+ * child never touches would otherwise already be right, or already show the answer. Seeding
+ * from `providerRef` keeps the shuffle stable across re-syncs and re-renders instead of
+ * reshuffling under the child every time the page loads. If the shuffle happens to land back on
+ * the original order, rotating by one guarantees it never does.
+ */
+export function seededShuffle<T>(items: readonly T[], seed: string): T[] {
+  if (items.length < 2) return items.slice();
+  const random = seededRandom(seed);
+  const shuffled = items.slice();
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+  if (shuffled.every((item, i) => item === items[i])) {
+    shuffled.push(shuffled.shift()!);
+  }
+  return shuffled;
+}
+
 /** Base-26 letter ids: a, b, c … z, aa, ab … */
 function letterId(index: number): string {
   let n = index;
@@ -178,16 +219,23 @@ export function mapOakQuizQuestion(q: unknown, stage: "STARTER" | "CHECK", order
       };
     }
     case "match": {
+      // Right-column ids get their own namespace (`r` + letter) rather than reusing the left
+      // column's letters — the two columns are shuffled independently and the answer key
+      // pairs a leftId with a rightId, so keeping the id spaces distinct means a stray
+      // leftId==rightId string collision can never be mistaken for a match.
       const left = q.answers.map((a, i) => ({ id: letterId(i), text: a.matchOption.content }));
-      const right = q.answers.map((a, i) => ({ id: letterId(i), text: a.correctChoice.content }));
-      const pairs = q.answers.map((_, i) => ({ leftId: letterId(i), rightId: letterId(i) }));
+      const right = q.answers.map((a, i) => ({ id: `r${letterId(i)}`, text: a.correctChoice.content }));
+      const pairs = q.answers.map((_, i) => ({ leftId: letterId(i), rightId: `r${letterId(i)}` }));
+      // Oak lists `correctChoice` in the same order as `matchOption`, so the right column would
+      // otherwise sit row-for-row beside its answer. Shuffling only the right column (the left
+      // stays in Oak's order) is what actually makes this a matching question.
       return {
         stage,
         order,
         type: "MATCHING",
         prompt: q.question,
         promptImage,
-        options: { left, right },
+        options: { left, right: seededShuffle(right, providerRef) },
         answerKey: { pairs },
         maxScore: 1,
         gradingMode: "DETERMINISTIC",
@@ -199,13 +247,17 @@ export function mapOakQuizQuestion(q: unknown, stage: "STARTER" | "CHECK", order
       const idByAnswer = new Map(q.answers.map((a, i) => [a, letterId(i)] as const));
       const sorted = [...q.answers].sort((a, b) => a.order - b.order);
       const order_ = sorted.map((a) => idByAnswer.get(a)!);
+      // The answer key above is keyed by id, not by position, so shuffling the *displayed*
+      // items is safe: it changes what the child sees first without touching which id is
+      // correct in which slot. Without this, Oak's answers already arrive in the right
+      // sequence and an untouched question would already be correct.
       return {
         stage,
         order,
         type: "ORDERING",
         prompt: q.question,
         promptImage,
-        options: { items },
+        options: { items: seededShuffle(items, providerRef) },
         answerKey: { order: order_ },
         maxScore: 1,
         gradingMode: "DETERMINISTIC",
@@ -244,7 +296,15 @@ function normaliseWorksheetType(type?: string): "NUMERIC" | "SHORT_ANSWER" | "EX
   }
 }
 
-function parseNumericAnswer(raw: string): { value: number; tolerance: number; acceptedStrings?: string[] } | null {
+/**
+ * Turns a worked answer like "3/4", "1 1/2" or "12" into a numeric answer key.
+ *
+ * Exported so anywhere else that has to build a `NUMERIC` answer key from a short piece of AI-
+ * or worksheet-written text (`teacher-agent.ts`, `curriculum/generate.ts`) reuses this instead
+ * of a naive `Number(text.replace(/[^0-9.-]/g, ""))`, which turns "3/4" into 34 by simply
+ * throwing the slash away.
+ */
+export function parseNumericAnswer(raw: string): { value: number; tolerance: number; acceptedStrings?: string[] } | null {
   const trimmed = raw.trim();
   const fraction = trimmed.match(/^(-?\d+)\s*\/\s*(\d+)$/);
   if (fraction) {
