@@ -24,6 +24,7 @@ import { ApiError } from "@/lib/auth/api";
 import { gradeQuestion, type GradingContext } from "@/lib/grading/grade";
 import { teacherAgent, teacherModeForStage } from "@/lib/ai/teacher-agent";
 import { recomputeLessonProgress } from "@/lib/progress/aggregate";
+import { todayDateOnly } from "@/lib/dates";
 import { hideUnanswerableQuestions } from "@/lib/questions/unanswerable";
 import { parkOpenGaps } from "@/lib/lessons/understanding";
 import { afterActivityGraded } from "@/lib/progress/review";
@@ -82,20 +83,52 @@ async function getVisibleQuestions(lessonId: string, studentId: string, stage?: 
 }
 
 /**
- * Latest ActivityAttempt for a stage, for drafting: reuses it unless the last
- * one is already GRADED, in which case a fresh round is opened (attemptNumber
- * + 1). `retryQuestion` is the normal way to reopen a GRADED activity for one
- * question; this covers the same "start a new round" contract literally.
+ * Only accepts an assignment that is genuinely this student's slot for this lesson — otherwise
+ * the id is dropped as if none had been given.
+ *
+ * Every write keyed off an assignment id used to trust it outright (`where: { id }`), so a
+ * student who knew or guessed another student's assignment id could tick that student's slot, or
+ * tie their own attempt to a lesson that was not what the assignment named. `kind` is checked too:
+ * a LESSON slot re-teaches the lesson, a REVIEW slot re-runs its CHECK — both legitimately name
+ * this lesson; a READING or CUSTOM row never does.
+ */
+async function ownedLessonAssignmentId(
+  studentId: string,
+  lessonId: string,
+  assignmentId: string | null | undefined
+): Promise<string | null> {
+  if (!assignmentId) return null;
+  const assignment = await prisma.dailyAssignment.findUnique({ where: { id: assignmentId } });
+  if (!assignment) return null;
+  if (assignment.studentId !== studentId) return null;
+  if (assignment.lessonId !== lessonId) return null;
+  if (assignment.kind !== "LESSON" && assignment.kind !== "REVIEW") return null;
+  return assignment.id;
+}
+
+/**
+ * Latest ActivityAttempt for a stage, for drafting: reused while it is still open — including
+ * one `retryQuestion` reopened for one more try, which is the only thing that flips a GRADED
+ * activity back to IN_PROGRESS.
+ *
+ * If the latest round is already GRADED, nothing legitimate is asking to save into it: no retry
+ * was requested (that would have flipped it back to IN_PROGRESS already), so this is a stray
+ * write — a renderer firing an answer's onChange on mount after a reload is the one we have
+ * seen. Opening a fresh, empty round for that would silently zero out a graded stage under the
+ * child; refusing is a no-op instead.
  */
 async function getOrOpenActivity(lessonAttemptId: string, stage: GradedStage): Promise<ActivityAttempt> {
   const latest = await prisma.activityAttempt.findFirst({
     where: { lessonAttemptId, stage },
     orderBy: { attemptNumber: "desc" },
   });
-  if (latest && latest.status !== "GRADED") return latest;
-  return prisma.activityAttempt.create({
-    data: { lessonAttemptId, stage, attemptNumber: (latest?.attemptNumber ?? 0) + 1, status: "IN_PROGRESS" },
-  });
+  if (!latest) {
+    return prisma.activityAttempt.create({ data: { lessonAttemptId, stage, attemptNumber: 1, status: "IN_PROGRESS" } });
+  }
+  if (latest.status === "GRADED") {
+    throw new ApiError(409, "This stage has already been graded.");
+  }
+  return latest;
 }
 
 /**
@@ -119,6 +152,23 @@ export async function countGradedAttempts(activityAttemptId: string, questionId:
   return prisma.questionAttempt.count({
     where: { activityAttemptId, questionId, gradedBy: { not: "PENDING" } },
   });
+}
+
+/**
+ * The `where` fragment for "this activity counts as graded", including one `retryQuestion`
+ * reopened for a single question. Retrying flips the whole activity's status to IN_PROGRESS so
+ * drafting targets the right round, but the round was genuinely graded once (`gradedAt` is
+ * still set from that pass) and stays so if the child never gets back to the retry — reloading
+ * before answering it must not make the CHECK look never marked. `completeStage(COMPLETE)`,
+ * `finaliseAttempt`'s mastery-eligibility count, and `settleFinishedLessons` all use this so an
+ * interrupted retry cannot dead-end the lesson; none of it re-grades anything, it only stops
+ * treating a round that was graded once as if it never was.
+ */
+function gradedIncludingReopenedRetry(stage: LessonStage | LessonStage[]) {
+  return {
+    stage: Array.isArray(stage) ? { in: stage } : stage,
+    OR: [{ status: "GRADED" as const }, { status: "IN_PROGRESS" as const, gradedAt: { not: null } }],
+  };
 }
 
 async function finalizeStageAdvance(attempt: LessonAttempt, stage: GradedStage, isCurrent: boolean): Promise<void> {
@@ -172,11 +222,30 @@ export async function startOrResumeAttempt(
   // perfectly well. Never fatal; a lesson opens either way.
   await hideUnanswerableQuestions(lessonId).catch(() => undefined);
 
+  // Only ever trust an assignment id that is genuinely this student's slot for this lesson.
+  const safeAssignmentId = await ownedLessonAssignmentId(studentId, lessonId, assignmentId);
+
   const existing = await prisma.lessonAttempt.findFirst({
     where: { studentId, lessonId, status: "IN_PROGRESS" },
     orderBy: { attemptNumber: "desc" },
   });
-  if (existing) return existing;
+  if (existing) {
+    // A child who started via "Start the next lesson" (no assignment id) may still land back on
+    // today's board under this exact lesson later — via its LESSON card, or a REVIEW slot for
+    // it. Attach the slot now so completion (below, and in `finaliseAttempt`) has something to
+    // tick, the same as if they had opened it from the board in the first place.
+    if (safeAssignmentId && existing.assignmentId !== safeAssignmentId) {
+      await prisma.lessonAttempt.update({ where: { id: existing.id }, data: { assignmentId: safeAssignmentId } });
+      existing.assignmentId = safeAssignmentId;
+    }
+    if (safeAssignmentId) {
+      await prisma.dailyAssignment.updateMany({
+        where: { id: safeAssignmentId, status: "PLANNED" },
+        data: { status: "IN_PROGRESS" },
+      });
+    }
+    return existing;
+  }
 
   const priorCount = await prisma.lessonAttempt.count({ where: { studentId, lessonId } });
 
@@ -184,16 +253,16 @@ export async function startOrResumeAttempt(
     data: {
       studentId,
       lessonId,
-      assignmentId: assignmentId ?? null,
+      assignmentId: safeAssignmentId,
       attemptNumber: priorCount + 1,
       status: "IN_PROGRESS",
       currentStage: "STARTER",
     },
   });
 
-  if (assignmentId) {
+  if (safeAssignmentId) {
     await prisma.dailyAssignment.updateMany({
-      where: { id: assignmentId, status: "PLANNED" },
+      where: { id: safeAssignmentId, status: "PLANNED" },
       data: { status: "IN_PROGRESS" },
     });
   }
@@ -338,12 +407,33 @@ export async function saveDraftAnswer(
  *
  * Called the moment a CHECK is marked, because that is when the child finished the lesson —
  * not when they later find and press a button on the feedback screen.
+ *
+ * `fallback` covers a lesson started without an assignment id at all — "Start the next lesson"
+ * from Today. It may still be sitting on today's board under its own LESSON slot; that is the
+ * card the child is actually looking at, so find and tick that instead of leaving it stuck on
+ * "not started" for having been begun the other way in.
  */
-async function tickTheBoard(assignmentId: string | null): Promise<void> {
-  if (!assignmentId) return;
+async function tickTheBoard(
+  assignmentId: string | null,
+  fallback?: { studentId: string; lessonId: string }
+): Promise<void> {
+  let id = assignmentId;
+  if (!id && fallback) {
+    const todays = await prisma.dailyAssignment.findFirst({
+      where: {
+        studentId: fallback.studentId,
+        lessonId: fallback.lessonId,
+        kind: "LESSON",
+        status: { in: ["PLANNED", "IN_PROGRESS"] },
+        date: todayDateOnly(),
+      },
+    });
+    id = todays?.id ?? null;
+  }
+  if (!id) return;
   await prisma.dailyAssignment
     .updateMany({
-      where: { id: assignmentId, status: { in: ["PLANNED", "IN_PROGRESS"] } },
+      where: { id, status: { in: ["PLANNED", "IN_PROGRESS"] } },
       data: { status: "COMPLETED", completedAt: new Date() },
     })
     .catch(() => undefined);
@@ -365,22 +455,46 @@ export async function submitStage(
   const questions = await getVisibleQuestions(attempt.lessonId, studentId, stage);
 
   if (questions.length === 0) {
-    const activity = await prisma.activityAttempt.create({
-      data: {
-        lessonAttemptId: attempt.id,
-        stage,
-        attemptNumber: 1,
-        status: "GRADED",
-        submittedAt: new Date(),
-        gradedAt: new Date(),
-        score: 0,
-        maxScore: 0,
-        percentage: null,
-      },
+    // An activity for this stage may already exist — a PRACTICE round created by
+    // /practice/submit, or a stage that had visible questions when it was opened and lost every
+    // one of them to an exclusion since. Creating a fresh row with `attemptNumber: 1` unchecked
+    // used to collide with it (`@@unique([lessonAttemptId, stage, attemptNumber])`) and 500 —
+    // the stage must advance instead.
+    const existingActivity = await prisma.activityAttempt.findFirst({
+      where: { lessonAttemptId: attempt.id, stage },
+      orderBy: { attemptNumber: "desc" },
     });
+    const activity =
+      existingActivity && existingActivity.status === "GRADED"
+        ? existingActivity // already graded elsewhere — nothing new to grade, just move on
+        : existingActivity
+          ? await prisma.activityAttempt.update({
+              where: { id: existingActivity.id },
+              data: {
+                status: "GRADED",
+                submittedAt: existingActivity.submittedAt ?? new Date(),
+                gradedAt: new Date(),
+                score: existingActivity.score ?? 0,
+                maxScore: existingActivity.maxScore ?? 0,
+                percentage: existingActivity.percentage ?? null,
+              },
+            })
+          : await prisma.activityAttempt.create({
+              data: {
+                lessonAttemptId: attempt.id,
+                stage,
+                attemptNumber: 1,
+                status: "GRADED",
+                submittedAt: new Date(),
+                gradedAt: new Date(),
+                score: 0,
+                maxScore: 0,
+                percentage: null,
+              },
+            });
     await finalizeStageAdvance(attempt, stage, isCurrent);
     // A quiz with nothing in it is still a quiz they got to the end of.
-    if (stage === "CHECK") await tickTheBoard(attempt.assignmentId);
+    if (stage === "CHECK") await tickTheBoard(attempt.assignmentId, { studentId, lessonId: attempt.lessonId });
     return { activity, results: [] };
   }
 
@@ -500,7 +614,7 @@ export async function submitStage(
      * ticks here. `finaliseAttempt` still runs when they leave properly, and setting the same
      * row to the same value twice costs nothing.
      */
-    await tickTheBoard(attempt.assignmentId);
+    await tickTheBoard(attempt.assignmentId, { studentId, lessonId: attempt.lessonId });
   }
 
   await finalizeStageAdvance(attempt, stage, isCurrent);
@@ -617,7 +731,7 @@ export async function completeStage(attemptId: string, studentId: string, stage:
   if (stage === "COMPLETE") {
     if (attempt.status !== "IN_PROGRESS") return attempt; // already done — say so happily
     const marked = await prisma.activityAttempt.count({
-      where: { lessonAttemptId: attempt.id, stage: "CHECK", status: "GRADED" },
+      where: { lessonAttemptId: attempt.id, ...gradedIncludingReopenedRetry("CHECK") },
     });
     if (marked === 0) throw new ApiError(400, "The quiz has not been marked yet.");
     return finaliseAttempt(attempt);
@@ -661,7 +775,7 @@ export async function completeStage(attemptId: string, studentId: string, stage:
 export async function finaliseAttempt(attempt: LessonAttempt): Promise<LessonAttempt> {
   const studentId = attempt.studentId;
   const assessedCount = await prisma.activityAttempt.count({
-    where: { lessonAttemptId: attempt.id, stage: { in: ["PRACTICE", "CHECK"] }, status: "GRADED" },
+    where: { lessonAttemptId: attempt.id, ...gradedIncludingReopenedRetry(["PRACTICE", "CHECK"]) },
   });
   const mastery = attempt.masteryScore;
   let status: LessonAttempt["status"] = "COMPLETED";
@@ -682,11 +796,10 @@ export async function finaliseAttempt(attempt: LessonAttempt): Promise<LessonAtt
     data: { completedAt: attempt.completedAt ?? new Date(), status, currentStage: "COMPLETE" },
   });
 
-  if (attempt.assignmentId) {
-    await prisma.dailyAssignment
-      .update({ where: { id: attempt.assignmentId }, data: { status: "COMPLETED", completedAt: new Date() } })
-      .catch(() => undefined);
-  }
+  // Tick whichever slot this belongs to — the attempt's own assignment, or (a lesson started
+  // without one, e.g. "Start the next lesson" from Today) today's LESSON assignment for the
+  // same lesson, if it's sitting on the board waiting for it.
+  await tickTheBoard(attempt.assignmentId, { studentId, lessonId: attempt.lessonId });
 
   await recomputeLessonProgress(studentId, attempt.lessonId);
 
@@ -725,7 +838,10 @@ export async function settleFinishedLessons(studentId: string): Promise<number> 
     where: {
       studentId,
       status: "IN_PROGRESS",
-      activities: { some: { stage: "CHECK", status: "GRADED", gradedAt: { lt: cutoff } } },
+      // `status: "IN_PROGRESS"` here also matches a CHECK reopened for a retry the child never
+      // came back to answer — it was graded (this is what `gradedAt` reports), just not
+      // resubmitted. Without that, an interrupted retry never settles at all.
+      activities: { some: { stage: "CHECK", status: { in: ["GRADED", "IN_PROGRESS"] }, gradedAt: { lt: cutoff } } },
     },
     take: 20,
   });

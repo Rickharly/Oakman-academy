@@ -87,4 +87,21 @@ describe("checking whether they already know the lesson", () => {
   it("rejects an empty submission rather than passing it", async () => {
     await expect(judgePreCheck({ studentId, lessonId, correct: 0, total: 0 })).rejects.toThrow();
   });
+
+  it("stays MASTERED even though the page already opened a LessonAttempt before the pre-check ran", async () => {
+    // The real sequence: the lesson page always starts/resumes an attempt before it ever offers
+    // the pre-check, so an IN_PROGRESS LessonAttempt with nothing answered exists by the time a
+    // pass reaches `placeOutOfLesson`. That used to get picked up by a trailing
+    // `recomputeLessonProgress` call and flip the row it had just set back to IN_PROGRESS.
+    await prisma.lessonAttempt.create({
+      data: { studentId, lessonId, attemptNumber: 1, status: "IN_PROGRESS", currentStage: "STARTER" },
+    });
+
+    const outcome = await judgePreCheck({ studentId, lessonId, correct: 5, total: 5 });
+    expect(outcome.passed).toBe(true);
+
+    const progress = await prisma.studentLessonProgress.findFirstOrThrow({ where: { studentId, lessonId } });
+    expect(progress.status).toBe("MASTERED");
+    expect(progress.mastery).toBeCloseTo(1, 5);
+  });
 });

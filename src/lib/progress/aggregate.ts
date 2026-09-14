@@ -49,6 +49,9 @@ export function isLessonTaught(row: { status: string; completedAt?: Date | null 
   return row.status !== "ALREADY_KNOWN" && isLessonDone(row);
 }
 
+/** Attempt statuses that represent a real outcome, as opposed to work still under way. */
+const FINISHED_ATTEMPT_STATUSES = new Set(["COMPLETED", "MASTERED", "NEEDS_REVIEW", "ALREADY_KNOWN"]);
+
 /**
  * Recomputes the denormalised `StudentLessonProgress` row for one student+lesson
  * from the current `LessonAttempt` history. Called after every graded activity
@@ -71,6 +74,28 @@ export async function recomputeLessonProgress(studentId: string, lessonId: strin
   const latest = attempts[attempts.length - 1];
   const timeSpentSeconds = attempts.reduce((sum, a) => sum + a.timeSpentSeconds, 0);
 
+  /**
+   * Which attempt speaks for "how is this lesson doing".
+   *
+   * Ordinarily the latest one does. But opening a lesson that is already finished — "Review"
+   * from a subjects/progress card, a review assignment, any lesson link once it's done — starts
+   * a fresh IN_PROGRESS attempt purely so the player has something to run on; that attempt
+   * starting is not the lesson becoming unfinished, and used to flip a MASTERED/COMPLETED row
+   * straight back to IN_PROGRESS with a null mastery for having been opened.
+   *
+   * History tells a revisit apart from a genuine reset. A parent's REOPEN_LESSON/RESET_QUIZ
+   * override mutates the one attempt row in place, so once it flips to IN_PROGRESS there is no
+   * earlier finished row left — this still picks the latest attempt, correctly, and reports
+   * IN_PROGRESS. A revisit instead leaves the earlier finished attempt exactly where it was and
+   * adds a new row alongside it, so the finished one is still there to fall back to. Either way:
+   * if the latest attempt is itself finished, or nothing earlier ever finished, it wins as
+   * before; only a fresh IN_PROGRESS attempt sitting after a still-standing finished one defers
+   * to that earlier attempt — until the revisit itself finishes (`finaliseAttempt` calls back in
+   * here with the real outcome) or produces a graded activity of its own.
+   */
+  const latestFinished = [...attempts].reverse().find((a) => FINISHED_ATTEMPT_STATUSES.has(a.status));
+  const source = FINISHED_ATTEMPT_STATUSES.has(latest.status) ? latest : (latestFinished ?? latest);
+
   const checkActivities = await prisma.activityAttempt.findMany({
     where: { lessonAttempt: { studentId, lessonId }, stage: "CHECK", status: "GRADED" },
     orderBy: [{ lessonAttempt: { startedAt: "asc" } }, { attemptNumber: "asc" }],
@@ -79,36 +104,36 @@ export async function recomputeLessonProgress(studentId: string, lessonId: strin
     checkActivities.length > 0
       ? Math.max(...checkActivities.map((a) => a.percentage ?? 0))
       : null;
-  const latestCheckForLatestAttempt = await prisma.activityAttempt.findFirst({
-    where: { lessonAttemptId: latest.id, stage: "CHECK", status: "GRADED" },
+  const latestCheckForSource = await prisma.activityAttempt.findFirst({
+    where: { lessonAttemptId: source.id, stage: "CHECK", status: "GRADED" },
     orderBy: { attemptNumber: "desc" },
   });
-  const latestScorePct = latestCheckForLatestAttempt?.percentage ?? (checkActivities.at(-1)?.percentage ?? null);
+  const latestScorePct = latestCheckForSource?.percentage ?? (checkActivities.at(-1)?.percentage ?? null);
 
   return prisma.studentLessonProgress.upsert({
     where: { studentId_lessonId: { studentId, lessonId } },
     create: {
       studentId,
       lessonId,
-      status: latest.status,
+      status: source.status,
       attempts: attempts.length,
       bestScorePct,
       latestScorePct,
-      mastery: latest.masteryScore,
-      completedAt: latest.completedAt,
+      mastery: source.masteryScore,
+      completedAt: source.completedAt,
       lastActivityAt: new Date(),
-      needsReview: latest.status === "NEEDS_REVIEW",
+      needsReview: source.status === "NEEDS_REVIEW",
       timeSpentSeconds,
     },
     update: {
-      status: latest.status,
+      status: source.status,
       attempts: attempts.length,
       bestScorePct,
       latestScorePct,
-      mastery: latest.masteryScore,
-      completedAt: latest.completedAt,
+      mastery: source.masteryScore,
+      completedAt: source.completedAt,
       lastActivityAt: new Date(),
-      needsReview: latest.status === "NEEDS_REVIEW",
+      needsReview: source.status === "NEEDS_REVIEW",
       timeSpentSeconds,
     },
   });

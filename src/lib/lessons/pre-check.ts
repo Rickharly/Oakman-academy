@@ -17,7 +17,6 @@
  */
 import { prisma } from "@/lib/db";
 import { ApiError } from "@/lib/auth/api";
-import { recomputeLessonProgress } from "@/lib/progress/aggregate";
 
 /** Score needed to skip. Deliberately near-perfect: the cost of a wrong skip is a hidden gap. */
 export const PRE_CHECK_PASS = 0.9;
@@ -83,7 +82,12 @@ export async function placeOutOfLesson(
     data: { status: "COMPLETED", completedAt: new Date() },
   });
 
-  await recomputeLessonProgress(studentId, lessonId);
+  // Deliberately not `recomputeLessonProgress` here: the upsert above already is the definitive
+  // outcome. The page always starts/resumes a LessonAttempt before it ever offers the pre-check,
+  // so one already exists — IN_PROGRESS, nothing answered — by the time a pass reaches this
+  // function, and recomputing from it would flip the row this just wrote straight back to
+  // IN_PROGRESS with a null mastery, undoing the placement immediately and re-offering the
+  // pre-check next time the lesson is opened.
 }
 
 /** Judges a submitted pre-check and, if it is convincing, places them out of the lesson. */
