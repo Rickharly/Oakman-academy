@@ -9,12 +9,13 @@ import { GET } from "@/app/api/curriculum/resources/[resourceId]/route";
 import { resetDb } from "./helpers/db";
 
 /**
- * What a child's iPad is actually handed when the player asks for a lesson's video.
+ * What a child's Chromebook is actually handed when the player asks for a lesson's video.
  *
- * The player used to be answered by the server downloading the whole file first, and by a
- * plain 200 with no range support when that failed — which Safari will not play. These tests
- * pin the new contract: the browser is sent to the signed link when the link is fit for a
- * player, and gets a relabelled, range-honouring proxy when it is not.
+ * The player used to be answered by the server downloading the whole ~100 MB file first, which
+ * stalled the request long enough to be dropped as a network error and, via the unbounded
+ * buffering behind it, could run the server out of memory. These tests pin the new contract:
+ * the browser is sent to the signed link when the link is fit for a player, and gets a
+ * relabelled, range-honouring proxy when it is not.
  */
 
 const ENDPOINT = "https://open-api.thenational.academy/api/v0/lessons/halves/assets/video";

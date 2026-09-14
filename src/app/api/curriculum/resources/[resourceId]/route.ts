@@ -14,11 +14,13 @@ import { resolveMedia, type MediaLink } from "@/lib/curriculum/media-link";
  *
  * **But the bytes do not come through us.** The endpoint answers with a signed link to the file
  * on a CDN, and the browser is sent there. This route used to download the whole file into the
- * container before answering the player's first request, and if that failed it streamed a
- * plain 200 with no range support — which Safari on an iPad will not play at all. A CDN
- * already answers ranges, quickly, with the right type, without a hundred megabytes crossing a
- * small container's disk. The one case we still proxy is a link that turns out unfit for a
- * player (a wrong content type, no range support), where we relabel and pass ranges through.
+ * container before answering the player's first request — on the children's Chromebooks that
+ * stalled the request long enough for the platform proxy and the video element to give up with
+ * a network error, and the buffering behind it had no backpressure, which is how the server ran
+ * out of memory mid-lesson. A CDN already answers ranges, quickly, with the right type, without
+ * a hundred megabytes crossing a small container's disk. The one case we still proxy is a link
+ * that turns out unfit for a player (a wrong content type, no range support — needed to seek,
+ * and needed by Safari at all if it is ever used), where we relabel and pass ranges through.
  *
  * A signed link is resolved once and remembered until shortly before it expires, so a lesson
  * costs one provider request however many times the player asks — not one per seek.
@@ -69,8 +71,9 @@ function contentTypeFor(resource: { type: string; mimeType: string | null }, ups
  * Whether the browser can be sent to the link as it is.
  *
  * It can when the host says the file is what the row says it is and honours ranges. A host
- * that calls a video `application/octet-stream` would leave Safari showing 0:00 forever; one
- * that ignores ranges would leave it unable to seek. Both are proxied and corrected instead.
+ * that calls a video `application/octet-stream` would leave the `<video>` element on the
+ * Chromebooks showing 0:00 forever; one that ignores ranges would leave it unable to seek.
+ * Both are proxied and corrected instead.
  */
 function browserCanUseDirectly(resource: { type: string }, link: MediaLink): boolean {
   if (!link.acceptsRanges) return false;

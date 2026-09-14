@@ -95,11 +95,12 @@ export function SpeakButton({ text, autoPlay = false }: { text: string; autoPlay
       await audio.play();
       setState("playing");
     } catch (err) {
-      // An iPad that hasn't been tapped yet refuses the very first `play()` with
-      // NotAllowedError — that is autoplay policy working as designed, not a broken voice, and
-      // a tap right afterwards plays it fine. Saying "I couldn't reach my voice" over something
-      // a tap immediately fixes reads as a failure that never happened; stay quietly idle
-      // instead, exactly as if autoPlay had never been asked for.
+      // A browser that hasn't been tapped yet refuses the very first `play()` with
+      // NotAllowedError — that is autoplay policy working as designed (Chrome enforces the same
+      // rule as everyone else), not a broken voice, and a tap right afterwards plays it fine.
+      // Saying "I couldn't reach my voice" over something a tap immediately fixes reads as a
+      // failure that never happened; stay quietly idle instead, exactly as if autoPlay had
+      // never been asked for.
       if (err instanceof DOMException && err.name === "NotAllowedError") {
         setState("idle");
         return;

@@ -3,20 +3,23 @@
  *
  * The address stored against a resource is the provider's asset *endpoint*. Called with the API
  * key it answers with JSON holding a short-lived signed link to the real file on a CDN. The
- * player used to get that file by way of our own server: the route pulled the whole thing down
- * from the CDN into the container's disk before it would answer the player's first request,
- * and if that download failed for any reason it fell back to streaming a plain 200 with no
- * range support — which Safari on an iPad, the device the children use, refuses to play at all.
- * Either way the child saw the "it won't play" panel.
+ * player used to get that file by way of our own server: the route pulled the whole ~100 MB
+ * file down from the CDN into the container before it sent the player a single byte, which on
+ * the children's Chromebooks stalled the request long enough for the platform proxy and the
+ * `<video>` element to give it up as a network error — and on the way there it also duplicated
+ * the file in memory with no backpressure on the slow side, which is how the server ran out of
+ * memory mid-lesson. Either way the child saw the "it won't play" panel.
  *
  * A CDN already does everything a video player needs — byte ranges, the right content type,
- * speed — and does it without a hundred megabytes passing through a small container. So the
- * server's job is reduced to the one thing only it can do: turn the endpoint into the signed
- * link, using the key that must never reach the browser. The player is then sent to the link.
+ * speed — and does it without a hundred megabytes passing through a small container, streamed
+ * or not. So the server's job is reduced to the one thing only it can do: turn the endpoint
+ * into the signed link, using the key that must never reach the browser. The player is then
+ * sent to the link.
  *
  * The link is checked once before anyone is sent to it (does it answer, what does it say the
- * file is, does it honour ranges), and remembered until shortly before it expires, so a lesson
- * costs one provider request however many times the player asks.
+ * file is, does it honour ranges — for seeking, and for Safari at all if it is ever used), and
+ * remembered until shortly before it expires, so a lesson costs one provider request however
+ * many times the player asks.
  */
 import { ApiError } from "@/lib/auth/api";
 import { describeFetchError, findUrl, resolveAssetUrl } from "./asset-fetch";
@@ -153,9 +156,11 @@ async function callAssetEndpoint(endpoint: string, range: string | null): Promis
  * One small request to the file's host, to learn what it will do for a player.
  *
  * Asks for the first byte only. A host that answers 206 honours ranges; one that answers 200
- * to that will hand a player the whole file from the start on every seek — and Safari will
- * not play from it at all. The content type is read here too, so the route can decide whether
- * the browser can be trusted with the host's answer or the file has to be relabelled.
+ * to that will hand a player the whole file from the start on every seek — on the children's
+ * Chromebooks that means dragging the scrubber just reloads from 0:00, and Safari, if it is
+ * ever used, will not play from it at all. The content type is read here too, so the route can
+ * decide whether the browser can be trusted with the host's answer or the file has to be
+ * relabelled.
  */
 async function probeLink(url: string): Promise<Pick<MediaLink, "contentType" | "acceptsRanges">> {
   const res = await fetch(url, { headers: { Range: "bytes=0-0" }, cache: "no-store" }).catch((err: unknown) => {
