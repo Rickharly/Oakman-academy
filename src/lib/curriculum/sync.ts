@@ -16,7 +16,12 @@ import { OakRateLimitError } from "@/lib/oak/client";
 import path from "node:path";
 import { prisma } from "@/lib/db";
 import type { Prisma, ResourceType, LicenceStatus } from "@/generated/prisma/client";
-import { mapOakQuizQuestion, mapWorksheetQuestion, type MappedQuestion } from "@/lib/questions/oak-mapper";
+import {
+  mapOakQuizQuestion,
+  mapWorksheetQuestion,
+  seededShuffle,
+  type MappedQuestion,
+} from "@/lib/questions/oak-mapper";
 import { FixtureProvider } from "./fixture-provider";
 import { getCurriculumProvider, type CurriculumProvider, type ProviderAsset } from "./provider";
 
@@ -230,6 +235,96 @@ async function upsertQuestions(lessonId: string, mapped: MappedQuestion[], sourc
     count += 1;
   }
   return count;
+}
+
+export interface RepairStats {
+  ordering: number;
+  matching: number;
+}
+
+/**
+ * Fixes ORDERING and MATCHING `Question` rows imported before the mapper started shuffling
+ * their displayed order (see `oak-mapper.ts`): Oak lists an ORDERING question's steps already
+ * in the correct sequence and a MATCHING question's right-hand column already lined up beside
+ * its left-hand partner, so a lesson imported before the shuffle went in would already show a
+ * child the right answer, or already be right without them touching it.
+ *
+ * A row is repaired only if it still looks pre-solved — detected structurally, not by when it
+ * was imported — which is what makes this idempotent and safe to run on every boot and every
+ * sync: an already-shuffled row (freshly mapped, or already repaired) is left exactly alone,
+ * and the row count never changes, only `options`/`answerKey` on the rows that needed it.
+ *
+ * AI_GENERATED rows are never touched here. Those are written by the AI grading/practice path,
+ * the one exception to "curriculum tables are written only by sync" (CLAUDE.md rule 1,
+ * ARCHITECTURE §1) — this function has no business deciding what one of those should look like.
+ */
+export async function repairPresolvedQuestions(): Promise<RepairStats> {
+  const stats: RepairStats = { ordering: 0, matching: 0 };
+
+  const orderingRows = await prisma.question.findMany({
+    where: { type: "ORDERING", source: { not: "AI_GENERATED" } },
+    select: { id: true, providerRef: true, options: true, answerKey: true },
+  });
+  for (const row of orderingRows) {
+    // Every row the mapper ever wrote carries a providerRef (it's part of the upsert key); a
+    // row somehow missing one has no stable seed to shuffle by, so it's left alone rather than
+    // shuffled with something that would change on every run.
+    if (!row.providerRef) continue;
+    const options = row.options as { items?: { id: string }[] } | null;
+    const answerKey = row.answerKey as { order?: string[] } | null;
+    const items = options?.items;
+    const order = answerKey?.order;
+    if (!items?.length || !order?.length || items.length !== order.length) continue;
+
+    const isPresolved = items.every((item, i) => item.id === order[i]);
+    if (!isPresolved) continue;
+
+    await prisma.question.update({
+      where: { id: row.id },
+      data: {
+        options: { ...options, items: seededShuffle(items, row.providerRef) } as Prisma.InputJsonValue,
+      },
+    });
+    stats.ordering += 1;
+  }
+
+  const matchingRows = await prisma.question.findMany({
+    where: { type: "MATCHING", source: { not: "AI_GENERATED" } },
+    select: { id: true, providerRef: true, options: true, answerKey: true },
+  });
+  for (const row of matchingRows) {
+    if (!row.providerRef) continue;
+    const options = row.options as { left?: { id: string }[]; right?: { id: string; text: string }[] } | null;
+    const answerKey = row.answerKey as { pairs?: { leftId: string; rightId: string }[] } | null;
+    const left = options?.left;
+    const right = options?.right;
+    const pairs = answerKey?.pairs;
+    if (!left?.length || !right?.length || !pairs?.length || left.length !== right.length) continue;
+
+    const isOldScheme = right.every((r, i) => r.id === left[i]?.id);
+    if (!isOldScheme) continue;
+
+    // The right column gets its own id namespace (`r` + its old id), same as a freshly mapped
+    // question — see oak-mapper.ts — so the answer key's rightIds need rewriting to match
+    // before the column itself is shuffled.
+    const rightIdRewrite = new Map(right.map((r) => [r.id, `r${r.id}`]));
+    const reIdRight = right.map((r) => ({ ...r, id: rightIdRewrite.get(r.id)! }));
+    const newPairs = pairs.map((p) => ({ ...p, rightId: rightIdRewrite.get(p.rightId) ?? p.rightId }));
+
+    await prisma.question.update({
+      where: { id: row.id },
+      data: {
+        options: {
+          ...options,
+          right: seededShuffle(reIdRight, row.providerRef),
+        } as Prisma.InputJsonValue,
+        answerKey: { ...answerKey, pairs: newPairs } as Prisma.InputJsonValue,
+      },
+    });
+    stats.matching += 1;
+  }
+
+  return stats;
 }
 
 /**
@@ -540,6 +635,22 @@ export async function syncProgramme(scope: SyncScope, opts: SyncOptions = {}): P
           log(`  Lesson ${lessonRef.slug} FAILED: ${(err as Error).message}`);
         }
       }
+    }
+
+    // Cheap once every row has converged, and running it here — not only at server boot —
+    // means "sync now" in Admin fixes a family's questions immediately rather than waiting for
+    // a redeploy. A failure here is a data-quality miss, not an import failure: it must never
+    // turn an otherwise-successful sync into a FAILED job.
+    try {
+      const repaired = await repairPresolvedQuestions();
+      if (repaired.ordering || repaired.matching) {
+        log(
+          `Repaired ${repaired.ordering} ordering and ${repaired.matching} matching question(s) ` +
+            `that were still pre-solved`,
+        );
+      }
+    } catch (err) {
+      log(`Repair of pre-solved questions failed (non-fatal): ${(err as Error).message}`);
     }
 
     log(

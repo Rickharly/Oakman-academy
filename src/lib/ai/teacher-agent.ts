@@ -21,6 +21,7 @@ import type {
   TeacherMode,
 } from "@/generated/prisma/client";
 import { gradeResultSchema, type GradeResult } from "@/lib/questions/types";
+import { parseNumericAnswer } from "@/lib/questions/oak-mapper";
 import type { GradingContext } from "@/lib/grading/grade";
 import { schoolDayEnd, schoolDayStart } from "@/lib/dates";
 import { getAiProvider, AiError, type AiProvider, type ChatMessage } from "./provider";
@@ -217,7 +218,7 @@ async function chat(input: ChatInput): Promise<ChatResult> {
   return { conversationId, stream: run() };
 }
 
-const summarySchema = z.object({ summary: z.string() });
+export const summarySchema = z.object({ summary: z.string() });
 
 /**
  * Folds a long conversation into a short summary so later prompts stay cheap (spec §53).
@@ -277,8 +278,13 @@ async function grade(args: {
 
   const rubric = question.rubric ?? (question.answerKey as { rubric?: string } | null)?.rubric;
 
+  // UK school years run roughly age = year group + 4 to + 5 (Year 5 is 9-10, Year 7 is 11-12,
+  // …), whatever year the child is actually in — this used to be hard-coded to only "Year 5" or
+  // "everyone else is 11 to 12", which told the AI a Year 3 or a Year 9 child was 11 to 12.
+  const ageRange = `${ctx.studentYearGroup + 4} to ${ctx.studentYearGroup + 5}`;
+
   const system = [
-    `You are marking one answer written by a ${ctx.studentYearGroup === 5 ? "9 to 10" : "11 to 12"} year old`,
+    `You are marking one answer written by a ${ageRange} year old`,
     `(Year ${ctx.studentYearGroup}) child in the lesson "${ctx.lesson.title}".`,
     "",
     "Mark fairly and generously on substance, not on spelling, punctuation or handwriting-style",
@@ -592,10 +598,12 @@ async function persistGeneratedQuestions(
       options = { choices: rotated };
       answerKey = { correctOptionId: correctId };
     } else if (q.type === "NUMERIC") {
+      // Naively stripping everything but digits/"-" turns "3/4" into 34; the fraction-aware
+      // parser worksheet questions already use reads it as 0.75 instead.
       const first = q.acceptedAnswers?.[0];
-      const value = Number(String(first ?? "").replace(/[^0-9.-]/g, ""));
-      if (!Number.isFinite(value)) continue;
-      answerKey = { value, tolerance: 0, acceptedStrings: q.acceptedAnswers ?? [] };
+      const parsed = first ? parseNumericAnswer(first) : null;
+      if (!parsed) continue;
+      answerKey = { value: parsed.value, tolerance: 0, acceptedStrings: q.acceptedAnswers ?? [] };
     } else {
       answerKey = { accepted: q.acceptedAnswers ?? [], caseSensitive: false };
     }
@@ -670,8 +678,12 @@ async function generateLessonPractice(args: {
   // Extension work is always fresh: a child who has finished the lesson has seen the stored
   // set already, and handing it back is not more work, it is the same work.
   if (aimed.length === 0 && !args.extension && !args.finalTest) {
+    // Scoped to this student: `getVisibleQuestions` (lessons/service.ts) never shows an
+    // AI_GENERATED question to anyone but the student it was generated for, so a lookup that
+    // forgot this filter handed back a sibling's practice — questions this student can never
+    // actually see, so the stage they belong to could never be completed.
     const existing = await prisma.question.findMany({
-      where: { lessonId: lesson.id, stage: "PRACTICE", source: "AI_GENERATED" },
+      where: { lessonId: lesson.id, stage: "PRACTICE", source: "AI_GENERATED", generatedForStudentId: args.studentId },
       orderBy: { order: "asc" },
     });
     if (existing.length >= count) return existing;

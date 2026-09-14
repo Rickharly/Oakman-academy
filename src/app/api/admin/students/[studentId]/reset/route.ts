@@ -1,6 +1,5 @@
 import { z } from "zod";
-import { jsonError, ApiError } from "@/lib/auth/api";
-import { requireParentOfStudent } from "@/lib/auth/session";
+import { jsonError, ApiError, requireParentOfStudentApi } from "@/lib/auth/api";
 import { resetStudentProgress } from "@/lib/admin/reset";
 
 /**
@@ -12,7 +11,7 @@ import { resetStudentProgress } from "@/lib/admin/reset";
 export async function POST(req: Request, ctx: { params: Promise<{ studentId: string }> }) {
   try {
     const { studentId } = await ctx.params;
-    const { student } = await requireParentOfStudent(studentId);
+    const { student } = await requireParentOfStudentApi(req, studentId);
     const body = z.object({ confirm: z.string() }).parse(await req.json());
 
     if (body.confirm.trim().toLowerCase() !== student.user.displayName.trim().toLowerCase()) {

@@ -159,6 +159,11 @@ export async function completeReview(reviewItemId: string, scorePct: number): Pr
   const item = await prisma.reviewItem.findUnique({ where: { id: reviewItemId } });
   if (!item) throw new ApiError(404, "Review item not found");
 
+  // Idempotent: re-opening a settled review (a stray reload, or a second attempt on the same
+  // assignment once the first was already marked) must not schedule a second SPACED item on top
+  // of the one the first pass already created.
+  if (item.status === "DONE") return item;
+
   const updated = await prisma.reviewItem.update({
     where: { id: reviewItemId },
     data: { status: "DONE", outcomeScorePct: scorePct, completedAt: new Date() },
@@ -218,6 +223,25 @@ export async function runReviewAssignment(assignmentId: string, studentId: strin
   // (lessons/service.ts calls back into this module for completeReview).
   const { startOrResumeAttempt } = await import("@/lib/lessons/service");
   const attempt = await startOrResumeAttempt(studentId, assignment.lessonId, assignment.id);
+
+  /**
+   * Idempotent, on two different axes.
+   *
+   * This used to run on every render of /lessons/[id]?kind=REVIEW and unconditionally force
+   * `currentStage` back to CHECK — so a reload right after submitting (stage now FEEDBACK, no
+   * button left on screen) put the child straight back on the quiz. And a review whose
+   * ReviewItem is already DONE has nothing left to re-run: `startOrResumeAttempt` will have
+   * opened a fresh attempt for it (the earlier one is finished), and forcing that one to CHECK
+   * too would invite a second `completeReview` call over the same item — guarded separately, but
+   * there is no reason to reopen the quiz at all once it is done.
+   */
+  const [gradedCheck, reviewItem] = await Promise.all([
+    prisma.activityAttempt.findFirst({ where: { lessonAttemptId: attempt.id, stage: "CHECK", status: "GRADED" } }),
+    assignment.reviewItemId
+      ? prisma.reviewItem.findUnique({ where: { id: assignment.reviewItemId } })
+      : Promise.resolve(null),
+  ]);
+  if (gradedCheck || reviewItem?.status === "DONE") return attempt;
 
   const now = new Date();
   return prisma.lessonAttempt.update({

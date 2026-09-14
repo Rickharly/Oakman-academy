@@ -23,7 +23,11 @@ export async function POST(req: Request) {
       return Response.json({ error: "That recording is too long." }, { status: 413 });
     }
 
-    const text = await transcribe(file, "speech.webm");
+    // The browser names the recording after its real container (webm, mp4, …) — a Safari
+    // recording is never actually webm, and hard-coding that extension here regardless of what
+    // was sent told ElevenLabs to decode the wrong format for it.
+    const filename = file instanceof File && file.name ? file.name : "speech.webm";
+    const text = await transcribe(file, filename);
     return Response.json({ text });
   } catch (err) {
     if (err instanceof VoiceUnavailable) {

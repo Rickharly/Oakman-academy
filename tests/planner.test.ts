@@ -562,6 +562,94 @@ describe("a timetable pointing at a different row for the same subject", () => {
   });
 });
 
+describe("planner: what a parent put on the day by hand is theirs to keep", () => {
+  /**
+   * Regression test for commit eed2064: the planner's trim used to remove any PLANNED lesson
+   * that duplicated a subject already on the day, or that pushed the day past its cap — even
+   * one a parent had chosen on purpose (a second maths lesson). It now only ever removes
+   * PLANNED assignments whose source is not PARENT.
+   */
+  beforeAll(async () => {
+    await resetDb();
+    studentId = await buildStudentWithCurriculum(12);
+    await planWeek(studentId, MONDAY, { replace: true });
+  });
+
+  it("a PARENT-sourced duplicate subject survives the trim; an AUTO-sourced duplicate is removed", async () => {
+    const before = await lessonsOn(MONDAY);
+    expect(before).toHaveLength(5);
+
+    const maths = await prisma.subject.findFirstOrThrow({ where: { slug: "maths" } });
+    const parentExtraLesson = await prisma.lesson.findFirstOrThrow({ where: { providerSlug: "maths-l11" } });
+    const autoExtraLesson = await prisma.lesson.findFirstOrThrow({ where: { providerSlug: "maths-l12" } });
+
+    // A parent-chosen second maths lesson — a decision, not a planning fault.
+    const parentExtra = await prisma.dailyAssignment.create({
+      data: {
+        studentId,
+        date: toDateOnly(MONDAY),
+        order: 90,
+        kind: "LESSON",
+        source: "PARENT",
+        status: "PLANNED",
+        subjectId: maths.id,
+        lessonId: parentExtraLesson.id,
+        estimatedMinutes: 45,
+      },
+    });
+    // An AUTO-sourced duplicate — exactly the planning-race artifact the trim exists for.
+    const autoExtra = await prisma.dailyAssignment.create({
+      data: {
+        studentId,
+        date: toDateOnly(MONDAY),
+        order: 91,
+        kind: "LESSON",
+        source: "AUTO",
+        status: "PLANNED",
+        subjectId: maths.id,
+        lessonId: autoExtraLesson.id,
+        estimatedMinutes: 45,
+      },
+    });
+
+    // Opening Today re-plans and trims the day.
+    await ensureDayPlanned(studentId, MONDAY);
+
+    const parentExtraAfter = await prisma.dailyAssignment.findUnique({ where: { id: parentExtra.id } });
+    expect(parentExtraAfter).not.toBeNull();
+    expect(parentExtraAfter?.status).not.toBe("MOVED");
+
+    const autoExtraAfter = await prisma.dailyAssignment.findUnique({ where: { id: autoExtra.id } });
+    expect(autoExtraAfter).toBeNull();
+  });
+
+  it("a PARENT-sourced assignment beyond lessonsPerDay also survives the trim", async () => {
+    const before = await lessonsOn(MONDAY);
+    expect(before.length).toBeGreaterThanOrEqual(5);
+
+    const geography = await prisma.subject.findFirstOrThrow({ where: { slug: "geography" } });
+    const spareLesson = await prisma.lesson.findFirstOrThrow({ where: { providerSlug: "history-l11" } });
+    const parentSixth = await prisma.dailyAssignment.create({
+      data: {
+        studentId,
+        date: toDateOnly(MONDAY),
+        order: 99,
+        kind: "LESSON",
+        source: "PARENT",
+        status: "PLANNED",
+        subjectId: geography.id,
+        lessonId: spareLesson.id,
+        estimatedMinutes: 45,
+      },
+    });
+
+    await ensureDayPlanned(studentId, MONDAY);
+
+    const after = await prisma.dailyAssignment.findUnique({ where: { id: parentSixth.id } });
+    expect(after).not.toBeNull();
+  });
+});
+
 describe("a lesson they did yesterday", () => {
   /**
    * "We did this yesterday — same lesson, same topic."

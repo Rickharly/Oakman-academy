@@ -16,9 +16,10 @@ export const maxDuration = 300;
 
 export async function POST(req: Request) {
   try {
-    await requireParentApi(req);
+    const parent = await requireParentApi(req);
 
     const students = await prisma.studentProfile.findMany({
+      where: { user: { studentLinks: { some: { parentId: parent.id } } } },
       include: { user: { select: { displayName: true } } },
     });
     const dateKey = schoolDayKey();

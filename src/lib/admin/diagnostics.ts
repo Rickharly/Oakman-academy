@@ -15,7 +15,8 @@ import { Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/db";
 import { getAiProvider, resolveModelId } from "@/lib/ai/provider";
 import { explainerSchema } from "@/lib/lessons/explainer";
-import { describeFetchError, fetchProviderAsset, resolveAssetUrl } from "@/lib/curriculum/asset-fetch";
+import { describeFetchError, resolveAssetUrl } from "@/lib/curriculum/asset-fetch";
+import { resolveMedia } from "@/lib/curriculum/media-link";
 import { imageSchema } from "@/lib/questions/types";
 import { dateOnlyKey, toDateOnly, todayDateOnly, weekStartKey } from "@/lib/dates";
 
@@ -174,38 +175,51 @@ async function videoCheck(): Promise<Check> {
       : "";
 
   try {
-    const res = await fetchProviderAsset(resource.providerUrl);
-    const type = res.headers.get("content-type") ?? "(none)";
-    const length = res.headers.get("content-length") ?? "(unknown)";
+    /**
+     * Followed exactly as the player's route follows it, and reported the way the route decides:
+     * a link the browser is sent to directly, or one we have to proxy and relabel. A green
+     * "the server can download it" told us nothing about what the child's iPad was handed.
+     */
+    const resolved = await resolveMedia({ id: resource.id, providerUrl: resource.providerUrl });
 
-    // Read a little, then stop. We only need to know what kind of thing this is.
-    const reader = res.body?.getReader();
-    const first = await reader?.read();
-    await reader?.cancel().catch(() => undefined);
-    const head = first?.value ? Buffer.from(first.value.slice(0, 16)).toString("utf8") : "";
-    const looksJson = head.trimStart().startsWith("{") || head.trimStart().startsWith("[");
-
-    if (looksJson) {
+    if (resolved.kind === "stream") {
+      const type = resolved.response.headers.get("content-type") ?? "(none)";
+      const length = resolved.response.headers.get("content-length") ?? "(unknown)";
+      const reader = resolved.response.body?.getReader();
+      const first = await reader?.read();
+      await reader?.cancel().catch(() => undefined);
+      const head = first?.value ? Buffer.from(first.value.slice(0, 16)).toString("utf8") : "";
+      const looksJson = head.trimStart().startsWith("{") || head.trimStart().startsWith("[");
+      if (looksJson) {
+        return {
+          name,
+          status: "fail",
+          summary: "The provider returned JSON where the video should be — this is why players sit at 0:00.",
+          detail: `${resource.lesson.title}: content-type ${type}, starts with ${JSON.stringify(head.slice(0, 60))}`,
+        };
+      }
       return {
         name,
-        status: "fail",
-        summary: "The provider returned JSON where the video should be — this is why players sit at 0:00.",
-        detail: `${resource.lesson.title}: content-type ${type}, starts with ${JSON.stringify(head.slice(0, 60))}`,
+        status: type.startsWith("video/") ? "ok" : "warn",
+        summary: type.startsWith("video/")
+          ? `The provider streams the file itself (${type}, ${length} bytes); it is passed through to the player.`
+          : `The provider streams the file itself but calls it "${type}"; it is relabelled as video for the player.`,
+        detail: `${resource.lesson.title}\n${target}${staleNote}`,
       };
     }
-    if (!type.startsWith("video/")) {
-      return {
-        name,
-        status: "warn",
-        summary: `The file came back as "${type}", not a video type. It may still play.`,
-        detail: `${resource.lesson.title}: ${length} bytes`,
-      };
-    }
+
+    const { link } = resolved;
+    const host = new URL(link.url).host;
+    const type = link.contentType ?? "(none given)";
+    const expiresIn = Math.max(0, Math.round((link.expiresAt - Date.now()) / 60000));
+    const direct = link.acceptsRanges && (link.contentType?.startsWith("video/") ?? false);
     return {
       name,
-      status: "ok",
-      summary: `Video streams correctly (${type}, ${length} bytes).`,
-      detail: `${resource.lesson.title}\n${target}${staleNote}`,
+      status: direct ? "ok" : "warn",
+      summary: direct
+        ? `Video plays straight from ${host} (${type}, ranges honoured).`
+        : `The file link at ${host} is ${link.acceptsRanges ? `labelled "${type}"` : "not seekable"}, so the server proxies and relabels it. It should still play; if it does not, this is where to look.`,
+      detail: `${resource.lesson.title}\nEndpoint: ${target}\nLink host: ${host}\nContent type: ${type}\nRanges: ${link.acceptsRanges ? "yes" : "no"}\nLink good for about ${expiresIn} more minute(s)${staleNote}`,
     };
   } catch (err) {
     const check = fail(name, `Could not fetch the video for "${resource.lesson.title}".`, err);

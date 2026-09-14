@@ -118,11 +118,19 @@ export function TeacherPanel({ lessonAttemptId, questionId, stage, className, vo
 
       if (!res.ok || !res.body) {
         let detail = "Something went wrong. Please try again.";
-        try {
-          const data = await res.json();
-          if (typeof data?.error === "string") detail = data.error;
-        } catch {
-          // ignore — keep default message
+        if (res.status >= 400 && res.status < 500) {
+          // A 4xx here is the request being rejected as malformed — a zod message meant for
+          // someone reading the API ("String must contain at most 120 character(s)"), not a
+          // sentence for a child to read under their own question. Say something they can act
+          // on instead of showing them validation prose about a request they never saw.
+          detail = "I couldn't send that. Try asking again, maybe a bit shorter.";
+        } else {
+          try {
+            const data = await res.json();
+            if (typeof data?.error === "string") detail = data.error;
+          } catch {
+            // ignore — keep default message
+          }
         }
         setError(detail);
         setMessages((prev) => prev.filter((m) => m.id !== assistantId));

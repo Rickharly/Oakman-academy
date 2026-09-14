@@ -1,6 +1,5 @@
 "use client";
 
-import { useEffect } from "react";
 import { ArrowDown, ArrowUp, Check, X } from "lucide-react";
 import { cn } from "@/lib/cn";
 import type { Option, QuestionRendererProps } from "./types";
@@ -14,15 +13,15 @@ export function Ordering({ question, value, onChange, disabled, result }: Questi
   const opts = question.options as Options | undefined;
   const items = opts?.items ?? [];
   const itemById = new Map(items.map((i) => [i.id, i]));
+  // The order items are listed in until the child moves one — a *display* order only. Writing
+  // it back with onChange on mount used to turn "never touched this" into a real answer: after
+  // a reload of a graded stage the server has no draft to hand back, this effect fired anyway,
+  // and 600ms later the untouched default order landed on the server as a fresh answer — on a
+  // stage that was already marked, which opened a brand-new empty activity round. No move, no
+  // answer: onChange only ever fires from `move` below, in response to an actual tap.
   const order = (value as Value)?.order ?? items.map((i) => i.id);
   const answerKey = result?.answerKey as AnswerKey | undefined;
   const graded = Boolean(result);
-
-  // Persist the initial (unordered) draft so a submit without any moves still has a value.
-  useEffect(() => {
-    if (!value) onChange({ order: items.map((i) => i.id) });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   function move(index: number, dir: -1 | 1) {
     if (disabled) return;

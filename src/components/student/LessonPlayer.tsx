@@ -204,6 +204,27 @@ function buildCheckAttemptCounts(activities: LessonPlayerActivity[]): Record<str
   return counts;
 }
 
+/**
+ * Retries already in flight when this page loaded.
+ *
+ * `retryingIds` used to always start empty, on the assumption a retry only ever begins from a
+ * button press on this same page. A reload mid-retry broke that: the server already has a
+ * PENDING attempt for the question (`buildInitialResults` drops it, correctly, since it isn't
+ * graded yet), but with nothing marking it as "retrying" the question rendered as disabled with
+ * its old result gone and no way to answer it or submit — no button on the page could move it
+ * forward. Seeding this from the latest CHECK activity's PENDING rows puts the answer box and
+ * "Submit answer" back for exactly the questions that need them.
+ */
+function buildInitialRetryingIds(activities: LessonPlayerActivity[]): Set<string> {
+  const checkActivity = pickLatest(activities, "CHECK");
+  const ids = new Set<string>();
+  if (!checkActivity) return ids;
+  for (const qa of checkActivity.questionAttempts) {
+    if (qa.gradedBy === "PENDING") ids.add(qa.questionId);
+  }
+  return ids;
+}
+
 async function extractError(res: Response): Promise<string> {
   try {
     const data: unknown = await res.json();
@@ -219,6 +240,18 @@ async function extractError(res: Response): Promise<string> {
 function scorePct(score: { score: number | null; maxScore: number | null } | undefined): number | null {
   if (!score || !score.maxScore || score.maxScore <= 0) return null;
   return Math.round(((score.score ?? 0) / score.maxScore) * 100);
+}
+
+/**
+ * Cut to `max` characters, with an ellipsis to show something was cut.
+ *
+ * The teacher-chat route caps `section`/`questionPrompt`/each option and 400s a whole message
+ * over a limit a picture's alt text or a long prompt can quietly exceed. Truncating here, below
+ * the server's limits, means a long question never costs a child their teacher's reply.
+ */
+function truncate(text: string, max: number): string {
+  if (text.length <= max) return text;
+  return `${text.slice(0, Math.max(0, max - 1)).trimEnd()}…`;
 }
 
 // ───────────────────────────── component ─────────────────────────────
@@ -263,7 +296,7 @@ export function LessonPlayer(props: LessonPlayerProps) {
   const [checkAttemptCounts, setCheckAttemptCounts] = useState<Record<string, number>>(() =>
     buildCheckAttemptCounts(props.activities)
   );
-  const [retryingIds, setRetryingIds] = useState<Set<string>>(new Set());
+  const [retryingIds, setRetryingIds] = useState<Set<string>>(() => buildInitialRetryingIds(props.activities));
   const [finalAttempt, setFinalAttempt] = useState<FinalAttempt | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -282,6 +315,9 @@ export function LessonPlayer(props: LessonPlayerProps) {
   // "this lesson has no video" and leaves a child staring at a black rectangle. When it fails,
   // say so and give them the way through.
   const [videoFailed, setVideoFailed] = useState(false);
+  // The browser's own reason, when it gives one, so a report says "not supported" or "network"
+  // rather than only "would not play". Code 4 is a file the browser cannot play; 2 is the network.
+  const [videoError, setVideoError] = useState<string | null>(null);
 
   /**
    * What is in the video slot, in one sentence.
@@ -298,7 +334,7 @@ export function LessonPlayer(props: LessonPlayerProps) {
     : !isPlayable(videoResource)
       ? `placeholder address (${videoResource.providerUrl ?? "none"}) — not a real video`
       : videoFailed
-        ? "a real video that would not play in the browser"
+        ? `a real video that would not play in the browser${videoError ? ` (${videoError})` : ""}`
         : "a working player";
 
   // Set when the tutoring loop reports nothing left open, so the lesson stops holding them.
@@ -353,6 +389,13 @@ export function LessonPlayer(props: LessonPlayerProps) {
     return () => {
       cancelled = true;
       abort.abort();
+      clearTimeout(timeout);
+      // Leaving Learn mid-request used to leave exactly this: `cancelled` stops the aborted
+      // fetch's catch from touching state, so `explainerState` stayed "loading" forever, and
+      // `explainerAsked` stayed true so nothing ever asked again — a spinner with no request
+      // behind it that returning to Learn could never clear. Show the same "Try again" a real
+      // failure would, rather than a wheel that spins forever with nothing behind it.
+      setExplainerState((prev) => (prev === "loading" ? "failed" : prev));
     };
   }, [explainer, lesson.id, viewStage]);
   const [extraPractice, setExtraPractice] = useState<LessonPlayerQuestion[]>([]);
@@ -464,11 +507,13 @@ export function LessonPlayer(props: LessonPlayerProps) {
   }
 
   // ── graded stage submit (STARTER / PRACTICE / CHECK) ──
-  async function submitGraded(stage: "STARTER" | "PRACTICE" | "CHECK") {
+  // Returns whether the submit actually went through, so a caller like `submitRetries` can tell
+  // a real failure apart from success without duplicating the try/catch here.
+  async function submitGraded(stage: "STARTER" | "PRACTICE" | "CHECK"): Promise<boolean> {
     // One submit at a time. The button is disabled while it runs, but a double tap on a slow
     // tablet can land twice before React has painted the disabled state — and two submits of
     // the same answers is two rounds of marking for one child pressing one button.
-    if (submitting) return;
+    if (submitting) return false;
     setSubmitting(true);
     setSubmitError(null);
     try {
@@ -514,8 +559,10 @@ export function LessonPlayer(props: LessonPlayerProps) {
           if (stage === "CHECK" || emptyStage) setViewStage(next);
         }
       }
+      return true;
     } catch (err) {
       setSubmitError(err instanceof Error ? err.message : "Something went wrong. Please try again.");
+      return false;
     } finally {
       setSubmitting(false);
     }
@@ -589,7 +636,13 @@ export function LessonPlayer(props: LessonPlayerProps) {
 
   async function submitRetries() {
     const ids = new Set(retryingIds);
-    await submitGraded("CHECK");
+    const ok = await submitGraded("CHECK");
+    // A failed submit used to clear retryingIds anyway — the question dropped out of the
+    // "retrying" set, its old result was already gone, and the child was left looking at a
+    // disabled box with no result, no "Try again" and no "Submit answer" to press: the error
+    // above was the only thing on the page. Keep the question in retry until a submit actually
+    // succeeds, so the answer box and the button stay put and they can just try again.
+    if (!ok) return;
     setCheckAttemptCounts((prev) => {
       const next = { ...prev };
       ids.forEach((id) => {
@@ -695,14 +748,19 @@ export function LessonPlayer(props: LessonPlayerProps) {
 
     return {
       stage: viewStage,
-      section:
+      // Below the server's limits (section ≤ 300, questionPrompt ≤ 2000, option ≤ 500) so a
+      // picture's alt text or a long prompt can never 400 the whole message — the child asking
+      // for help is the one who paid for that failure, over a limit they never knew existed.
+      section: truncate(
         `question ${index + 1} of ${onScreenQuestions.length}${isExtra ? " in their extra practice" : ""}` +
-        (question.promptImage
-          ? `, which has a picture with it${picture ? ` showing: ${picture}` : ""}`
-          : ""),
-      questionPrompt: question.prompt,
+          (question.promptImage
+            ? `, which has a picture with it${picture ? ` showing: ${picture}` : ""}`
+            : ""),
+        280,
+      ),
+      questionPrompt: truncate(question.prompt, 1900),
       options: Array.isArray(choices)
-        ? choices.map((c) => String(c?.text ?? "")).filter(Boolean).slice(0, 8)
+        ? choices.map((c) => truncate(String(c?.text ?? ""), 480)).filter(Boolean).slice(0, 8)
         : undefined,
       // Unanswered is the fact that changes what she is allowed to say, so it is derived from
       // whether the answer has actually been marked — not from which tab is open.
@@ -1268,7 +1326,17 @@ export function LessonPlayer(props: LessonPlayerProps) {
               src={`/api/curriculum/resources/${video.id}`}
               onTimeUpdate={handleVideoTimeUpdate}
               onEnded={handleVideoEnded}
-              onError={() => setVideoFailed(true)}
+              onError={(e) => {
+                const err = e.currentTarget.error;
+                const names: Record<number, string> = {
+                  1: "aborted",
+                  2: "network error",
+                  3: "could not decode",
+                  4: "format not supported",
+                };
+                setVideoError(err ? `${names[err.code] ?? `code ${err.code}`}${err.message ? `: ${err.message}` : ""}` : null);
+                setVideoFailed(true);
+              }}
             />
           ) : video && videoFailed ? (
             <div className="space-y-3 rounded-2xl border border-warning/30 bg-warning-soft/40 p-5">
@@ -1280,7 +1348,13 @@ export function LessonPlayer(props: LessonPlayerProps) {
                 rather watch it, it&apos;s on Oak&apos;s own page.
               </p>
               <div className="flex flex-wrap gap-2">
-                <Button variant="secondary" onClick={() => setVideoFailed(false)}>
+                <Button
+                  variant="secondary"
+                  onClick={() => {
+                    setVideoError(null);
+                    setVideoFailed(false);
+                  }}
+                >
                   Try the video again
                 </Button>
                 {lesson.oakUrl ? (

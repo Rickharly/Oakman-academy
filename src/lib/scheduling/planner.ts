@@ -524,12 +524,16 @@ async function trimDayToTimetable(studentId: string, dayDate: Date, cap: number)
    * first period of something else — so the extras go, oldest kept. Only untouched ones: work
    * already started or finished is history and is never deleted.
    */
+  // What a parent put on the day by hand is theirs, not the planner's to tidy: a second
+  // maths lesson a parent chose is a decision, not a planning fault, and it used to vanish the
+  // next time anybody opened the board.
+  const removable = (a: { status: string; source: string }) => a.status === "PLANNED" && a.source !== "PARENT";
   const seen = new Set<string>();
   const duplicates: string[] = [];
   for (const lesson of lessons) {
     if (!lesson.subjectId) continue;
     if (seen.has(lesson.subjectId)) {
-      if (lesson.status === "PLANNED") duplicates.push(lesson.id);
+      if (removable(lesson)) duplicates.push(lesson.id);
       continue;
     }
     seen.add(lesson.subjectId);
@@ -574,7 +578,7 @@ async function trimDayToTimetable(studentId: string, dayDate: Date, cap: number)
   const remaining = lessons.filter((a) => !duplicates.includes(a.id));
   if (remaining.length <= cap) return;
 
-  const surplus = remaining.slice(cap).filter((a) => a.status === "PLANNED");
+  const surplus = remaining.slice(cap).filter(removable);
   if (surplus.length === 0) return;
 
   await prisma.dailyAssignment.deleteMany({ where: { id: { in: surplus.map((a) => a.id) } } });

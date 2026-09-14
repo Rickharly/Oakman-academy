@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { prisma } from "@/lib/db";
 import { resetDb } from "./helpers/db";
 import { nextStrategy, parkOpenGaps, STRATEGY_ORDER } from "@/lib/lessons/understanding";
+import { addDaysKey, schoolDayKey, toDateOnly } from "@/lib/dates";
 
 /**
  * The difference between a school and a tutor.
@@ -85,5 +86,20 @@ describe("a gap the period ran out on", () => {
 
     expect(await parkOpenGaps(attemptId, studentId)).toBe(0);
     expect(await prisma.reviewItem.count({ where: { studentId } })).toBe(0);
+  });
+
+  it("comes back the next school day, not a day late", async () => {
+    // The planner and review queue compare `dueAt` against date-only UTC-midnight values
+    // (`toDateOnly`/`schoolDayKey`) — a 24-hour-from-now timestamp lands on the day after
+    // "tomorrow" whenever this runs at any time other than exactly the family's own midnight.
+    const { studentId, attemptId } = await buildGap();
+    await parkOpenGaps(attemptId, studentId);
+
+    const review = await prisma.reviewItem.findFirstOrThrow({ where: { studentId } });
+    const expected = toDateOnly(addDaysKey(schoolDayKey(), 1));
+    expect(review.dueAt.getTime()).toBe(expected.getTime());
+    // A date-only value: UTC midnight, no time-of-day component left over.
+    expect(review.dueAt.getUTCHours()).toBe(0);
+    expect(review.dueAt.getUTCMinutes()).toBe(0);
   });
 });

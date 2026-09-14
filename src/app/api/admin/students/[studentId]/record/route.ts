@@ -1,12 +1,11 @@
-import { jsonError } from "@/lib/auth/api";
-import { requireParentOfStudent } from "@/lib/auth/session";
+import { jsonError, requireParentOfStudentApi } from "@/lib/auth/api";
 import { buildAcademicRecord, saveAcademicRecord } from "@/lib/records/academic-record";
 
 /** Builds the record with the teacher's notes and saves it as issued. */
-export async function POST(_req: Request, ctx: { params: Promise<{ studentId: string }> }) {
+export async function POST(req: Request, ctx: { params: Promise<{ studentId: string }> }) {
   try {
     const { studentId } = await ctx.params;
-    await requireParentOfStudent(studentId);
+    await requireParentOfStudentApi(req, studentId);
 
     const record = await buildAcademicRecord(studentId, { withNotes: true });
     const saved = await saveAcademicRecord(studentId, record);

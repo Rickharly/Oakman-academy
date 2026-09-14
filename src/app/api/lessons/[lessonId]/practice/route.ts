@@ -80,8 +80,17 @@ export async function POST(req: Request, ctx: { params: Promise<{ lessonId: stri
       });
 
     if (questions.length === 0 && !body.finalTest) {
+      // Same visibility rule `getVisibleQuestions` (lessons/service.ts) enforces everywhere
+      // else: an AI_GENERATED question only counts here when it was generated for this
+      // student. Without it, this fallback could hand back a sibling's practice — questions
+      // this student's own player would never show, so the stage could never be completed.
       questions = await prisma.question.findMany({
-        where: { lessonId, stage: "PRACTICE", excluded: false },
+        where: {
+          lessonId,
+          stage: "PRACTICE",
+          excluded: false,
+          OR: [{ source: { not: "AI_GENERATED" } }, { generatedForStudentId: user.studentProfile.id }],
+        },
         orderBy: { order: "asc" },
         take: 5,
       });

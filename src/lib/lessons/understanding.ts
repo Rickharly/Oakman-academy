@@ -21,6 +21,7 @@ import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { getAiProvider } from "@/lib/ai/provider";
 import type { TeachingStrategy, UnderstandingGap } from "@/generated/prisma/client";
+import { addDaysKey, schoolDayKey, toDateOnly } from "@/lib/dates";
 
 /** The order the strategies are reached for. Cheapest change of tack first. */
 export const STRATEGY_ORDER: TeachingStrategy[] = [
@@ -373,8 +374,11 @@ export async function parkOpenGaps(lessonAttemptId: string, studentId: string): 
     data: { status: "PARKED", closedAt: new Date() },
   });
 
-  // Back on the timetable rather than lost. Tomorrow, so it is still fresh.
-  const dueAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
+  // Back on the timetable rather than lost. Tomorrow, so it is still fresh — as the date-only
+  // value the planner and review queue actually compare against (`toDateOnly`/`schoolDayKey`),
+  // not a 24-hour timestamp: that made "tomorrow" land a day late whenever this ran any time
+  // after the family's own midnight, which is most of the school day in most timezones.
+  const dueAt = toDateOnly(addDaysKey(schoolDayKey(), 1));
   for (const gap of open) {
     await prisma.reviewItem
       .create({

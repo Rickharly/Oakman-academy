@@ -20,7 +20,8 @@ import { prisma } from "@/lib/db";
 import { isLessonTaught } from "@/lib/progress/aggregate";
 import { z } from "zod";
 import { getAiProvider } from "@/lib/ai/provider";
-import { dateOnlyKey, schoolDayEnd, schoolDayStart } from "@/lib/dates";
+import { formatInTimeZone } from "date-fns-tz";
+import { SCHOOL_TIMEZONE, dateOnlyKey, toDateOnly } from "@/lib/dates";
 
 export type RecordUnit = {
   title: string;
@@ -155,7 +156,12 @@ export async function buildAcademicRecord(
   const startTimes = days
     .map((d) => d.startedAt)
     .filter((d): d is Date => d !== null)
-    .map((d) => d.getUTCHours() * 60 + d.getUTCMinutes());
+    // In the family's own time. Read as UTC, a 13:00 start in Yerevan printed as 09:00 on a
+    // document written for a receiving school.
+    .map((d) => {
+      const [h, m] = formatInTimeZone(d, SCHOOL_TIMEZONE, "HH:mm").split(":").map(Number);
+      return h * 60 + m;
+    });
   const averageStart = mean(startTimes);
 
   // ── Subjects ──
@@ -347,8 +353,9 @@ export async function saveAcademicRecord(studentId: string, record: AcademicReco
     data: {
       studentId,
       period: "ACADEMIC_RECORD",
-      periodStart: schoolDayStart(record.periodStart ?? dateOnlyKey(new Date())),
-      periodEnd: schoolDayEnd(record.periodEnd ?? dateOnlyKey(new Date())),
+      // Date-only columns take UTC midnight; an instant in the family's zone landed a day early.
+      periodStart: toDateOnly(record.periodStart ?? dateOnlyKey(new Date())),
+      periodEnd: toDateOnly(record.periodEnd ?? dateOnlyKey(new Date())),
       data: JSON.parse(JSON.stringify(record)),
       teacherSummary: record.subjects.map((s) => s.note).filter(Boolean).join("\n\n") || null,
     },

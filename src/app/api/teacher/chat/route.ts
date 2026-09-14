@@ -7,18 +7,31 @@ import { prisma } from "@/lib/db";
 import { ApiError, jsonError, requireStudentApi } from "@/lib/auth/api";
 import { teacherAgent } from "@/lib/ai/teacher-agent";
 
+/** Cuts a string down to a limit rather than rejecting it — this is display context, not
+ * something a child typed, and a picture question's prompt or a longer worked answer should
+ * still get through, just trimmed. */
+function capped(max: number) {
+  return z
+    .string()
+    .transform((s) => s.slice(0, max));
+}
+
 /**
  * What the player says is on screen. Every field is capped and optional: this is a hint about
  * what the child can see, and a hostile value should make the answer vaguer, never leak
  * anything. The server decides the teacher's mode; this can only tighten it.
+ *
+ * Capped by truncating rather than rejecting: a picture question's prompt (which describes the
+ * image at length) or a long worked answer used to 400 the whole chat, leaving a child unable to
+ * ask for help on exactly the questions that most needed it.
  */
 const viewSchema = z.object({
   stage: z.enum(["STARTER", "LEARN", "PRACTICE", "CHECK", "FEEDBACK", "COMPLETE"]).optional(),
-  section: z.string().max(120).optional(),
-  questionPrompt: z.string().max(600).optional(),
-  options: z.array(z.string().max(200)).max(8).optional(),
+  section: capped(300).optional(),
+  questionPrompt: capped(2000).optional(),
+  options: z.array(capped(500)).max(8).optional(),
   unanswered: z.boolean().optional(),
-  draft: z.string().max(600).optional(),
+  draft: capped(600).optional(),
 });
 
 const chatBodySchema = z.object({

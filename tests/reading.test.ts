@@ -7,6 +7,7 @@ import {
   getReadingHistory,
   getReadingSummary,
   judgePace,
+  retryStaleReadingReplies,
   submitReadingResponse,
 } from "@/lib/reading/service";
 import { planWeek } from "@/lib/scheduling/planner";
@@ -218,6 +219,96 @@ describe("reading pace", () => {
       readingSeconds: 60 * 60 * 20,
     });
     expect(entry.readingSeconds).toBe(4 * 60 * 60);
+  });
+});
+
+describe("giving a failed teacher reply a second try", () => {
+  beforeAll(async () => {
+    await resetDb();
+    await seedReadingLibrary();
+    studentId = await makeStudent(7);
+  });
+
+  it("replies to an entry whose teacher reply never came back", async () => {
+    const text = await getNextReadingText(studentId);
+    const stale = await prisma.readingEntry.create({
+      data: {
+        studentId,
+        readingTextId: text!.id,
+        kind: "RESPONSE",
+        prompt: "What did you think?",
+        response: "It was a good story, better than I expected.",
+        submittedAt: new Date(Date.now() - 2 * 60_000),
+      },
+    });
+    expect(stale.feedback).toBeNull();
+
+    await retryStaleReadingReplies(studentId);
+
+    const after = await prisma.readingEntry.findUniqueOrThrow({ where: { id: stale.id } });
+    expect(after.feedback).not.toBeNull();
+  });
+
+  it("leaves a just-written entry alone — it might simply be mid-flight", async () => {
+    const text = await getNextReadingText(studentId);
+    const fresh = await prisma.readingEntry.create({
+      data: {
+        studentId,
+        readingTextId: text!.id,
+        kind: "RESPONSE",
+        prompt: "What did you think?",
+        response: "Just wrote this one.",
+      },
+    });
+
+    await retryStaleReadingReplies(studentId);
+
+    const after = await prisma.readingEntry.findUniqueOrThrow({ where: { id: fresh.id } });
+    expect(after.feedback).toBeNull();
+  });
+
+  it("leaves an already-answered entry alone", async () => {
+    const text = await getNextReadingText(studentId);
+    const entry = await submitReadingResponse({
+      studentId,
+      readingTextId: text!.id,
+      promptIndex: 0,
+      response: "This one already got a reply.",
+    });
+    expect(entry.feedback).not.toBeNull();
+    const feedbackBefore = entry.feedback;
+
+    await prisma.readingEntry.update({
+      where: { id: entry.id },
+      data: { submittedAt: new Date(Date.now() - 2 * 60_000) },
+    });
+    await retryStaleReadingReplies(studentId);
+
+    const after = await prisma.readingEntry.findUniqueOrThrow({ where: { id: entry.id } });
+    expect(after.feedback).toBe(feedbackBefore);
+  });
+
+  it("catches up several stale replies at once, oldest first, up to the limit", async () => {
+    const text = await getNextReadingText(studentId);
+    const stale = await Promise.all(
+      [5, 4, 3].map((minutesAgo) =>
+        prisma.readingEntry.create({
+          data: {
+            studentId,
+            readingTextId: text!.id,
+            kind: "RESPONSE",
+            prompt: "What did you think?",
+            response: `A response from ${minutesAgo} minutes ago.`,
+            submittedAt: new Date(Date.now() - minutesAgo * 60_000),
+          },
+        }),
+      ),
+    );
+
+    await retryStaleReadingReplies(studentId, 3);
+
+    const after = await prisma.readingEntry.findMany({ where: { id: { in: stale.map((e) => e.id) } } });
+    expect(after.every((e) => e.feedback !== null)).toBe(true);
   });
 });
 

@@ -13,6 +13,21 @@ import { cn } from "@/lib/cn";
 const DAY_LABELS = ["Mon", "Tue", "Wed", "Thu", "Fri"];
 
 type Rule = { subjectId: string; weeklyFrequency: number; preferredDays: number[] };
+
+/**
+ * The school day after `key`: Monday to Friday, so a repeat set on a Friday lands on Monday.
+ *
+ * A lesson can only be on a day once, so "repeat today" could never do anything but fail —
+ * the lesson it repeats is already on today. The next school day is the earliest it can go.
+ */
+function nextSchoolDayKey(key: string): string {
+  const [y, m, d] = key.split("-").map(Number);
+  const date = new Date(Date.UTC(y, m - 1, d));
+  do {
+    date.setUTCDate(date.getUTCDate() + 1);
+  } while (date.getUTCDay() === 0 || date.getUTCDay() === 6);
+  return date.toISOString().slice(0, 10);
+}
 type Assignment = {
   id: string;
   dateKey: string;
@@ -339,11 +354,14 @@ export function ScheduleEditor({
                             type="button"
                             disabled={pending !== null}
                             onClick={() =>
-                              postAssignment({ action: "repeat", lessonId: a.lessonId, dateKey: key }, `repeat-${a.id}`)
+                              postAssignment(
+                                { action: "repeat", lessonId: a.lessonId, dateKey: nextSchoolDayKey(key) },
+                                `repeat-${a.id}`,
+                              )
                             }
                             className="inline-flex h-7 items-center gap-1 rounded-md bg-stone-100 px-2 text-[11px] font-medium text-ink-muted hover:bg-stone-200"
                           >
-                            <Repeat className="h-3 w-3" /> Repeat today
+                            <Repeat className="h-3 w-3" /> Repeat next day
                           </button>
                         ) : null}
                       </div>
