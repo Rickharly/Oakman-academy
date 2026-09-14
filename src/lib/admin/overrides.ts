@@ -421,6 +421,20 @@ async function handleExcludeQuestion(parentId: string, input: ApplyOverrideInput
 async function handleComment(parentId: string, input: ApplyOverrideInput): Promise<ParentOverride> {
   if (!input.comment || !input.comment.trim()) throw new ApiError(400, "comment is required for a COMMENT override");
 
+  // The one handler that did not check whose attempt it was writing to. A comment is shown to
+  // the child the attempt belongs to, so the attempt has to be this child's.
+  if (input.questionAttemptId) {
+    const qa = await loadQuestionAttempt(input.questionAttemptId);
+    if (qa.activityAttempt.lessonAttempt.studentId !== input.studentId) {
+      throw new ApiError(403, "Question attempt does not belong to this student");
+    }
+  }
+  if (input.lessonAttemptId) {
+    const lessonAttempt = await prisma.lessonAttempt.findUnique({ where: { id: input.lessonAttemptId } });
+    if (!lessonAttempt) throw new ApiError(404, "Lesson attempt not found");
+    if (lessonAttempt.studentId !== input.studentId) throw new ApiError(403, "Lesson attempt does not belong to this student");
+  }
+
   const override = await prisma.parentOverride.create({
     data: {
       parentId,

@@ -24,7 +24,20 @@ export function sessionTtlMs(remember?: boolean): number {
   if (remember === false) return SHORT_TTL_MS;
   return SESSION_TTL_MS;
 }
-const REFRESH_THRESHOLD_MS = 15 * 24 * 60 * 60 * 1000; // refresh when < 15 days left
+/**
+ * The length a session was granted, recovered from the row.
+ *
+ * The row only records when it was created and when it expires, and every refresh pushes
+ * the expiry out, so the gap between them grows. The lengths we grant are far enough apart
+ * that the largest one not exceeding the gap is the one it was given.
+ */
+function grantedTtlMs(session: { createdAt: Date; expiresAt: Date }): number {
+  const gap = session.expiresAt.getTime() - session.createdAt.getTime();
+  for (const ttl of [REMEMBERED_TTL_MS, SESSION_TTL_MS, SHORT_TTL_MS]) {
+    if (gap >= ttl) return ttl;
+  }
+  return SHORT_TTL_MS;
+}
 
 export type SessionUser = {
   id: string;
@@ -135,11 +148,14 @@ async function loadSessionUser(token: string, opts?: { refreshCookie?: boolean }
     return null;
   }
 
-  if (session.expiresAt.getTime() - now < REFRESH_THRESHOLD_MS) {
-    // Extend by however long this session was originally granted, so a remembered login is
-    // not quietly demoted to a short one the first time it refreshes.
-    const granted = session.expiresAt.getTime() - session.createdAt.getTime();
-    const expiresAt = new Date(now + Math.max(SESSION_TTL_MS, granted));
+  // Rolling: once half the granted time is used, extend by the same length again. The
+  // length is the one this session was given — a remembered login is not demoted to a
+  // short one, and a short one is not quietly promoted to thirty days. That promotion used
+  // to happen on the first page load after unticking "keep me signed in", because a
+  // twelve-hour session was always inside a fifteen-day refresh window.
+  const granted = grantedTtlMs(session);
+  if (session.expiresAt.getTime() - now < granted / 2) {
+    const expiresAt = new Date(now + granted);
     await prisma.session.update({ where: { id: session.id }, data: { expiresAt } });
     if (opts?.refreshCookie) {
       try {

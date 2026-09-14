@@ -140,7 +140,7 @@ export default async function AdminSettingsPage({
     const pin = String(formData.get("pin") ?? "");
     const { student } = await requireParentOfStudent(studentId);
 
-    if (pin.length < 4 || pin.length > 6) {
+    if (!/^\d{4,6}$/.test(pin)) {
       redirect("/admin/settings?error=" + encodeURIComponent("PIN must be 4-6 digits"));
     }
     const passwordHash = await hashPassword(pin);
@@ -180,7 +180,7 @@ export default async function AdminSettingsPage({
     // A new student takes the default timetable; it is edited above once they exist.
     const avatar = String(formData.get("avatar") ?? "").trim();
 
-    if (!displayName || !username || pin.length < 4 || pin.length > 6 || !Number.isFinite(yearGroup) || !keyStage) {
+    if (!displayName || !username || !/^\d{4,6}$/.test(pin) || !Number.isFinite(yearGroup) || !keyStage) {
       redirect("/admin/settings?error=" + encodeURIComponent("Please fill in every field for the new student"));
     }
 
@@ -387,7 +387,7 @@ export default async function AdminSettingsPage({
                     <input type="hidden" name="studentId" value={profile.id} />
                     <div>
                       <label className={fieldClass()}>New PIN (4-6 digits)</label>
-                      <Input name="pin" inputMode="numeric" minLength={4} maxLength={6} required className="w-36" />
+                      <Input name="pin" inputMode="numeric" pattern="[0-9]{4,6}" title="4 to 6 digits" minLength={4} maxLength={6} required className="w-36" />
                     </div>
                     <Button type="submit" variant="secondary">
                       Reset PIN
@@ -412,7 +412,7 @@ export default async function AdminSettingsPage({
             </div>
             <div>
               <label className={fieldClass()}>PIN (4-6 digits)</label>
-              <Input name="pin" inputMode="numeric" minLength={4} maxLength={6} required />
+              <Input name="pin" inputMode="numeric" pattern="[0-9]{4,6}" title="4 to 6 digits" minLength={4} maxLength={6} required />
             </div>
             <div>
               <label className={fieldClass()}>Year group</label>

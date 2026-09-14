@@ -155,7 +155,7 @@ export async function fixYearGroupEnrolments(studentId: string): Promise<{ remov
   // and deleting a child's history to tidy up a mistake of mine would be a worse mistake.
   if (lessons.length > 0) {
     await prisma.dailyAssignment.deleteMany({
-      where: { studentId, status: "PLANNED", lessonId: { in: lessons.map((l) => l.id) } },
+      where: { studentId, status: "PLANNED", source: { not: "PARENT" }, lessonId: { in: lessons.map((l) => l.id) } },
     });
   }
 

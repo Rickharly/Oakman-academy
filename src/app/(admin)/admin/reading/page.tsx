@@ -31,11 +31,15 @@ function loadCandidates() {
  * warning in front of them.
  */
 export default async function AdminReadingPage() {
-  await requireParent();
+  const parent = await requireParent();
 
   const [books, students, candidates] = await Promise.all([
     prisma.book.findMany({ orderBy: [{ yearGroup: "asc" }, { title: "asc" }] }),
-    prisma.studentProfile.findMany({ include: { user: true }, orderBy: { yearGroup: "asc" } }),
+    prisma.studentProfile.findMany({
+      where: { user: { studentLinks: { some: { parentId: parent.id } } } },
+      include: { user: true },
+      orderBy: { yearGroup: "asc" },
+    }),
     Promise.resolve(loadCandidates()),
   ]);
 

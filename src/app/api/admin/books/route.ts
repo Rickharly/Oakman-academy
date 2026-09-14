@@ -1,8 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { z } from "zod";
-import { jsonError } from "@/lib/auth/api";
-import { requireParent } from "@/lib/auth/session";
+import { jsonError, requireParentApi } from "@/lib/auth/api";
 import { bookCandidateSchema, deactivateBook, importBook, setActiveBook } from "@/lib/books/import";
 
 const bodySchema = z.discriminatedUnion("action", [
@@ -13,7 +12,7 @@ const bodySchema = z.discriminatedUnion("action", [
 
 export async function POST(req: Request) {
   try {
-    await requireParent();
+    await requireParentApi(req);
     const body = bodySchema.parse(await req.json());
 
     if (body.action === "activate") {
