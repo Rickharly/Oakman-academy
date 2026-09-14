@@ -281,6 +281,9 @@ export function LessonPlayer(props: LessonPlayerProps) {
   // "this lesson has no video" and leaves a child staring at a black rectangle. When it fails,
   // say so and give them the way through.
   const [videoFailed, setVideoFailed] = useState(false);
+  // The browser's own reason, when it gives one, so a report says "not supported" or "network"
+  // rather than only "would not play". Code 4 is a file the browser cannot play; 2 is the network.
+  const [videoError, setVideoError] = useState<string | null>(null);
 
   /**
    * What is in the video slot, in one sentence.
@@ -297,7 +300,7 @@ export function LessonPlayer(props: LessonPlayerProps) {
     : !isPlayable(videoResource)
       ? `placeholder address (${videoResource.providerUrl ?? "none"}) — not a real video`
       : videoFailed
-        ? "a real video that would not play in the browser"
+        ? `a real video that would not play in the browser${videoError ? ` (${videoError})` : ""}`
         : "a working player";
 
   // Set when the tutoring loop reports nothing left open, so the lesson stops holding them.
@@ -1242,7 +1245,17 @@ export function LessonPlayer(props: LessonPlayerProps) {
               src={`/api/curriculum/resources/${video.id}`}
               onTimeUpdate={handleVideoTimeUpdate}
               onEnded={handleVideoEnded}
-              onError={() => setVideoFailed(true)}
+              onError={(e) => {
+                const err = e.currentTarget.error;
+                const names: Record<number, string> = {
+                  1: "aborted",
+                  2: "network error",
+                  3: "could not decode",
+                  4: "format not supported",
+                };
+                setVideoError(err ? `${names[err.code] ?? `code ${err.code}`}${err.message ? `: ${err.message}` : ""}` : null);
+                setVideoFailed(true);
+              }}
             />
           ) : video && videoFailed ? (
             <div className="space-y-3 rounded-2xl border border-warning/30 bg-warning-soft/40 p-5">
@@ -1254,7 +1267,13 @@ export function LessonPlayer(props: LessonPlayerProps) {
                 rather watch it, it&apos;s on Oak&apos;s own page.
               </p>
               <div className="flex flex-wrap gap-2">
-                <Button variant="secondary" onClick={() => setVideoFailed(false)}>
+                <Button
+                  variant="secondary"
+                  onClick={() => {
+                    setVideoError(null);
+                    setVideoFailed(false);
+                  }}
+                >
                   Try the video again
                 </Button>
                 {lesson.oakUrl ? (
