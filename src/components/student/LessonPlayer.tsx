@@ -19,6 +19,7 @@ import { ReadAloud } from "@/components/student/ReadAloud";
 import { UnderstandingLoop } from "@/components/student/UnderstandingLoop";
 import { ReportBug } from "@/components/student/ReportBug";
 import { AlreadyLearned } from "@/components/student/AlreadyLearned";
+import { StillThere } from "@/components/student/StillThere";
 import { formatMinutes } from "@/components/student/format";
 import type { LessonExplainer } from "@/lib/lessons/explainer";
 import { cn } from "@/lib/cn";
@@ -421,6 +422,25 @@ export function LessonPlayer(props: LessonPlayerProps) {
     }, 1000);
     return () => clearInterval(id);
   }, []);
+
+  /**
+   * The period runs for its full length.
+   *
+   * A lesson finished in twelve minutes is not a child who learned faster, it is a lesson that
+   * ran out of content — and the honest answer to that is more teaching, not an early break.
+   * So the door stays shut until the period is up.
+   *
+   * With one exception, and it is not a loophole. The very first fault this app ever had was a
+   * child locked in a lesson with nothing left to do and twenty-four minutes on the clock, and
+   * a timer alone would build that back deliberately. So the lock only holds while the app can
+   * still put work in front of them: when it has genuinely run out — no more questions can be
+   * written — the door opens, because trapping a child in front of an empty screen teaches
+   * nothing except that the app is their enemy.
+   */
+  const minutesLeftInPeriod = Math.max(0, lessonMinutes - Math.round(spentSeconds / 60));
+  /** Set when the app admits it has nothing more to give. */
+  const [outOfWork, setOutOfWork] = useState(false);
+  const periodHoldsThemHere = minutesLeftInPeriod > 0 && !outOfWork;
 
   const theme = subjectTheme(subjectSlug);
 
@@ -844,6 +864,7 @@ export function LessonPlayer(props: LessonPlayerProps) {
       }
       setExtraPractice(data.questions);
     } catch (err) {
+      setOutOfWork(true);
       setPracticeError(err instanceof Error ? err.message : "Couldn't write the questions.");
     } finally {
       setGeneratingPractice(false);
@@ -866,13 +887,17 @@ export function LessonPlayer(props: LessonPlayerProps) {
       if (!data.questions?.length) {
         // Not an error: there is genuinely nothing more to set. Say so, and leave the Finish
         // button below as the obvious next thing rather than a red message and a dead end.
+        // The app admitting it has run out. This is what unlocks the door — see
+        // `periodHoldsThemHere`. Saying "keep going" with nothing to go on would be a lie.
+        setOutOfWork(true);
         setPracticeError(
-          "I haven't got more questions on this one right now. Finish the lesson below when you're ready.",
+          "I haven't got more questions on this one right now. You can finish the lesson below.",
         );
         return;
       }
       startExtraRound(data.questions);
     } catch (err) {
+      setOutOfWork(true);
       setPracticeError(
         err instanceof Error
           ? `${err.message} You can finish the lesson below if you'd rather stop.`
@@ -919,6 +944,7 @@ export function LessonPlayer(props: LessonPlayerProps) {
       }
       startExtraRound(data.questions, "TEST");
     } catch (err) {
+      setOutOfWork(true);
       setPracticeError(
         err instanceof Error
           ? `${err.message} The lesson is finished — you can take your break.`
@@ -1584,10 +1610,16 @@ export function LessonPlayer(props: LessonPlayerProps) {
                   {generatingPractice ? "Writing your questions…" : "Practise what I missed"}
                 </Button>
               )}
-              {/* Never removed: this is the way out when nothing else on the screen works. */}
-              <Button variant="ghost" onClick={() => void finishLesson()} disabled={submitting}>
-                {submitting ? "Finishing…" : "Finish anyway"}
-              </Button>
+              {/*
+                Never removed once the app has run out of work: this is the way out when nothing
+                else on the screen works, and it is the difference between a period with a floor
+                under it and a child locked in an empty room.
+              */}
+              {!periodHoldsThemHere ? (
+                <Button variant="ghost" onClick={() => void finishLesson()} disabled={submitting}>
+                  {submitting ? "Finishing…" : "Finish anyway"}
+                </Button>
+              ) : null}
             </div>
             {practiceError ? <p className="text-sm text-danger">{practiceError}</p> : null}
           </Card>
@@ -1607,13 +1639,19 @@ export function LessonPlayer(props: LessonPlayerProps) {
             </Button>
           ) : null}
           {secure ? (
-            <Button
-              onClick={() => void finishLesson()}
-              disabled={submitting}
-              variant={timeRemaining >= 5 ? "secondary" : "primary"}
-            >
-              {submitting ? "Finishing…" : timeRemaining >= 5 ? "Finish this lesson" : "Finish"}
-            </Button>
+            periodHoldsThemHere ? (
+              // Not a disabled button with no explanation — a sentence saying what is left and
+              // what to do with it. The work is above; this is why they are still here.
+              <p className="text-sm text-ink-muted">
+                {minutesLeftInPeriod} minute{minutesLeftInPeriod === 1 ? "" : "s"} left of this
+                lesson. Keep going with the practice above — I&apos;ll let you finish when the
+                period is up.
+              </p>
+            ) : (
+              <Button onClick={() => void finishLesson()} disabled={submitting}>
+                {submitting ? "Finishing…" : "Finish"}
+              </Button>
+            )
           ) : null}
           {submitError ? <p className="text-sm text-danger">{submitError}</p> : null}
         </div>
@@ -1652,7 +1690,7 @@ export function LessonPlayer(props: LessonPlayerProps) {
           all right and the lesson is over, whatever the clock says; anything wrong and that,
           specifically, is what the rest of the period is for.
         */}
-        {testPassed ? (
+        {testPassed && !periodHoldsThemHere ? (
           <div className="space-y-2 rounded-2xl bg-success-soft p-5 text-left">
             <p className="text-base font-medium text-ink">
               You got every one of those right. This lesson is finished.
@@ -1660,6 +1698,27 @@ export function LessonPlayer(props: LessonPlayerProps) {
             <p className="text-sm text-ink-muted">
               You knew it, so there is nothing to practise. Take your break.
             </p>
+          </div>
+        ) : testPassed ? (
+          /*
+            Right answers, and the period still running.
+            
+            Knowing it is the reason to go further, not the reason to stop: the period is forty
+            five minutes of this subject either way, so the rest of it is spent on harder work
+            rather than on a longer break.
+          */
+          <div className="space-y-3 rounded-2xl bg-success-soft p-5 text-left">
+            <p className="text-base font-medium text-ink">
+              Every one right — you know this.
+            </p>
+            <p className="text-sm text-ink-muted">
+              There are {minutesLeftInPeriod} minutes left of the period, so let&apos;s spend
+              them on something harder rather than the same thing again.
+            </p>
+            <Button onClick={() => void practiseMore()} disabled={generatingPractice}>
+              {generatingPractice ? "Writing your questions…" : "Give me something harder"}
+            </Button>
+            {practiceError ? <p className="text-sm text-ink-muted">{practiceError}</p> : null}
           </div>
         ) : finishedEarly ? (
           <div className="space-y-3 rounded-2xl bg-accent-soft p-5 text-left">
@@ -1684,19 +1743,36 @@ export function LessonPlayer(props: LessonPlayerProps) {
           </div>
         ) : null}
 
-        <div className="pt-2">
-          <BreakTimer
-            minutes={breakMinutes}
-            storageKey={attemptId}
-            nextHref={nextLessonId ? `/lessons/${nextLessonId}` : "/today"}
-            nextLabel={nextLessonId ? "Start the next lesson" : "Back to Today"}
-          />
-          <div className="pt-3">
-            <Button href="/today" variant="ghost">
-              Back to Today
-            </Button>
+        {/*
+          The break belongs to the end of the period, not to whoever answers quickest.
+
+          Offering it the moment the quiz is marked is what made the school day collapse into
+          two hours: a child who worked fast got a longer break for it, so working fast became
+          the goal. While the period is still running the way on is more work, and the break
+          appears when the time is actually up.
+        */}
+        {periodHoldsThemHere ? (
+          <div className="pt-2">
+            <p className="text-sm text-ink-muted">
+              Your break starts in {minutesLeftInPeriod} minute
+              {minutesLeftInPeriod === 1 ? "" : "s"}, when this period is over.
+            </p>
           </div>
-        </div>
+        ) : (
+          <div className="pt-2">
+            <BreakTimer
+              minutes={breakMinutes}
+              storageKey={attemptId}
+              nextHref={nextLessonId ? `/lessons/${nextLessonId}` : "/today"}
+              nextLabel={nextLessonId ? "Start the next lesson" : "Back to Today"}
+            />
+            <div className="pt-3">
+              <Button href="/today" variant="ghost">
+                Back to Today
+              </Button>
+            </div>
+          </div>
+        )}
       </Card>
     );
   }
@@ -1869,6 +1945,14 @@ export function LessonPlayer(props: LessonPlayerProps) {
         to say so. It sits on the lesson page rather than in a menu because that is where the
         thing they noticed is.
       */}
+      {/*
+        A teacher notices when nothing has happened for a while. Suppressed once the lesson is
+        over — a child on the finish screen with their break timer running is not idling.
+      */}
+      {viewStage !== "COMPLETE" ? (
+        <StillThere stage={viewStage} onWakeUp={() => setTeacherSheetOpen(true)} />
+      ) : null}
+
       <div className="mb-4 flex flex-wrap justify-end gap-1">
         {/*
           Only before they have worked through it. Offering "I already know this" to someone who
