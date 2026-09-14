@@ -33,9 +33,7 @@ export async function getNextReadingText(studentId: string): Promise<ReadingText
   const doneIds = done.map((d) => d.readingTextId);
   const notDone = doneIds.length ? { notIn: doneIds } : undefined;
 
-  const book = await prisma.book.findFirst({
-    where: { yearGroup: student.yearGroup, active: true },
-  });
+  const book = await pickBook(student.yearGroup);
 
   if (book) {
     const chapter = await prisma.readingText.findFirst({
@@ -67,6 +65,28 @@ export async function getNextReadingText(studentId: string): Promise<ReadingText
       : best,
   );
   return candidates.find((t) => t.yearGroup === nearest.yearGroup) ?? null;
+}
+
+/**
+ * The book this child reads, borrowing from a nearby year when their own has none.
+ *
+ * Passages already fell back to the nearest year; books did not, so a Year 4 child whose
+ * library held only Year 5 and Year 7 titles got no book at all — never told why, just never
+ * offered one. One year up is a stretch worth making and two is a wall: a child handed a novel
+ * two years above them stops reading and concludes they are bad at it. So a book is borrowed
+ * from at most one year above, and from any year below.
+ */
+async function pickBook(yearGroup: number) {
+  const own = await prisma.book.findFirst({ where: { yearGroup, active: true } });
+  if (own) return own;
+
+  const others = await prisma.book.findMany({ where: { active: true } });
+  const reachable = others.filter((b) => b.yearGroup <= yearGroup + 1);
+  if (reachable.length === 0) return null;
+
+  return reachable.reduce((best, b) =>
+    Math.abs(b.yearGroup - yearGroup) < Math.abs(best.yearGroup - yearGroup) ? b : best,
+  );
 }
 
 const chapterPromptsSchema = z.object({

@@ -1,5 +1,78 @@
 [
   {
+    "title": "Aesop's Fables",
+    "author": "Aesop, translated by George Fyler Townsend",
+    "authorDeathYear": 1900,
+    "publicDomainInUkAndCanada": true,
+    "gutenbergId": 21,
+    "yearGroup": 4,
+    "difficulty": "accessible",
+    "whyThisBook": "A fable is a page long and ends with a point to argue about, which is exactly the shape of a good reading slot for a nine year old."
+  },
+  {
+    "title": "Heidi",
+    "author": "Johanna Spyri",
+    "authorDeathYear": 1901,
+    "publicDomainInUkAndCanada": true,
+    "gutenbergId": 1448,
+    "yearGroup": 4,
+    "difficulty": "accessible",
+    "whyThisBook": "A child moved somewhere new and homesick for the place she came from — worth reading in a family that is moving country."
+  },
+  {
+    "title": "Just So Stories",
+    "author": "Rudyard Kipling",
+    "authorDeathYear": 1936,
+    "publicDomainInUkAndCanada": true,
+    "gutenbergId": 2781,
+    "yearGroup": 4,
+    "difficulty": "accessible",
+    "whyThisBook": "Written to be read out loud to a child, in short complete stories — a whole one in a single reading slot, so there is no thread to lose between days.",
+    "contentNotes": "Kipling writes from the British Empire and it shows in places; the framing of 'How the Leopard Got His Spots' is worth a word from a parent."
+  },
+  {
+    "title": "The Adventures of Pinocchio",
+    "author": "Carlo Collodi",
+    "authorDeathYear": 1890,
+    "publicDomainInUkAndCanada": true,
+    "gutenbergId": 500,
+    "yearGroup": 4,
+    "difficulty": "accessible",
+    "whyThisBook": "Short, fast chapters that each end somewhere alarming. Much stranger and better than the film, and the moral questions are real ones."
+  },
+  {
+    "title": "The Blue Fairy Book",
+    "author": "Andrew Lang",
+    "authorDeathYear": 1912,
+    "publicDomainInUkAndCanada": true,
+    "gutenbergId": 503,
+    "yearGroup": 4,
+    "difficulty": "stretching",
+    "whyThisBook": "The originals of the stories they think they already know, and they are not the tidy versions. Each stands alone.",
+    "contentNotes": "Old fairy tales are grimmer than their retellings — people are eaten, and stepmothers come to bad ends."
+  },
+  {
+    "title": "The Jungle Book",
+    "author": "Rudyard Kipling",
+    "authorDeathYear": 1936,
+    "publicDomainInUkAndCanada": true,
+    "gutenbergId": 236,
+    "yearGroup": 4,
+    "difficulty": "stretching",
+    "whyThisBook": "Mowgli's chapters read as adventure at nine and as something else later. The language is a step up from the rest of this year's list.",
+    "contentNotes": "Same caveat as Just So Stories: written from the Empire, about India."
+  },
+  {
+    "title": "The Story of the Treasure Seekers",
+    "author": "E. Nesbit",
+    "authorDeathYear": 1924,
+    "publicDomainInUkAndCanada": true,
+    "gutenbergId": 770,
+    "yearGroup": 4,
+    "difficulty": "accessible",
+    "whyThisBook": "Narrated by a child who keeps insisting you cannot tell which of them is telling it. Funny on the first page, which matters more than anything else at this age."
+  },
+  {
     "title": "Alice's Adventures in Wonderland",
     "author": "Lewis Carroll",
     "authorDeathYear": 1898,

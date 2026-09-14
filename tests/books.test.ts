@@ -67,9 +67,17 @@ describe("the shipped candidate list", () => {
     expect(books.length).toBeGreaterThanOrEqual(16);
     expect(books.every((b) => isPublicDomainHere(b.authorDeathYear))).toBe(true);
     expect(books.every((b) => b.gutenbergId != null)).toBe(true);
-    // Both children are covered.
-    expect(books.some((b) => b.yearGroup === 5)).toBe(true);
-    expect(books.some((b) => b.yearGroup === 7)).toBe(true);
+
+    /**
+     * The years the children are actually in.
+     *
+     * This said 5 and 7, which is the same off-by-one that had a Year 4 boy enrolled on Year 5
+     * science: the list was written from a spec rather than from the children, so the library
+     * had nothing for the year one of them is really in and the test agreed with it.
+     */
+    for (const year of [4, 7]) {
+      expect(books.some((b) => b.yearGroup === year)).toBe(true);
+    }
   });
 });
 
@@ -219,5 +227,36 @@ describe("the class novel", () => {
 
     const next = await getNextReadingText(younger);
     expect(next?.bookId ?? null).toBeNull();
+  });
+});
+
+describe("a year group with no book of its own", () => {
+  beforeEach(async () => {
+    await resetDb();
+  });
+
+  it("borrows the nearest one rather than leaving the child with none", async () => {
+    // Exactly the hole this fell into: a library holding Year 5 and Year 7 and a Year 4 reader,
+    // who was offered no book at all and never told why.
+    const user = await prisma.user.create({
+      data: { role: "STUDENT", username: "mikhael", passwordHash: "x", displayName: "Mikhael" },
+    });
+    const student = await prisma.studentProfile.create({
+      data: { userId: user.id, yearGroup: 4, keyStage: "ks2" },
+    });
+
+    await importBook({ ...CANDIDATE, title: "A Year Five Book", gutenbergId: 11, yearGroup: 5 }, { loadText });
+    await importBook({ ...CANDIDATE, title: "A Year Seven Book", gutenbergId: 12, yearGroup: 7 }, { loadText });
+    const five = await prisma.book.findFirstOrThrow({ where: { yearGroup: 5 } });
+    await setActiveBook(five.id);
+    const seven = await prisma.book.findFirstOrThrow({ where: { yearGroup: 7 } });
+    await setActiveBook(seven.id);
+
+    const next = await getNextReadingText(student.id);
+    expect(next).not.toBeNull();
+
+    // The nearer of the two, not whichever was found first.
+    const book = await prisma.book.findFirstOrThrow({ where: { id: next!.bookId! } });
+    expect(book.yearGroup).toBe(5);
   });
 });
