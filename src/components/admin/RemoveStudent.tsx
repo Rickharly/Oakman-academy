@@ -2,9 +2,63 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { AlertTriangle, Trash2 } from "lucide-react";
+import { AlertTriangle, CheckCircle2, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
+import type { RemovalSummary } from "@/lib/admin/remove";
+
+/** One line of the post-removal summary: "N {singular|plural}". Omitted entirely when N is 0. */
+function line(count: number, singular: string, plural: string): string | null {
+  if (count <= 0) return null;
+  return `${count} ${count === 1 ? singular : plural}`;
+}
+
+/**
+ * Turns a `RemovalSummary` into the handful of sentences a parent actually wants to read —
+ * not the twenty-odd raw counts the route returns. Zero-valued fields are dropped rather than
+ * listed, and when literally nothing was ever recorded (the common case for the test accounts
+ * this feature exists for) that is said outright instead of showing an empty list.
+ */
+function describeRemoval(summary: RemovalSummary): string {
+  const parts = [
+    line(summary.lessonAttempts, "lesson attempted", "lessons attempted"),
+    line(summary.questionAttempts, "question answered", "questions answered"),
+    line(summary.readingEntries, "reading response", "reading responses"),
+    line(summary.conversations, "conversation with the teacher", "conversations with the teacher"),
+    line(summary.schoolDays, "day of school recorded", "days of school recorded"),
+    line(summary.reports, "report", "reports"),
+  ].filter((p): p is string => p !== null);
+
+  const everythingElse =
+    summary.lessonAttempts +
+    summary.questionAttempts +
+    summary.readingEntries +
+    summary.conversations +
+    summary.schoolDays +
+    summary.reports +
+    summary.assignments +
+    summary.progress +
+    summary.masteryRecords +
+    summary.reviewItems +
+    summary.observations +
+    summary.feedback +
+    summary.overrides +
+    summary.dailySummaries +
+    summary.focusEvents +
+    summary.activityLogs +
+    summary.understandingGaps +
+    summary.generatedQuestions +
+    summary.enrolments +
+    summary.schedules;
+
+  if (everythingElse === 0) {
+    return "There was nothing to lose — this account had never actually been used.";
+  }
+  if (parts.length === 0) {
+    return "It had some setup (a schedule, an enrolment) but no actual work recorded.";
+  }
+  return `It took with it ${parts.join(", ")}.`;
+}
 
 /**
  * Permanently deletes a student's account and every row of their learning history.
@@ -14,12 +68,21 @@ import { Input } from "@/components/ui/Input";
  * separator, so a mis-tap aimed at "Reset PIN" or "Show the welcome again" cannot land here.
  * Opening it only reveals a warning and a name field — nothing destructive fires until the
  * child's exact name is typed back.
+ *
+ * The route hands back a full `RemovalSummary` — every table it deleted from, counted before
+ * the delete so nothing is inferred after the fact. Counting all that and then throwing it away
+ * would defeat the point, so it is held in state and shown in place of the confirm form once
+ * removal succeeds. `router.refresh()` is *not* called right away: that re-reads the parent's
+ * student list, which no longer contains this student, and this whole card — summary included —
+ * would vanish with it before anyone could read it. Instead the summary stays up, with its own
+ * "Done" button, and refreshing the list is deferred to that click.
  */
 export function RemoveStudent({ studentId, name }: { studentId: string; name: string }) {
   const [open, setOpen] = useState(false);
   const [confirm, setConfirm] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [removed, setRemoved] = useState<RemovalSummary | null>(null);
   const router = useRouter();
 
   async function run() {
@@ -31,16 +94,31 @@ export function RemoveStudent({ studentId, name }: { studentId: string; name: st
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ confirm }),
       });
-      const data = (await res.json()) as { error?: string };
+      const data = (await res.json()) as ({ error?: string } & Partial<RemovalSummary>);
       if (!res.ok) throw new Error(data.error ?? "Could not remove this account.");
       setOpen(false);
       setConfirm("");
-      router.refresh();
+      setRemoved(data as RemovalSummary);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not remove this account.");
     } finally {
       setBusy(false);
     }
+  }
+
+  if (removed) {
+    return (
+      <div className="mt-6 space-y-3 rounded-2xl border-2 border-line bg-surface-raised p-4">
+        <p className="flex items-center gap-1.5 text-sm font-medium text-ink">
+          <CheckCircle2 className="h-4 w-4 text-accent" />
+          {removed.displayName}&apos;s account has been removed.
+        </p>
+        <p className="text-sm text-ink-muted">{describeRemoval(removed)}</p>
+        <Button variant="secondary" onClick={() => router.refresh()}>
+          Done
+        </Button>
+      </div>
+    );
   }
 
   return (

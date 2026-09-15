@@ -273,7 +273,7 @@ describe("POST /api/admin/students/[studentId]/remove", () => {
     expect(await prisma.user.findUnique({ where: { id: parent.id } })).not.toBeNull();
   });
 
-  it("removes an orphan student profile (no parent links) for any authenticated parent", async () => {
+  it("removes an orphan student profile with no learning record (no parent links, never used) for any authenticated parent", async () => {
     const parent = await createParent("parent2@example.com");
     const token = await sessionFor(parent.id);
     const { user: orphanUser, profile } = await createStudent("Orphan Test", "orphan-test");
@@ -287,6 +287,32 @@ describe("POST /api/admin/students/[studentId]/remove", () => {
 
     expect(await prisma.user.findUnique({ where: { id: orphanUser.id } })).toBeNull();
     expect(await prisma.studentProfile.findUnique({ where: { id: profile.id } })).toBeNull();
+  });
+
+  it("refuses to remove an orphan profile that has a learning record, and deletes nothing", async () => {
+    const parent = await createParent("parent3@example.com");
+    const token = await sessionFor(parent.id);
+    // The record has to have been left by *some* parent (ParentOverride.parentId), but that
+    // parent is not linked to the student either — the point is the student profile itself has
+    // no ParentStudentLink row at all.
+    const recordAuthor = await createParent("record-author@example.com");
+    const { user: orphanUser, profile } = await createStudent("Busy Orphan", "busy-orphan");
+    // Deliberately no ParentStudentLink row, but a real learning record.
+    await seedLearningHistory(recordAuthor.id, profile.id);
+
+    const lessonAttemptsBefore = await prisma.lessonAttempt.count({ where: { studentId: profile.id } });
+    expect(lessonAttemptsBefore).toBeGreaterThan(0);
+
+    const res = await POST(removeRequest(token, { confirm: "Busy Orphan" }), ctxFor(profile.id));
+    expect(res.status).toBe(403);
+    const body = await res.json();
+    expect(body.error).toMatch(/learning record/i);
+    expect(body.error).toMatch(/isn't linked to you/i);
+
+    // Nothing was deleted.
+    expect(await prisma.user.findUnique({ where: { id: orphanUser.id } })).not.toBeNull();
+    expect(await prisma.studentProfile.findUnique({ where: { id: profile.id } })).not.toBeNull();
+    expect(await prisma.lessonAttempt.count({ where: { studentId: profile.id } })).toBe(lessonAttemptsBefore);
   });
 
   it("refuses to remove a User whose role is PARENT, and that user still exists afterwards", async () => {

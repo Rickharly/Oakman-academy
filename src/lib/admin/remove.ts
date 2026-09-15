@@ -23,6 +23,44 @@
  */
 import { prisma } from "@/lib/db";
 
+/**
+ * Whether a student profile has any learning record at all.
+ *
+ * Used by `requireParentForRemovalApi` (src/lib/auth/api.ts) to decide whether an *unlinked*
+ * profile is safe to remove: a profile no parent has ever claimed is only harmless to delete
+ * when nothing has actually happened on it yet. The table list is exactly `resetStudentProgress`'s
+ * own idea of "the child's record" (src/lib/admin/reset.ts) — everything that function wipes,
+ * i.e. history, as opposed to `StudentEnrolment`/`StudentSchedule`, which are account *settings*
+ * created alongside the profile and not evidence of use (reset.ts keeps those for the same
+ * reason: "their account, PIN and timetable stay"). `ActivityAttempt` has no `studentId` column
+ * of its own — it hangs off `LessonAttempt`, so a non-empty `lessonAttempt`/`questionAttempt`
+ * count already implies one exists and there is nothing extra to check there.
+ * `UnderstandingGap` is included even though `reset.ts` does not clear it: it is still a
+ * recorded observation about the child, so its presence alone should block the orphan path.
+ */
+export async function studentHasLearningRecord(studentProfileId: string): Promise<boolean> {
+  const counts = await Promise.all([
+    prisma.lessonAttempt.count({ where: { studentId: studentProfileId } }),
+    prisma.questionAttempt.count({ where: { studentId: studentProfileId } }),
+    prisma.dailyAssignment.count({ where: { studentId: studentProfileId } }),
+    prisma.studentLessonProgress.count({ where: { studentId: studentProfileId } }),
+    prisma.readingEntry.count({ where: { studentId: studentProfileId } }),
+    prisma.aiConversation.count({ where: { studentId: studentProfileId } }),
+    prisma.masteryRecord.count({ where: { studentId: studentProfileId } }),
+    prisma.reviewItem.count({ where: { studentId: studentProfileId } }),
+    prisma.aiLearningObservation.count({ where: { studentId: studentProfileId } }),
+    prisma.teacherFeedback.count({ where: { studentId: studentProfileId } }),
+    prisma.parentOverride.count({ where: { studentId: studentProfileId } }),
+    prisma.dailySummary.count({ where: { studentId: studentProfileId } }),
+    prisma.report.count({ where: { studentId: studentProfileId } }),
+    prisma.schoolDay.count({ where: { studentId: studentProfileId } }),
+    prisma.focusEvent.count({ where: { studentId: studentProfileId } }),
+    prisma.activityLog.count({ where: { studentId: studentProfileId } }),
+    prisma.understandingGap.count({ where: { studentId: studentProfileId } }),
+  ]);
+  return counts.some((count) => count > 0);
+}
+
 export type RemovalSummary = {
   displayName: string;
   enrolments: number;
