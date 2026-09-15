@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isPlaceholderUrl, isPlayableResource, isPlayableUrl } from "./video-status";
+import { deriveVideoUnavailableReason, isPlaceholderUrl, isPlayableResource, isPlayableUrl } from "./video-status";
 
 describe("isPlayableUrl", () => {
   it("accepts an https address", () => {
@@ -58,5 +58,53 @@ describe("isPlaceholderUrl", () => {
     expect(isPlaceholderUrl("")).toBe(false);
     expect(isPlaceholderUrl(null)).toBe(false);
     expect(isPlaceholderUrl(undefined)).toBe(false);
+  });
+});
+
+describe("deriveVideoUnavailableReason", () => {
+  const base = {
+    hasVideoResource: false,
+    lessonProvider: "oak",
+    assetsSyncedAt: null as Date | null,
+    fetchFailedJustNow: false,
+  };
+
+  it("is undefined once a VIDEO resource row exists, whatever else is true", () => {
+    expect(
+      deriveVideoUnavailableReason({
+        ...base,
+        hasVideoResource: true,
+        lessonProvider: "fixture",
+        assetsSyncedAt: new Date(),
+        fetchFailedJustNow: true,
+      }),
+    ).toBeUndefined();
+  });
+
+  it("is 'placeholder_curriculum' for a fixture lesson, regardless of assetsSyncedAt", () => {
+    expect(deriveVideoUnavailableReason({ ...base, lessonProvider: "fixture" })).toBe(
+      "placeholder_curriculum",
+    );
+    expect(
+      deriveVideoUnavailableReason({ ...base, lessonProvider: "fixture", assetsSyncedAt: new Date() }),
+    ).toBe("placeholder_curriculum");
+  });
+
+  it("is 'provider_had_none' when assets were already read and simply had no video", () => {
+    expect(deriveVideoUnavailableReason({ ...base, assetsSyncedAt: new Date() })).toBe("provider_had_none");
+  });
+
+  it("is 'fetch_failed' when this open's own attempt just failed and nothing was ever synced", () => {
+    expect(deriveVideoUnavailableReason({ ...base, fetchFailedJustNow: true })).toBe("fetch_failed");
+  });
+
+  it("is 'never_imported' when nothing has been synced and this open didn't fail outright either", () => {
+    expect(deriveVideoUnavailableReason({ ...base })).toBe("never_imported");
+  });
+
+  it("prefers 'provider_had_none' over 'fetch_failed' when assets were synced before, even if this open's retry just failed", () => {
+    expect(
+      deriveVideoUnavailableReason({ ...base, assetsSyncedAt: new Date(), fetchFailedJustNow: true }),
+    ).toBe("provider_had_none");
   });
 });

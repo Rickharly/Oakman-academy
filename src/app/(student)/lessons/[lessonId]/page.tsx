@@ -11,7 +11,7 @@ import {
 import { parseExplainer } from "@/lib/lessons/explainer";
 import { plainMaths, plainMathsDeep } from "@/lib/text/maths";
 import { ensureLessonAssets, type EnsureAssetsOutcome } from "@/lib/curriculum/sync";
-import type { VideoUnavailableReason } from "@/lib/curriculum/video-status";
+import { deriveVideoUnavailableReason } from "@/lib/curriculum/video-status";
 
 type RawQuestion = {
   id: string;
@@ -105,20 +105,16 @@ export default async function LessonPage({
    * Why there is no video to watch, when there genuinely is none — not passed at all when a
    * VIDEO resource row exists, playable or not, because at that point the player can see the
    * row itself and work out the rest (a real address, or a placeholder one) without needing to
-   * be told why by the server.
+   * be told why by the server. The decision itself is a pure function (`deriveVideoUnavailableReason`,
+   * unit-tested on its own) composed here with the real database read and the real outcome of
+   * this open's own attempt to fetch it.
    */
-  const hasVideoResource = lesson.resources.some((r) => r.type === "VIDEO");
-  let videoUnavailableReason: VideoUnavailableReason | undefined;
-  if (!hasVideoResource) {
-    videoUnavailableReason =
-      lesson.provider === "fixture"
-        ? "placeholder_curriculum"
-        : lesson.assetsSyncedAt
-          ? "provider_had_none"
-          : assetsOutcome === "failed"
-            ? "fetch_failed"
-            : "never_imported";
-  }
+  const videoUnavailableReason = deriveVideoUnavailableReason({
+    hasVideoResource: lesson.resources.some((r) => r.type === "VIDEO"),
+    lessonProvider: lesson.provider,
+    assetsSyncedAt: lesson.assetsSyncedAt,
+    fetchFailedJustNow: assetsOutcome === "failed",
+  });
 
   const questionsByStage: Record<"STARTER" | "PRACTICE" | "CHECK", LessonPlayerQuestion[]> = {
     STARTER: view.questionsByStage.STARTER.map(mapQuestion),

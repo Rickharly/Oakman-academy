@@ -51,9 +51,10 @@ function explainerSpeech(explainer: LessonExplainer): string[] {
   return parts;
 }
 
-// `isPlayable`/`isPlaceholder` live in `@/lib/curriculum/video-status` — shared with the sync
-// service and the parent-facing diagnostics, so "is this address fetchable" is decided in one
-// place rather than three that can drift apart. See that module's doc comment.
+// `isPlayableResource`/`isPlaceholderUrl` live in `@/lib/curriculum/video-status` — shared with
+// the sync service and the parent-facing diagnostics, so "is this address fetchable" and "is
+// this the sample curriculum" are each decided in one place rather than three that can drift
+// apart. See that module's doc comment.
 
 // ───────────────────────────── props ─────────────────────────────
 
@@ -395,6 +396,23 @@ export function LessonPlayer(props: LessonPlayerProps) {
   // The browser's own reason, when it gives one, so a report says "not supported" or "network"
   // rather than only "would not play". Code 4 is a file the browser cannot play; 2 is the network.
   const [videoError, setVideoError] = useState<string | null>(null);
+  /**
+   * A request that never resolves at all — no `onError`, because nothing ever happened for the
+   * browser to call an error. `loadedmetadata`/`loadeddata`/`canplay`/`progress` are the signals
+   * that bytes are actually arriving; if none of them has fired a while after the element was
+   * given its src, the request has hung (a blocked cross-origin redirect, a stalled download),
+   * and the child is left staring at a blank box with no controls and no message — which is
+   * worse than a video that visibly failed, because at least that one says something.
+   */
+  const [videoStalled, setVideoStalled] = useState(false);
+  // Bumped to force a fresh `<video>` element on retry — re-rendering the same element with an
+  // unchanged `src` does not make the browser try the request again.
+  const [videoAttemptKey, setVideoAttemptKey] = useState(0);
+  // Whether any of the "bytes are arriving" events has fired since the current attempt started.
+  const videoGotSignalRef = useRef(false);
+  // Which of `stalled`/`suspend` fired first, if either did, before any real signal — kept only
+  // to make the eventual report read like what actually happened rather than a guess.
+  const videoStallEventRef = useRef<"stalled" | "suspend" | null>(null);
 
   /**
    * What is in the video slot, in one sentence.
@@ -407,12 +425,70 @@ export function LessonPlayer(props: LessonPlayerProps) {
    */
   const videoResource = lesson.resources.find((r) => r.type === "VIDEO");
   const videoState = !videoResource
-    ? "no video was imported for this lesson"
-    : !isPlayable(videoResource)
-      ? `placeholder address (${videoResource.providerUrl ?? "none"}) — not a real video`
+    ? `no video was imported for this lesson (${lesson.videoUnavailableReason ?? "unknown reason"})`
+    : !isPlayableResource(videoResource)
+      ? isPlaceholderUrl(videoResource.providerUrl)
+        ? `placeholder address (${videoResource.providerUrl ?? "none"}) — sample curriculum, not a real video`
+        : `an address (${videoResource.providerUrl ?? "none"}) that has not been downloaded yet`
       : videoFailed
         ? `a real video that would not play in the browser${videoError ? ` (${videoError})` : ""}`
-        : "a working player";
+        : videoStalled
+          ? "a real video that never loaded — no data arrived at all"
+          : "a working player";
+
+  /**
+   * Always through our own route — never `storedPath`.
+   *
+   * `storedPath` is a path on the server's disk (`/app/storage/assets/…/VIDEO.mp4`). Handing it
+   * to a `<video>` element asks the browser to fetch that path from the website, which is a
+   * 404, which fires onError, which replaces the player with the pale "it won't play" panel — a
+   * blob of light where the lesson's video should be. Worse, the file is on whichever container
+   * downloaded it and is gone after the next deploy, so it cannot be right even in principle.
+   * The route knows how to find the file; the browser does not need to.
+   */
+  const video = lesson.resources.find((r) => r.type === "VIDEO" && isPlayableResource(r));
+
+  /**
+   * A hung video request never tells the player anything: no `onError`, because nothing ever
+   * happened. Chrome shows no controls at all until it has metadata or an error, so a stalled
+   * request is a blank box that stays blank forever unless something here notices the silence.
+   *
+   * Twelve seconds, then — if nothing has arrived by then, declare it stalled. Cancelled and
+   * restarted whenever the video changes or a retry bumps `videoAttemptKey`; left alone (never
+   * even started) once the video has actually failed or already been flagged stalled, so it
+   * cannot fire twice for the same attempt.
+   */
+  useEffect(() => {
+    if (!video || videoFailed || videoStalled) return undefined;
+    videoGotSignalRef.current = false;
+    videoStallEventRef.current = null;
+    const timer = setTimeout(() => {
+      if (videoGotSignalRef.current) return; // data arrived after all — not a stall
+      setVideoStalled(true);
+      const label = videoStallEventRef.current
+        ? `stalled — the browser's own "${videoStallEventRef.current}" event fired with nothing playable`
+        : "stalled — no data arrived at all";
+      void reportVideoFailure(video, null, label);
+    }, 12_000);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- reportVideoFailure is stable for the lesson's lifetime
+  }, [video?.id, videoAttemptKey, videoFailed, videoStalled]);
+
+  /** Bytes are actually arriving — cancels the stall timer above. */
+  function markVideoHasSignal() {
+    videoGotSignalRef.current = true;
+  }
+
+  /**
+   * `stalled`/`suspend` without any real signal yet — worth noting for the eventual report, but
+   * never itself a reason to show anything before the twelve seconds are up: a `suspend` right
+   * after `preload="metadata"` finishes is completely normal, and a `stalled` blip on an
+   * otherwise slow-but-working connection must not flash a message that isn't true yet.
+   */
+  function noteVideoStallSignal(kind: "stalled" | "suspend") {
+    if (videoGotSignalRef.current) return;
+    videoStallEventRef.current = kind;
+  }
 
   // Set when the tutoring loop reports nothing left open, so the lesson stops holding them.
   const [gapsClosed, setGapsClosed] = useState(false);
@@ -1304,17 +1380,8 @@ export function LessonPlayer(props: LessonPlayerProps) {
   }
 
   function renderLearn() {
-    /**
-     * Always through our own route — never `storedPath`.
-     *
-     * `storedPath` is a path on the server's disk (`/app/storage/assets/…/VIDEO.mp4`). Handing
-     * it to a `<video>` element asks the browser to fetch that path from the website, which is
-     * a 404, which fires onError, which replaces the player with the pale "it won't play" panel
-     * — a blob of light where the lesson's video should be. Worse, the file is on whichever
-     * container downloaded it and is gone after the next deploy, so it cannot be right even in
-     * principle. The route knows how to find the file; the browser does not need to.
-     */
-    const video = lesson.resources.find((r) => r.type === "VIDEO" && isPlayable(r));
+    // `video` — the playable VIDEO resource, if there is one — is computed once at the top of
+    // the component, alongside the stall timer that watches it.
     const learnDone = stageIndex(currentStage) > stageIndex("LEARN");
     const teaching = explainerState === "loading";
 
@@ -1430,30 +1497,7 @@ export function LessonPlayer(props: LessonPlayerProps) {
         ) : null}
 
         <Card padding="lg" className="space-y-4">
-          {video && !videoFailed ? (
-            <video
-              controls
-              playsInline
-              preload="metadata"
-              className="aspect-video w-full rounded-xl bg-stone-900"
-              src={`/api/curriculum/resources/${video.id}`}
-              onTimeUpdate={handleVideoTimeUpdate}
-              onEnded={handleVideoEnded}
-              onError={(e) => {
-                const err = e.currentTarget.error;
-                const names: Record<number, string> = {
-                  1: "aborted",
-                  2: "network error",
-                  3: "could not decode",
-                  4: "format not supported",
-                };
-                const label = err ? `${names[err.code] ?? `code ${err.code}`}${err.message ? `: ${err.message}` : ""}` : null;
-                setVideoError(label);
-                setVideoFailed(true);
-                void reportVideoFailure(video, err, label);
-              }}
-            />
-          ) : video && videoFailed ? (
+          {video && videoFailed ? (
             <div className="space-y-3 rounded-2xl border border-warning/30 bg-warning-soft/40 p-5">
               <p className="text-base font-medium text-ink">
                 The video won&apos;t play here right now.
@@ -1468,6 +1512,7 @@ export function LessonPlayer(props: LessonPlayerProps) {
                   onClick={() => {
                     setVideoError(null);
                     setVideoFailed(false);
+                    setVideoAttemptKey((k) => k + 1);
                   }}
                 >
                   Try the video again
@@ -1479,15 +1524,79 @@ export function LessonPlayer(props: LessonPlayerProps) {
                 ) : null}
               </div>
             </div>
+          ) : video && videoStalled ? (
+            /*
+              Not a refusal — nothing ever told us it failed. The request just never resolved:
+              no metadata, no data, no error. Chrome shows no controls at all until one of those
+              happens, so without this a stalled video is a blank box forever, with a button
+              underneath cheerfully asking whether they've finished watching it.
+            */
+            <div className="space-y-3 rounded-2xl border border-warning/30 bg-warning-soft/40 p-5">
+              <p className="text-base font-medium text-ink">
+                This video is taking too long to arrive.
+              </p>
+              <p className="text-sm text-ink-muted">
+                That&apos;s not your tablet, and it&apos;s not anything you did. Everything you
+                need is written out below, and I can read it to you. If you&apos;d rather watch
+                it, it&apos;s on Oak&apos;s own page.
+              </p>
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  variant="secondary"
+                  onClick={() => {
+                    setVideoStalled(false);
+                    setVideoAttemptKey((k) => k + 1);
+                  }}
+                >
+                  Try the video again
+                </Button>
+                {lesson.oakUrl ? (
+                  <Button variant="ghost" href={lesson.oakUrl} target="_blank" rel="noreferrer">
+                    <ExternalLink className="h-4 w-4" /> Watch it on Oak
+                  </Button>
+                ) : null}
+              </div>
+            </div>
+          ) : video ? (
+            <video
+              key={`${video.id}:${videoAttemptKey}`}
+              controls
+              playsInline
+              preload="metadata"
+              className="aspect-video w-full rounded-xl bg-stone-900"
+              src={`/api/curriculum/resources/${video.id}`}
+              onTimeUpdate={handleVideoTimeUpdate}
+              onEnded={handleVideoEnded}
+              onLoadedMetadata={markVideoHasSignal}
+              onLoadedData={markVideoHasSignal}
+              onCanPlay={markVideoHasSignal}
+              onProgress={markVideoHasSignal}
+              onStalled={() => noteVideoStallSignal("stalled")}
+              onSuspend={() => noteVideoStallSignal("suspend")}
+              onError={(e) => {
+                const err = e.currentTarget.error;
+                const names: Record<number, string> = {
+                  1: "aborted",
+                  2: "network error",
+                  3: "could not decode",
+                  4: "format not supported",
+                };
+                const label = err ? `${names[err.code] ?? `code ${err.code}`}${err.message ? `: ${err.message}` : ""}` : null;
+                setVideoError(label);
+                setVideoFailed(true);
+                void reportVideoFailure(video, err, label);
+              }}
+            />
           ) : (
             <>
               {/*
                 Say which of these it is.
 
-                A lesson with no video imported, a placeholder address, and a player that failed
-                all looked the same from the outside — an empty rectangle — and "the video is
-                blurred out" could not be told apart from "there is no video". Now the page says
-                so in a sentence, so a child knows it is not their tablet and nobody has to guess.
+                A lesson with no video imported, a placeholder address, an address that hasn't
+                been downloaded yet, and a player that failed all looked the same from the
+                outside — an empty rectangle — and "the video is blurred out" could not be told
+                apart from "there is no video". Now the page says so in a sentence, so a child
+                knows it is not their tablet and nobody has to guess.
               */}
               {!videoResource ? (
                 <div className="space-y-1 rounded-2xl border border-line bg-stone-50 p-5">
@@ -1496,8 +1605,59 @@ export function LessonPlayer(props: LessonPlayerProps) {
                     Not a broken player — this lesson came without one. Everything you need is
                     written out below, and I can read it to you.
                   </p>
+                  {/*
+                    Why, exactly — computed on the server, where the facts live (see
+                    `videoUnavailableReason` on the lesson prop). Never shown as a reason to
+                    doubt the two sentences above; only ever a true extra detail underneath them.
+                  */}
+                  {lesson.videoUnavailableReason === "placeholder_curriculum" ? (
+                    <p className="text-sm text-ink-muted">
+                      This lesson is from the sample curriculum, which was never a real one to
+                      bring in.
+                    </p>
+                  ) : lesson.videoUnavailableReason === "provider_had_none" ? (
+                    <p className="text-sm text-ink-muted">
+                      We did ask Oak for it — it simply doesn&apos;t have one for this lesson.
+                    </p>
+                  ) : lesson.videoUnavailableReason === "fetch_failed" ? (
+                    <p className="text-sm text-ink-muted">
+                      We tried to fetch it just now and couldn&apos;t reach Oak. Opening this
+                      lesson again will try once more.
+                    </p>
+                  ) : (
+                    <p className="text-sm text-ink-muted">
+                      It hasn&apos;t been fetched yet — opening this lesson again in a little
+                      while should bring it in.
+                    </p>
+                  )}
                 </div>
-              ) : null}
+              ) : isPlaceholderUrl(videoResource.providerUrl) ? (
+                // The bundled sample curriculum's made-up placeholder — see
+                // `src/lib/curriculum/video-status.ts`. Not a video that failed to arrive; this
+                // lesson never had a real one to bring in.
+                <div className="space-y-1 rounded-2xl border border-line bg-stone-50 p-5">
+                  <p className="text-base font-medium text-ink">This lesson is from the sample curriculum.</p>
+                  <p className="text-sm text-ink-muted">
+                    It doesn&apos;t come with a real video — the sample curriculum is just a
+                    handful of made-up lessons for trying the app out. Everything you need is
+                    written out below, and I can read it to you.
+                  </p>
+                </div>
+              ) : (
+                // A video row exists but its address isn't one we can fetch yet — a real lesson
+                // whose file has not been downloaded, not a lesson with no video. Saying "no
+                // video" here would be telling a child who has seen it on Oak's own site that
+                // the app is wrong, when it is only behind.
+                <div className="space-y-1 rounded-2xl border border-line bg-stone-50 p-5">
+                  <p className="text-base font-medium text-ink">
+                    This lesson&apos;s video hasn&apos;t been downloaded yet.
+                  </p>
+                  <p className="text-sm text-ink-muted">
+                    It&apos;s not a broken player — the video just isn&apos;t here yet. Everything
+                    you need is written out below, and I can read it to you.
+                  </p>
+                </div>
+              )}
 
               {/*
                 No video file for this lesson, so send them to Oak's own page rather than

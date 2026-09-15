@@ -17,6 +17,7 @@ import { getAiProvider, resolveModelId } from "@/lib/ai/provider";
 import { explainerSchema } from "@/lib/lessons/explainer";
 import { describeFetchError, resolveAssetUrl } from "@/lib/curriculum/asset-fetch";
 import { resolveMedia } from "@/lib/curriculum/media-link";
+import { isPlaceholderUrl, isPlayableResource } from "@/lib/curriculum/video-status";
 import { imageSchema } from "@/lib/questions/types";
 import { dateOnlyKey, toDateOnly, todayDateOnly, weekStartKey } from "@/lib/dates";
 
@@ -472,11 +473,9 @@ async function todaysVideosCheck(): Promise<Check> {
     if (!lesson) continue;
 
     const video = lesson.resources.find((r) => r.type === "VIDEO");
-    // A real address: absolute, or a path we resolve against the provider. `fixture://` is the
-    // bundled placeholder pretending to be a video, and it is why players sat black for days.
-    const url = video?.providerUrl ?? "";
-    const usable = Boolean(url) && (/^https?:\/\//i.test(url) || !url.includes("://"));
-
+    // The same question the player asks of the same row, from the same shared helper — see
+    // `src/lib/curriculum/video-status.ts`. Two independent readings of "is this fetchable" is
+    // how a parent's diagnostics and a child's own screen ended up disagreeing.
     if (!video) {
       missing += 1;
       lines.push(
@@ -485,9 +484,13 @@ async function todaysVideosCheck(): Promise<Check> {
             ? " — the provider was asked and had none."
             : " — its assets were never fetched. Opening the lesson now fetches them."),
       );
-    } else if (!usable) {
+    } else if (!isPlayableResource(video)) {
       missing += 1;
-      lines.push(`  ${lesson.title}: placeholder video (${video.providerUrl ?? "no address"}) — not a real one.`);
+      lines.push(
+        isPlaceholderUrl(video.providerUrl)
+          ? `  ${lesson.title}: sample curriculum placeholder (${video.providerUrl ?? "no address"}) — not a real video.`
+          : `  ${lesson.title}: video not downloaded yet (${video.providerUrl ?? "no address"}) — not fetchable.`,
+      );
     } else {
       lines.push(`  ${lesson.title}: video ok`);
     }

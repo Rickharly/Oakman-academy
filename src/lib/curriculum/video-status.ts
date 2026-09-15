@@ -62,3 +62,35 @@ export type VideoUnavailableReason =
   | "provider_had_none"
   | "fetch_failed"
   | "never_imported";
+
+/**
+ * Works out which of the four reasons above applies, from facts the lesson page already has to
+ * hand. A pure function on purpose — the lesson page composes it with a real database read and
+ * a real provider call, but the decision itself has no I/O in it, so it can be tested without
+ * either.
+ *
+ * Returns `undefined` whenever a VIDEO resource row exists at all — playable or not — because
+ * at that point the player can read the rest (a real address, or a placeholder one) straight off
+ * the row, without being told why by the server.
+ */
+export function deriveVideoUnavailableReason(input: {
+  hasVideoResource: boolean;
+  lessonProvider: string;
+  assetsSyncedAt: Date | null;
+  /**
+   * Whether *this* lesson-open's own attempt to fetch assets came back as a definite failure
+   * (a network error, a quota, an exception) rather than merely not finishing in time or never
+   * having been tried at all.
+   */
+  fetchFailedJustNow: boolean;
+}): VideoUnavailableReason | undefined {
+  if (input.hasVideoResource) return undefined;
+  // The bundled placeholder curriculum was never going to have a video no matter how many
+  // times it is asked — say that, rather than something that reads as "not yet".
+  if (input.lessonProvider === "fixture") return "placeholder_curriculum";
+  // Assets have been read from the provider before (this open's attempt or an earlier one) and
+  // there was no video in them.
+  if (input.assetsSyncedAt) return "provider_had_none";
+  if (input.fetchFailedJustNow) return "fetch_failed";
+  return "never_imported";
+}
