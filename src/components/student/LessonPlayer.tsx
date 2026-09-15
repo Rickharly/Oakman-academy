@@ -23,6 +23,7 @@ import { StillThere } from "@/components/student/StillThere";
 import { formatMinutes } from "@/components/student/format";
 import type { LessonExplainer } from "@/lib/lessons/explainer";
 import { isPlaceholderUrl, isPlayableResource, type VideoUnavailableReason } from "@/lib/curriculum/video-status";
+import { pickLatest, pickLatestWithMarks } from "@/lib/lessons/activity-picks";
 import { cn } from "@/lib/cn";
 
 /**
@@ -163,11 +164,6 @@ const RAIL_STAGES: { stage: LessonStage; label: string }[] = [
  * render" lint rule.
  */
 const draftSaveTimers = new Map<string, ReturnType<typeof setTimeout>>();
-
-function pickLatest(activities: LessonPlayerActivity[], stage: "STARTER" | "PRACTICE" | "CHECK") {
-  const filtered = activities.filter((a) => a.stage === stage);
-  return filtered.length > 0 ? filtered[filtered.length - 1] : undefined;
-}
 
 function buildInitialResults(activities: LessonPlayerActivity[]): Record<string, QuestionResult> {
   const latest = new Map<string, LessonPlayerQuestionAttempt>();
@@ -357,9 +353,9 @@ export function LessonPlayer(props: LessonPlayerProps) {
   const [activityScore, setActivityScore] = useState<
     Record<"STARTER" | "PRACTICE" | "CHECK", { score: number | null; maxScore: number | null; percentage: number | null } | undefined>
   >(() => ({
-    STARTER: pickLatest(props.activities, "STARTER"),
-    PRACTICE: pickLatest(props.activities, "PRACTICE"),
-    CHECK: pickLatest(props.activities, "CHECK"),
+    STARTER: pickLatestWithMarks(props.activities, "STARTER"),
+    PRACTICE: pickLatestWithMarks(props.activities, "PRACTICE"),
+    CHECK: pickLatestWithMarks(props.activities, "CHECK"),
   }));
   /** The teacher's note, which arrives after the marks do. */
   const [lessonSummary, setLessonSummary] = useState<string | null>(props.feedbackSummary);
@@ -696,7 +692,17 @@ export function LessonPlayer(props: LessonPlayerProps) {
         }
         return next;
       });
-      setActivityScore((prev) => ({ ...prev, [stage]: data.activity }));
+      // Never let a round that graded nothing (`maxScore: 0` — the empty-stage branch
+      // `submitStage` takes when there is nothing left of this stage to grade) overwrite a
+      // real score already on screen. See `pickLatestWithMarks` for why this can happen: the
+      // extra-practice path grades its own round directly, then this same call re-runs against
+      // whatever's left of the lesson's own stage and finds nothing to add.
+      setActivityScore((prev) => {
+        const previous = prev[stage];
+        const incomingIsEmpty = (data.activity.maxScore ?? 0) === 0;
+        const previousHasMarks = previous && (previous.maxScore ?? 0) > 0;
+        return { ...prev, [stage]: incomingIsEmpty && previousHasMarks ? previous : data.activity };
+      });
       setSubmittedStage((prev) => ({ ...prev, [stage]: true }));
 
       // The teacher's note on the lesson is written behind the submit so the marks are not held
@@ -718,6 +724,38 @@ export function LessonPlayer(props: LessonPlayerProps) {
       return false;
     } finally {
       setSubmitting(false);
+    }
+  }
+
+  /**
+   * The "Continue to X" control on a stage that has already been submitted.
+   *
+   * Once the server has genuinely moved past `stage`, this is just "show me where I am" — a
+   * view change, nothing more. But when the server's own `currentStage` is *still* `stage`
+   * despite the round being graded, changing the view to `currentStage` changes it to the stage
+   * already on screen: a visible no-op, and with the stage rail's next pill locked behind that
+   * same `currentStage`, nothing else on the page can move the lesson on either.
+   *
+   * So when it is stuck, ask the server to finish the stage properly instead of only looking at
+   * it. Resubmitting an already-graded round is safe — `submitStage` reuses what is already
+   * marked rather than grading it again — and this time its advance actually runs. Never silent:
+   * a failure leaves `submitError` on screen (via `submitGraded`) and this same button in place
+   * to try again, rather than swapping back to a no-op.
+   */
+  async function continueFrom(stage: "STARTER" | "PRACTICE" | "CHECK") {
+    if (currentStage !== stage) {
+      setViewStage(currentStage);
+      return;
+    }
+    const ok = await submitGraded(stage);
+    if (ok) {
+      // `submitGraded` only moves the view itself for CHECK or a genuinely empty stage (see its
+      // own `wasCurrent`/`emptyStage` handling) — everywhere else it leaves the view where it
+      // was so a child reading their marks isn't yanked off the page. Here the whole point of
+      // pressing this was to move on, so take them there directly rather than leaving them to
+      // press the very button that just fixed the lesson a second time.
+      const next = nextStage(stage);
+      if (next) setViewStage(next);
     }
   }
 
@@ -1031,9 +1069,24 @@ export function LessonPlayer(props: LessonPlayerProps) {
             <p className="text-sm font-medium text-ink">
               {activityScore[stage]?.score ?? 0} / {activityScore[stage]?.maxScore ?? 0}
             </p>
-            <Button onClick={() => setViewStage(currentStage)}>
-              Continue to {stage === "STARTER" ? "Learn" : "Check"}
+            <Button onClick={() => void continueFrom(stage)} disabled={submitting}>
+              {submitting ? "Continuing…" : `Continue to ${stage === "STARTER" ? "Learn" : "Check"}`}
             </Button>
+            {submitError ? <p className="text-sm text-danger">{submitError}</p> : null}
+          </div>
+        ) : currentStage === "CHECK" ? (
+          /*
+            A graded CHECK whose advance to FEEDBACK never landed — the same dead end as above,
+            just with no button at all until now. In the ordinary run `submitGraded` moves
+            `viewStage` to FEEDBACK the instant CHECK is marked, so this only ever shows up after
+            a reload catches the lesson mid-fault, and the stage rail can't help either: FEEDBACK
+            is locked behind `currentStage`, which is exactly what is stuck.
+          */
+          <div className="flex flex-wrap items-center gap-3">
+            <Button onClick={() => void continueFrom("CHECK")} disabled={submitting}>
+              {submitting ? "Continuing…" : "Continue to your feedback"}
+            </Button>
+            {submitError ? <p className="text-sm text-danger">{submitError}</p> : null}
           </div>
         ) : null}
       </div>
@@ -1302,16 +1355,38 @@ export function LessonPlayer(props: LessonPlayerProps) {
               )}
               {/*
                 Where they actually are, not always Feedback.
-                
+
                 This jumped to Feedback whatever stage the lesson was at, which is how the quiz
                 got skipped: it walked straight past Check without it ever being unlocked.
+
+                And where they actually are can itself be stuck: `currentStage` here can be a
+                graded stage (STARTER/PRACTICE/CHECK) already marked submitted whose own advance
+                never landed — this extra round's own submit tried to fix that (see
+                `submitExtra`'s call to `submitGraded`) and failed. Just changing the view then
+                changes it to the stage already on screen, same trap as `continueFrom` exists to
+                close everywhere else. So try the same fix here rather than only looking at it.
               */}
-              <Button variant="ghost" onClick={() => setViewStage(currentStage)}>
-                {currentStage === "CHECK"
-                  ? "On to the quiz"
-                  : currentStage === "FEEDBACK" || currentStage === "COMPLETE"
-                    ? "Back to my feedback"
-                    : "Back to my lesson"}
+              <Button
+                variant="ghost"
+                onClick={() => {
+                  const stuck =
+                    (currentStage === "STARTER" || currentStage === "PRACTICE" || currentStage === "CHECK") &&
+                    submittedStage[currentStage];
+                  if (stuck) void continueFrom(currentStage);
+                  else setViewStage(currentStage);
+                }}
+                disabled={submitting}
+              >
+                {submitting
+                  ? "Continuing…"
+                  : (currentStage === "STARTER" || currentStage === "PRACTICE" || currentStage === "CHECK") &&
+                      submittedStage[currentStage]
+                    ? "Continue"
+                    : currentStage === "CHECK"
+                      ? "On to the quiz"
+                      : currentStage === "FEEDBACK" || currentStage === "COMPLETE"
+                        ? "Back to my feedback"
+                        : "Back to my lesson"}
               </Button>
             </>
           )}

@@ -315,16 +315,36 @@ export async function getAttemptView(attemptId: string, studentId: string): Prom
     orderBy: { startedAt: "asc" },
   });
 
+  /**
+   * What the player pre-fills each question with: the child's own latest answer, whether it is
+   * still a live draft or has already been graded.
+   *
+   * This used to keep only PENDING responses, on the assumption a graded question shows its
+   * answer some other way. It doesn't — the renderer is handed `value`, and a graded question
+   * with nothing in `drafts` renders with no answer at all, disabled, next to feedback saying
+   * "well done, that's correct" for a choice the child can no longer see. So every question's
+   * latest response is kept here, regardless of grading state; the renderer's own `disabled`
+   * (driven by whether the *stage* has been submitted) is what stops a restored value from ever
+   * being written back as a fresh answer — this only supplies what to show, never what to save.
+   *
+   * `attemptNumber` counts retries *within one activity* (`saveDraftAnswer`/`retryQuestion` both
+   * scope it to `{ activityAttemptId, questionId }`), so it cannot be compared across different
+   * activities for the same question — an activity's own first attempt is always `1`, whichever
+   * activity it is. `activities` is ordered oldest-first, so resolving attempt-number ties
+   * *within* each activity and then simply overwriting question-by-question as later activities
+   * are processed gives the chronologically latest answer either way.
+   */
   const drafts: Record<string, unknown> = {};
-  const draftAttemptNumber: Record<string, number> = {};
   for (const activity of activities) {
+    const latestInActivity = new Map<string, { attemptNumber: number; response: unknown }>();
     for (const qa of activity.questionAttempts) {
-      if (qa.gradedBy !== "PENDING") continue;
-      const seen = draftAttemptNumber[qa.questionId];
-      if (seen === undefined || qa.attemptNumber > seen) {
-        draftAttemptNumber[qa.questionId] = qa.attemptNumber;
-        drafts[qa.questionId] = qa.response;
+      const seen = latestInActivity.get(qa.questionId);
+      if (!seen || qa.attemptNumber > seen.attemptNumber) {
+        latestInActivity.set(qa.questionId, { attemptNumber: qa.attemptNumber, response: qa.response });
       }
+    }
+    for (const [questionId, entry] of latestInActivity) {
+      drafts[questionId] = entry.response;
     }
   }
 
