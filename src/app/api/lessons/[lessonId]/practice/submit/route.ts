@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { requireStudentApi, jsonError } from "@/lib/auth/api";
 import { gradeQuestion } from "@/lib/grading/grade";
+import { advanceFromExtraPractice } from "@/lib/lessons/service";
 import { prisma } from "@/lib/db";
 
 /**
@@ -143,6 +144,11 @@ export async function POST(req: Request, ctx: { params: Promise<{ lessonId: stri
       where: { id: activity.id },
       data: { score, maxScore, percentage: maxScore > 0 ? (score / maxScore) * 100 : null },
     });
+
+    // The work just graded is what moves the lesson on — not a second, separate request the
+    // browser happens to make afterwards. A no-op when the attempt has already moved past
+    // PRACTICE (the extra round taken from FEEDBACK/COMPLETE): see `advanceFromExtraPractice`.
+    await advanceFromExtraPractice(attempt.id);
 
     return Response.json({ results, correct, total: results.length });
   } catch (err) {

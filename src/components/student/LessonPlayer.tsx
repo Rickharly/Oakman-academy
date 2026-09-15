@@ -453,9 +453,19 @@ export function LessonPlayer(props: LessonPlayerProps) {
    * restarted whenever the video changes or a retry bumps `videoAttemptKey`; left alone (never
    * even started) once the video has actually failed or already been flagged stalled, so it
    * cannot fire twice for the same attempt.
+   *
+   * Also left alone whenever `viewStage` is not LEARN. The `<video>` element this timer is
+   * measuring only exists inside `renderLearn()` — every lesson opens on STARTER, well before
+   * that element is ever mounted, and `video` itself is computed at the top of the component
+   * regardless of which step is on screen. Without this guard the timer started the instant the
+   * lesson loaded, no element existed to fire any of the "data arrived" signals, and twelve
+   * seconds later every lesson with a video reported a stall that never happened. Gating on
+   * `viewStage` and including it in the deps means leaving Learn cancels the timer and coming
+   * back to it starts a fresh one — matching the element itself being unmounted and remounted,
+   * which is a genuine new request each time.
    */
   useEffect(() => {
-    if (!video || videoFailed || videoStalled) return undefined;
+    if (!video || videoFailed || videoStalled || viewStage !== "LEARN") return undefined;
     videoGotSignalRef.current = false;
     videoStallEventRef.current = null;
     const timer = setTimeout(() => {
@@ -468,7 +478,7 @@ export function LessonPlayer(props: LessonPlayerProps) {
     }, 12_000);
     return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps -- reportVideoFailure is stable for the lesson's lifetime
-  }, [video?.id, videoAttemptKey, videoFailed, videoStalled]);
+  }, [video?.id, videoAttemptKey, videoFailed, videoStalled, viewStage]);
 
   /** Bytes are actually arriving — cancels the stall timer above. */
   function markVideoHasSignal() {
@@ -1256,12 +1266,25 @@ export function LessonPlayer(props: LessonPlayerProps) {
       /**
        * Finishing the extra practice finishes the Practice step.
        *
-       * It did not, so Practice never went green and Check stayed locked behind it — and the
-       * only way out of the extra round jumped straight to Feedback, skipping the quiz
-       * entirely. A child did the work, got no credit for it, and was carried past the
-       * assessment without being asked a single question.
+       * The server now advances the stage itself the moment the practice above is graded (see
+       * `advanceFromExtraPractice`), so this follow-up is just keeping the client's own view of
+       * the score and stage in sync — it is no longer what makes the advance happen. But its
+       * result was previously thrown away outright: on a dropped connection or a 500 here, the
+       * screen kept showing PRACTICE while the server had already moved on, and the "Continue"
+       * control below stayed a no-op because it only unlocks once `submittedStage` says this
+       * call succeeded. Never leave that silent: say so, and force the same unlock so the child
+       * has a real, working "Continue" to press instead of a screen that quietly disagrees with
+       * the server.
        */
-      if (currentStage === "PRACTICE") await submitGraded("PRACTICE");
+      if (currentStage === "PRACTICE") {
+        const ok = await submitGraded("PRACTICE");
+        if (!ok) {
+          setSubmitError(
+            "Your practice was saved, but we couldn't confirm the lesson moved on. Tap Continue below to check — it's safe to try again.",
+          );
+          setSubmittedStage((prev) => ({ ...prev, PRACTICE: true }));
+        }
+      }
     } catch (err) {
       setSubmitError(err instanceof Error ? err.message : "Could not mark that.");
     } finally {
