@@ -2,21 +2,23 @@
  * Where a lesson's file actually is, for a browser that wants to play it.
  *
  * The address stored against a resource is the provider's asset *endpoint*. Called with the API
- * key it answers with JSON holding a short-lived signed link to the real file on a CDN. The
- * player used to get that file by way of our own server: the route pulled the whole thing down
- * from the CDN into the container's disk before it would answer the player's first request,
- * and if that download failed for any reason it fell back to streaming a plain 200 with no
- * range support — which Safari on an iPad, the device the children use, refuses to play at all.
- * Either way the child saw the "it won't play" panel.
+ * key it answers with JSON holding a short-lived signed link to the real file on a CDN. Two
+ * things have gone wrong here before: the route once pulled the whole file down from the CDN
+ * into the container's disk before answering the player's first request (stalls, then the
+ * container running out of memory), and after that was fixed by streaming, the route instead
+ * 302-redirected the browser straight to the CDN — which children's managed Chromebooks would
+ * not reliably play, either because Chrome treats a cross-origin redirect from a `<video>`
+ * differently than Safari does, or because the school network blocks the CDN host outright.
  *
- * A CDN already does everything a video player needs — byte ranges, the right content type,
- * speed — and does it without a hundred megabytes passing through a small container. So the
- * server's job is reduced to the one thing only it can do: turn the endpoint into the signed
- * link, using the key that must never reach the browser. The player is then sent to the link.
+ * So the route (`src/app/api/curriculum/resources/[resourceId]/route.ts`) now streams the bytes
+ * back through our own origin by default: it resolves the endpoint to this signed link, then
+ * fetches the link itself and pipes the response body straight through, forwarding the
+ * player's Range header and never buffering. The redirect this module makes possible is still
+ * there, but only behind `MEDIA_REDIRECT_TO_CDN=true` — see the route for why it defaults off.
  *
- * The link is checked once before anyone is sent to it (does it answer, what does it say the
- * file is, does it honour ranges), and remembered until shortly before it expires, so a lesson
- * costs one provider request however many times the player asks.
+ * The link is checked once before it is used (does it answer, what does it say the file is,
+ * does it honour ranges), and remembered until shortly before it expires, so a lesson costs one
+ * provider request however many times the player asks — not one per seek.
  */
 import { ApiError } from "@/lib/auth/api";
 import { describeFetchError, findUrl, resolveAssetUrl } from "./asset-fetch";
@@ -51,6 +53,18 @@ const linkCache = new Map<string, MediaLink>();
 /** Test-only: forget every resolved link. */
 export function resetMediaLinkCache(): void {
   linkCache.clear();
+}
+
+/**
+ * Drops one resource's cached link, so the next call resolves a fresh one.
+ *
+ * A signed link can stop working before our own clock thinks it should — the provider can
+ * revoke it early, or our guess at its lifetime (a scheme we do not recognise, or a claimed
+ * expiry we chose not to trust) can be optimistic. The route calls this once, on a failed
+ * fetch of the cached link, before it gives up and tells the player the lesson is broken.
+ */
+export function forgetMediaLink(resourceId: string): void {
+  linkCache.delete(resourceId);
 }
 
 /** `20260914T073000Z` → ms since the epoch, or null if it is not that shape. */

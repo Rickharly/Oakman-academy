@@ -254,6 +254,89 @@ function truncate(text: string, max: number): string {
   return `${text.slice(0, Math.max(0, max - 1)).trimEnd()}…`;
 }
 
+/** What a child's own browser actually got back when it asked for the video file. */
+type VideoProbeResult = {
+  status: number | null;
+  contentType: string | null;
+  contentLength: string | null;
+  contentRange: string | null;
+  acceptRanges: string | null;
+  redirected: boolean | null;
+  responseType: string | null;
+  /** Host only — never the signed query string, which is a credential. */
+  urlHost: string | null;
+  /** The first ~16 bytes, hex and ascii, so a JSON error body is recognisable at a glance. */
+  bodySnippet: string | null;
+  networkErrorName: string | null;
+  networkErrorMessage: string | null;
+};
+
+/**
+ * Repeats the player's own request for the video and reports exactly what came back.
+ *
+ * Every "fix" so far was decided by reasoning from a server with different network access and a
+ * different browser than the Chromebook the child is actually holding. This asks the browser
+ * that is actually failing — the same URL, the same Range header a player uses to check a
+ * file before committing to it — and never throws: a diagnostic that can break the lesson it is
+ * trying to explain would be worse than no diagnostic at all.
+ */
+async function probeVideoUrl(url: string): Promise<VideoProbeResult> {
+  try {
+    const res = await fetch(url, { headers: { Range: "bytes=0-1" }, cache: "no-store" });
+
+    let urlHost: string | null = null;
+    try {
+      urlHost = new URL(res.url).host || null;
+    } catch {
+      urlHost = null;
+    }
+
+    let bodySnippet: string | null = null;
+    try {
+      const reader = res.body?.getReader();
+      const first = await reader?.read();
+      await reader?.cancel().catch(() => undefined);
+      if (first?.value && first.value.length > 0) {
+        const bytes = first.value.slice(0, 16);
+        const hex = Array.from(bytes).map((b) => b.toString(16).padStart(2, "0")).join(" ");
+        const ascii = Array.from(bytes).map((b) => (b >= 32 && b < 127 ? String.fromCharCode(b) : ".")).join("");
+        bodySnippet = `${hex} | ${ascii}`;
+      }
+    } catch {
+      // The status and headers below are still worth having even without a peek at the body.
+    }
+
+    return {
+      status: res.status,
+      contentType: res.headers.get("content-type"),
+      contentLength: res.headers.get("content-length"),
+      contentRange: res.headers.get("content-range"),
+      acceptRanges: res.headers.get("accept-ranges"),
+      redirected: res.redirected,
+      responseType: res.type,
+      urlHost,
+      bodySnippet,
+      networkErrorName: null,
+      networkErrorMessage: null,
+    };
+  } catch (err) {
+    // The fetch itself failed — no status, no headers, just what the browser says went wrong.
+    return {
+      status: null,
+      contentType: null,
+      contentLength: null,
+      contentRange: null,
+      acceptRanges: null,
+      redirected: null,
+      responseType: null,
+      urlHost: null,
+      bodySnippet: null,
+      networkErrorName: err instanceof Error ? err.name : "Error",
+      networkErrorMessage: err instanceof Error ? err.message.slice(0, 500) : String(err).slice(0, 500),
+    };
+  }
+}
+
 // ───────────────────────────── component ─────────────────────────────
 
 export function LessonPlayer(props: LessonPlayerProps) {
@@ -304,6 +387,9 @@ export function LessonPlayer(props: LessonPlayerProps) {
   const [teacherSheetOpen, setTeacherSheetOpen] = useState(false);
 
   const lastVideoSent = useRef(0);
+  // Fired at most once per lesson open, and only when the video actually fails — the evidence a
+  // child's own browser can give that the server never could. See `reportVideoFailure`.
+  const videoReportSent = useRef(false);
   const [generatingPractice, setGeneratingPractice] = useState(false);
   // The "do you already know this?" check, offered once before a lesson is started.
   const [preCheckOpen, setPreCheckOpen] = useState(offerPreCheck);
@@ -609,6 +695,42 @@ export function LessonPlayer(props: LessonPlayerProps) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ percentWatched: 100, positionSeconds: el.duration || 0, completed: true }),
     }).catch(() => undefined);
+  }
+
+  /**
+   * The evidence, sent once a video has actually failed in this browser.
+   *
+   * Invisible to the child by design — no spinner, no new text, nothing that could delay or
+   * change what they see. The panel telling them the video won't play is unaffected either way;
+   * this only makes sure the person reading a diagnostics page later sees what really happened
+   * instead of a server's guess at it.
+   */
+  async function reportVideoFailure(
+    resource: LessonPlayerResource,
+    elementError: MediaError | null,
+    errorLabel: string | null,
+  ) {
+    if (videoReportSent.current) return;
+    videoReportSent.current = true;
+    try {
+      const probe = await probeVideoUrl(`/api/curriculum/resources/${resource.id}`);
+      await fetch("/api/student/video-report", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          lessonId: lesson.id,
+          resourceId: resource.id,
+          // The same sentence the player shows for the video slot once it has failed.
+          videoState: `a real video that would not play in the browser${errorLabel ? ` (${errorLabel})` : ""}`,
+          userAgent: navigator.userAgent,
+          elementErrorCode: elementError?.code ?? null,
+          elementErrorMessage: elementError?.message ? elementError.message.slice(0, 500) : null,
+          probe,
+        }),
+      });
+    } catch {
+      // Best-effort and silent — see the doc comment above.
+    }
   }
 
   // ── CHECK retries (shown on FEEDBACK) ──
@@ -1334,8 +1456,10 @@ export function LessonPlayer(props: LessonPlayerProps) {
                   3: "could not decode",
                   4: "format not supported",
                 };
-                setVideoError(err ? `${names[err.code] ?? `code ${err.code}`}${err.message ? `: ${err.message}` : ""}` : null);
+                const label = err ? `${names[err.code] ?? `code ${err.code}`}${err.message ? `: ${err.message}` : ""}` : null;
+                setVideoError(label);
                 setVideoFailed(true);
+                void reportVideoFailure(video, err, label);
               }}
             />
           ) : video && videoFailed ? (

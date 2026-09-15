@@ -3,7 +3,7 @@ import fsp from "node:fs/promises";
 import { Readable } from "node:stream";
 import { requireUserApi, jsonError, ApiError } from "@/lib/auth/api";
 import { prisma } from "@/lib/db";
-import { resolveMedia, type MediaLink } from "@/lib/curriculum/media-link";
+import { resolveMedia, forgetMediaLink, type MediaLink } from "@/lib/curriculum/media-link";
 
 /**
  * Serves a lesson's video or worksheet.
@@ -12,18 +12,40 @@ import { resolveMedia, type MediaLink } from "@/lib/curriculum/media-link";
  * the browser straight at them gave a child "API token not provided or invalid" instead of
  * their worksheet, and Oak's terms require the key never be exposed. So the browser asks us.
  *
- * **But the bytes do not come through us.** The endpoint answers with a signed link to the file
- * on a CDN, and the browser is sent there. This route used to download the whole file into the
- * container before answering the player's first request, and if that failed it streamed a
- * plain 200 with no range support — which Safari on an iPad will not play at all. A CDN
- * already answers ranges, quickly, with the right type, without a hundred megabytes crossing a
- * small container's disk. The one case we still proxy is a link that turns out unfit for a
- * player (a wrong content type, no range support), where we relabel and pass ranges through.
+ * **The bytes come through us, streamed.** The endpoint resolves to a signed link on Oak's CDN
+ * (`media-link.ts`), and we fetch that link ourselves and pipe its body straight back to the
+ * browser — forwarding whatever Range header the player sent, and never buffering the file:
+ * no `arrayBuffer()`, no `.tee()`, no write to disk. This used to be a 302 straight to the CDN
+ * instead, which fixed the round-1 problem below but broke video for children on managed
+ * Chromebooks — a cross-origin redirect from a `<video>` element is not reliably followed by
+ * Chrome the way it is by Safari, and school network filters commonly block the CDN host
+ * outright. Streaming through our own origin plays everywhere a same-origin `<video src>` does.
+ * The redirect still exists for when it is known to be safe — see `MEDIA_REDIRECT_TO_CDN` below.
+ *
+ * Before either of those: this route used to download the *entire* file into the container
+ * before answering the player's first byte, buffered with `ReadableStream.tee()` and no
+ * backpressure. That stalled requests and ran the container out of memory on a ~100MB video.
+ * Streaming — not the redirect — is what fixed that, and it must not come back.
  *
  * A signed link is resolved once and remembered until shortly before it expires, so a lesson
- * costs one provider request however many times the player asks — not one per seek.
+ * costs one provider request however many times the player asks — not one per seek. If a
+ * fetch of the cached link fails, we drop it and resolve a fresh one once before giving up, in
+ * case it simply expired early.
  */
 export const dynamic = "force-dynamic";
+
+/**
+ * Send the browser straight to Oak's CDN instead of streaming through us.
+ *
+ * Off by default. It would save this container carrying the video's bytes, but a cross-origin
+ * redirect from a `<video>` element is not reliably playable on a managed Chromebook (see the
+ * file comment above) — and a slightly more expensive lesson that plays beats a cheap one that
+ * doesn't. Only flip this on for a deployment that has verified the redirect works for every
+ * device it serves.
+ */
+function redirectsEnabled(): boolean {
+  return process.env.MEDIA_REDIRECT_TO_CDN === "true";
+}
 
 /**
  * What this file actually is, for the browser.
@@ -145,13 +167,20 @@ function serveFromDisk(file: string, size: number, contentType: string, req: Req
  *
  * The status and the range headers are the host's: a 206 with its content-range is exactly
  * what the player asked for and must not be flattened into a 200. Only the content type is
- * ours, because that is the one thing the host gets wrong.
+ * ours, because that is the one thing the host gets wrong. The body is passed through as the
+ * stream it already is — `upstream.body` — never read into memory first.
+ *
+ * Cache-control is deliberately weak (`max-age=0, must-revalidate` rather than the old
+ * `max-age=3600`): the children's Chromebooks are exactly the browsers that, for a while,
+ * cached a broken response from the redirect this replaces, and a longer max-age would let
+ * that stale, broken response keep being served from disk cache instead of the fixed one. Once
+ * this has been out long enough for those caches to have cycled, a longer max-age is fine again.
  */
 function passThrough(upstream: Response, contentType: string, filename: string): Response {
   if (!upstream.body) throw new ApiError(502, "The provider returned an empty file.");
   const headers = new Headers({
     "content-type": contentType,
-    "cache-control": "private, max-age=3600",
+    "cache-control": "private, max-age=0, must-revalidate",
     "content-disposition": `inline; filename="${encodeURIComponent(filename)}"`,
   });
   for (const name of ["content-length", "content-range", "accept-ranges"]) {
@@ -160,6 +189,48 @@ function passThrough(upstream: Response, contentType: string, filename: string):
   }
   if (upstream.status === 206 && !headers.has("accept-ranges")) headers.set("accept-ranges", "bytes");
   return new Response(upstream.body, { status: upstream.status === 206 ? 206 : 200, headers });
+}
+
+/** Fetches a signed link, forwarding the player's Range header. A bad status is a failure too. */
+async function fetchLink(url: string, range: string | null): Promise<Response> {
+  const upstream = await fetch(url, {
+    headers: range ? { Range: range } : {},
+    cache: "no-store",
+  }).catch(() => {
+    throw new ApiError(502, `Could not reach ${new URL(url).host}.`);
+  });
+  if (!upstream.ok) throw new ApiError(502, `The file link returned ${upstream.status}.`);
+  return upstream;
+}
+
+/**
+ * Fetches a signed link ourselves and streams the answer straight back, retrying once with a
+ * freshly resolved link if the cached one turns out not to work any more.
+ *
+ * A cached link can fail before our own clock thinks it should — the provider can revoke it
+ * early, or a signing scheme we don't recognise only ever got a conservative guessed lifetime
+ * (`signedLinkExpiry` in `media-link.ts`). Either way the fix is the same: forget it and
+ * resolve again, rather than telling the player the lesson is broken over a stale cache entry.
+ */
+async function fetchAndServeLink(
+  resource: { id: string; type: string; mimeType: string | null; providerUrl: string | null; label: string },
+  link: MediaLink,
+  range: string | null,
+): Promise<Response> {
+  try {
+    const upstream = await fetchLink(link.url, range);
+    return passThrough(upstream, contentTypeFor(resource, upstream.headers.get("content-type")), resource.label);
+  } catch {
+    forgetMediaLink(resource.id);
+    const fresh = await resolveMedia(resource, { range });
+    if (fresh.kind === "stream") {
+      const upstreamType = fresh.response.headers.get("content-type");
+      return passThrough(fresh.response, contentTypeFor(resource, upstreamType), resource.label);
+    }
+    // A second failure is a real one — let it surface, there is nothing left to retry.
+    const upstream = await fetchLink(fresh.link.url, range);
+    return passThrough(upstream, contentTypeFor(resource, upstream.headers.get("content-type")), resource.label);
+  }
 }
 
 export async function GET(req: Request, ctx: { params: Promise<{ resourceId: string }> }) {
@@ -203,28 +274,23 @@ export async function GET(req: Request, ctx: { params: Promise<{ resourceId: str
     }
 
     /**
-     * Send the browser to the file.
+     * Opt-in: send the browser to the file directly instead of streaming it through us.
      *
-     * A media element follows a redirect like any other fetch, and the CDN answers its ranges
-     * directly. The link is signed and short-lived, so it must not be cached by anything on
-     * the way — the next request comes back here and gets a fresh one when this has expired.
+     * Off by default — see `redirectsEnabled` above. A media element follows a redirect like
+     * any other fetch, and when it works the CDN answers ranges directly with nothing crossing
+     * our container. The link is signed and short-lived, so it must not be cached by anything
+     * on the way — the next request comes back here and gets a fresh one when this has expired.
      */
-    if (browserCanUseDirectly(resource, link)) {
+    if (redirectsEnabled() && browserCanUseDirectly(resource, link)) {
       return new Response(null, {
         status: 302,
         headers: { location: link.url, "cache-control": "private, no-store" },
       });
     }
 
-    // A link a player cannot use as it is: fetch the range the player asked for and relabel.
-    const upstream = await fetch(link.url, {
-      headers: range ? { Range: range } : {},
-      cache: "no-store",
-    }).catch(() => {
-      throw new ApiError(502, `Could not reach ${new URL(link.url).host}.`);
-    });
-    if (!upstream.ok) throw new ApiError(502, `The file link returned ${upstream.status}.`);
-    return passThrough(upstream, contentTypeFor(resource, upstream.headers.get("content-type")), resource.label);
+    // The default path: fetch the signed link ourselves, forwarding the player's range, and
+    // stream the response straight back — never buffered, never written to disk first.
+    return await fetchAndServeLink(resource, link, range);
   } catch (err) {
     return jsonError(err);
   }
