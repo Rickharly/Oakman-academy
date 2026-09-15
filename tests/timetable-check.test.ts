@@ -1,8 +1,8 @@
-import { beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { prisma } from "@/lib/db";
 import { resetDb } from "./helpers/db";
 import { timetableCheck } from "@/lib/admin/diagnostics";
-import { addDaysKey, dateOnlyKey, todayDateOnly, toDateOnly } from "@/lib/dates";
+import { addDaysKey, dateOnlyKey, todayDateOnly, toDateOnly, weekStartKey } from "@/lib/dates";
 
 /**
  * "Why today looks like this" used to lump four very different states into one alarm — a real
@@ -187,7 +187,17 @@ describe("timetable check: a student nobody is linked to (case 3)", () => {
 describe("timetable check: a genuinely short day (case 4)", () => {
   let check: Awaited<ReturnType<typeof timetableCheck>>;
 
+  // This case relies on "tomorrow" landing in the same ISO week as "today" — true every day
+  // except Sunday, which would otherwise make this test pass all week and fail on the day the
+  // suite happens to run. Pin the clock to a fixed Tuesday so the test is deterministic
+  // regardless of when it runs.
+  const FIXED_TODAY_KEY = "2025-01-14"; // a Tuesday
+  const FIXED_TOMORROW_KEY = addDaysKey(FIXED_TODAY_KEY, 1); // Wednesday, same ISO week
+
   beforeAll(async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date(`${FIXED_TODAY_KEY}T12:00:00Z`));
+
     await resetDb();
     const student = await makeStudent("Rich");
     const { subject, programme } = await makeSubjectWithLessons("maths", 40);
@@ -199,7 +209,7 @@ describe("timetable check: a genuinely short day (case 4)", () => {
     // The planner has run this week — tomorrow already has a full day of lessons — but today
     // itself has nothing on it yet.
     const lessons = await prisma.lesson.findMany({ where: { providerSlug: { startsWith: "maths-" } }, take: 5 });
-    const tomorrow = toDateOnly(addDaysKey(TODAY_KEY, 1));
+    const tomorrow = toDateOnly(FIXED_TOMORROW_KEY);
     for (const [i, lesson] of lessons.entries()) {
       await prisma.dailyAssignment.create({
         data: {
@@ -216,6 +226,10 @@ describe("timetable check: a genuinely short day (case 4)", () => {
     }
 
     check = await timetableCheck();
+  });
+
+  afterAll(() => {
+    vi.useRealTimers();
   });
 
   it("does not fail the check — the planner is working, today just has not been planned yet", () => {
@@ -235,6 +249,60 @@ describe("timetable check: a genuinely short day (case 4)", () => {
   });
 
   it("prints the week so it's clear the planner did run on other days", () => {
-    expect(check.detail).toMatch(new RegExp(`this week: .*${addDaysKey(TODAY_KEY, 1)}=5`));
+    expect(check.detail).toMatch(new RegExp(`this week: .*${FIXED_TOMORROW_KEY}=5`));
+  });
+});
+
+describe("timetable check: a week nobody has planned yet, despite a future week's lessons (case 5)", () => {
+  let check: Awaited<ReturnType<typeof timetableCheck>>;
+
+  beforeAll(async () => {
+    await resetDb();
+    const student = await makeStudent("Rich");
+    const { subject, programme } = await makeSubjectWithLessons("maths", 40);
+    await prisma.studentEnrolment.create({ data: { studentId: student.id, programmeId: programme.id } });
+    await prisma.studentSchedule.create({
+      data: { studentId: student.id, subjectId: subject.id, weeklyFrequency: 5, priority: 1 },
+    });
+
+    // Nothing at all in the current week — but one non-moved LESSON assignment dated safely
+    // into a later week (the Tuesday of the week after next, so it lands in a later week no
+    // matter which day of the current week the suite runs on). Before the upper bound was
+    // added to the "this week" query, a stray future-week row like this one would have made
+    // the check misreport a genuine SHORT DAY instead of "nothing planned yet".
+    const weekStart = weekStartKey(TODAY_KEY);
+    const laterWeekDate = toDateOnly(addDaysKey(weekStart, 15));
+    const [lesson] = await prisma.lesson.findMany({ where: { providerSlug: { startsWith: "maths-" } }, take: 1 });
+    await prisma.dailyAssignment.create({
+      data: {
+        studentId: student.id,
+        date: laterWeekDate,
+        order: 0,
+        kind: "LESSON",
+        source: "AUTO",
+        subjectId: subject.id,
+        lessonId: lesson.id,
+        estimatedMinutes: 45,
+      },
+    });
+
+    check = await timetableCheck();
+  });
+
+  it("does not fail the check — this is not a supply problem", () => {
+    expect(check.status).not.toBe("fail");
+  });
+
+  it("is reported as a warning, not a short day", () => {
+    expect(check.status).toBe("warn");
+  });
+
+  it("does not count towards the headline problem count", () => {
+    expect(check.summary).not.toContain("problem(s) stopping lessons being scheduled");
+  });
+
+  it("says nothing has been planned this week yet, not SHORT DAY", () => {
+    expect(check.detail).toContain("NOTHING PLANNED THIS WEEK YET");
+    expect(check.detail).not.toContain("SHORT DAY");
   });
 });

@@ -19,7 +19,7 @@ import { describeFetchError, resolveAssetUrl } from "@/lib/curriculum/asset-fetc
 import { resolveMedia } from "@/lib/curriculum/media-link";
 import { isPlaceholderUrl, isPlayableResource } from "@/lib/curriculum/video-status";
 import { imageSchema } from "@/lib/questions/types";
-import { dateOnlyKey, toDateOnly, todayDateOnly, weekStartKey } from "@/lib/dates";
+import { addDaysKey, dateOnlyKey, toDateOnly, todayDateOnly, weekStartKey } from "@/lib/dates";
 
 export type CheckStatus = "ok" | "warn" | "fail" | "skip";
 
@@ -869,13 +869,14 @@ export async function timetableCheck(): Promise<Check> {
      */
     const lessonsToday = today.filter((a) => a.kind === "LESSON").length;
     if (lessonsToday < student.lessonsPerDay && subjectsWithMaterial > 0) {
+      const weekStart = weekStartKey(dateOnlyKey(todayDateOnly()));
       const week = await prisma.dailyAssignment.groupBy({
         by: ["date"],
         where: {
           studentId: student.id,
           kind: "LESSON",
           status: { not: "MOVED" },
-          date: { gte: toDateOnly(weekStartKey(dateOnlyKey(todayDateOnly()))) },
+          date: { gte: toDateOnly(weekStart), lt: toDateOnly(addDaysKey(weekStart, 7)) },
         },
         _count: { _all: true },
         orderBy: { date: "asc" },
