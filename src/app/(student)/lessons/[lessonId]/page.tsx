@@ -10,7 +10,8 @@ import {
 } from "@/components/student/LessonPlayer";
 import { parseExplainer } from "@/lib/lessons/explainer";
 import { plainMaths, plainMathsDeep } from "@/lib/text/maths";
-import { ensureLessonAssets } from "@/lib/curriculum/sync";
+import { ensureLessonAssets, type EnsureAssetsOutcome } from "@/lib/curriculum/sync";
+import type { VideoUnavailableReason } from "@/lib/curriculum/video-status";
 
 type RawQuestion = {
   id: string;
@@ -52,19 +53,23 @@ export default async function LessonPage({
   if (!lessonExists) notFound();
 
   /**
-   * The video, fetched for this lesson if nobody has fetched it yet.
+   * The video, fetched for this lesson if nobody has fetched it yet — or if it was fetched once
+   * and came back with no video, retried (see `ensureLessonAssets`).
    *
    * Lessons are imported in batches against a rationed quota, and their assets are left for a
    * later bulk run to collect. When that run has not reached this lesson, there is no video row
    * at all — which looks exactly like a broken player and is not. One provider request, for the
    * lesson a child is opening right now, is the cheapest and most useful request we can make.
    *
-   * Bounded: if the provider is slow the page renders without waiting, and the next open tries
-   * again. A lesson that starts late is worse than a lesson that starts without its video.
+   * Bounded, generously: a real provider call is a network round trip plus Oak's own work, and
+   * four seconds was cutting it off before a slow-but-working call ever finished — every open
+   * paid the wait of the race losing and still got no video. Long enough to let a real call
+   * land, short enough that a lesson never starts late waiting for it; the race still means a
+   * genuinely stuck provider can never block the lesson opening.
    */
-  await Promise.race([
-    ensureLessonAssets(lessonId).catch(() => 0),
-    new Promise((resolve) => setTimeout(resolve, 4000)),
+  const assetsOutcome = await Promise.race<EnsureAssetsOutcome | "timeout">([
+    ensureLessonAssets(lessonId).then((r) => r.outcome).catch((): EnsureAssetsOutcome => "failed"),
+    new Promise<"timeout">((resolve) => setTimeout(() => resolve("timeout"), 9000)),
   ]);
 
   // A REVIEW assignment re-runs the CHECK stage; anything else starts/resumes normally.
@@ -95,6 +100,25 @@ export default async function LessonPage({
   }
 
   const oakUrl = lesson.canonicalUrl ?? lesson.providerUrl;
+
+  /**
+   * Why there is no video to watch, when there genuinely is none — not passed at all when a
+   * VIDEO resource row exists, playable or not, because at that point the player can see the
+   * row itself and work out the rest (a real address, or a placeholder one) without needing to
+   * be told why by the server.
+   */
+  const hasVideoResource = lesson.resources.some((r) => r.type === "VIDEO");
+  let videoUnavailableReason: VideoUnavailableReason | undefined;
+  if (!hasVideoResource) {
+    videoUnavailableReason =
+      lesson.provider === "fixture"
+        ? "placeholder_curriculum"
+        : lesson.assetsSyncedAt
+          ? "provider_had_none"
+          : assetsOutcome === "failed"
+            ? "fetch_failed"
+            : "never_imported";
+  }
 
   const questionsByStage: Record<"STARTER" | "PRACTICE" | "CHECK", LessonPlayerQuestion[]> = {
     STARTER: view.questionsByStage.STARTER.map(mapQuestion),
@@ -142,6 +166,11 @@ export default async function LessonPage({
         explainer: parseExplainer(lesson.explainer),
         // Where this lesson lives on Oak's own site, for when we have no video file.
         oakUrl,
+        // Why there is no video, when there is none — computed here because it depends on
+        // things the player can never see (whether assets were ever fetched, and how that just
+        // went). Undefined when a VIDEO resource row exists; the player works the rest out from
+        // the row itself.
+        videoUnavailableReason,
         resources: lesson.resources.map((r) => ({
           id: r.id,
           type: r.type,

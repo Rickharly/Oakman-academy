@@ -22,6 +22,7 @@ import { AlreadyLearned } from "@/components/student/AlreadyLearned";
 import { StillThere } from "@/components/student/StillThere";
 import { formatMinutes } from "@/components/student/format";
 import type { LessonExplainer } from "@/lib/lessons/explainer";
+import { isPlaceholderUrl, isPlayableResource, type VideoUnavailableReason } from "@/lib/curriculum/video-status";
 import { cn } from "@/lib/cn";
 
 /**
@@ -50,25 +51,9 @@ function explainerSpeech(explainer: LessonExplainer): string[] {
   return parts;
 }
 
-/**
- * Whether a resource points at something that can actually be fetched.
- *
- * The bundled placeholder curriculum lists its videos as `fixture://…`, which is not an address
- * — nothing can fetch it, and the failure is "unknown scheme" deep inside a stream. Treating
- * those rows as a video gave a child a black player stuck at 0:00 on every lesson, which looks
- * exactly like a real video failing to load. That is why "the video is broken" was the story
- * for days when the truth was that there was no video.
- *
- * A stored file is fine. An http(s) address is fine. A path with no scheme is fine — the server
- * resolves it against the provider's base. Anything else is a placeholder pretending.
- */
-function isPlayable(resource: LessonPlayerResource): boolean {
-  if (resource.storedPath) return true;
-  const url = resource.providerUrl;
-  if (!url) return false;
-  if (/^https?:\/\//i.test(url)) return true;
-  return !url.includes("://");
-}
+// `isPlayable`/`isPlaceholder` live in `@/lib/curriculum/video-status` — shared with the sync
+// service and the parent-facing diagnostics, so "is this address fetchable" is decided in one
+// place rather than three that can drift apart. See that module's doc comment.
 
 // ───────────────────────────── props ─────────────────────────────
 
@@ -117,6 +102,12 @@ export type LessonPlayerProps = {
     oakUrl?: string | null;
     /** Whether Oak's headers permit their page being shown inside ours. */
     oakEmbeddable?: boolean;
+    /**
+     * Why there is no video, computed on the server where the facts live (whether assets were
+     * ever fetched, and how that just went). Undefined whenever a VIDEO resource row exists —
+     * playable or not — since the player can read the rest off the row itself.
+     */
+    videoUnavailableReason?: VideoUnavailableReason;
     resources: LessonPlayerResource[];
   };
   subjectTitle: string;

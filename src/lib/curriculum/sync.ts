@@ -718,6 +718,49 @@ export async function syncMany(
 
 
 /**
+ * Why a call to `ensureLessonAssets` ended the way it did — enough for a caller to tell a child
+ * "this hasn't been downloaded yet" apart from "Oak genuinely has none" apart from "we just
+ * tried and it failed", instead of all three looking like the same empty video slot.
+ *
+ * - `fixture` — the bundled placeholder curriculum. Never attempted; there is nothing real to
+ *   fetch.
+ * - `already_has_video` — nothing to do, this lesson already has a VIDEO resource row.
+ * - `throttled` — assets were already asked for at least once (successfully) and still have no
+ *   video; asked again too recently to retry now (see `RETRY_COOLDOWN_MS`).
+ * - `fetched` — a provider request was made just now and it succeeded (`written` may still be 0
+ *   if the provider genuinely returned nothing).
+ * - `failed` — a provider request was made just now and it threw, or the lesson does not exist.
+ */
+export type EnsureAssetsOutcome = "fixture" | "already_has_video" | "throttled" | "fetched" | "failed";
+
+export interface EnsureAssetsResult {
+  outcome: EnsureAssetsOutcome;
+  written: number;
+}
+
+/**
+ * How often a lesson whose assets were already fetched once — successfully, but with no video
+ * in them — is allowed to be asked again. A lesson Oak genuinely has no video for must not cost
+ * a provider request on every single open; an hour is often enough to catch Oak adding one
+ * later without hammering the quota for lessons that will never have one.
+ */
+const RETRY_COOLDOWN_MS = 60 * 60 * 1000;
+
+/**
+ * Cheap in-process guard for the retry above. Deliberately not a database column: this is a
+ * courtesy to the provider's quota, not a fact about the lesson, and a migration is not owed to
+ * a number that resets on every deploy anyway (the worst case of forgetting it between deploys
+ * is one extra provider request per lesson, which is exactly what this function exists to
+ * spend).
+ */
+const lastRetryAttempt = new Map<string, number>();
+
+/** Test-only: clears the retry-throttle guard so a test does not have to wait out the cooldown. */
+export function resetLessonAssetRetryThrottle(): void {
+  lastRetryAttempt.clear();
+}
+
+/**
  * Makes sure this one lesson has its video and worksheet, now.
  *
  * Importing a subject is rationed: the provider's quota is a fixed budget per window, so a
@@ -730,21 +773,45 @@ export async function syncMany(
  * One lesson, one provider request, when a child is about to sit down in front of it. That is
  * the cheapest possible way to spend a request and by far the most valuable.
  *
- * Safe to call on every lesson open: a lesson whose assets are stamped returns immediately, and
- * a failure leaves the stamp null so the next attempt tries again.
+ * Safe to call on every lesson open: a lesson that already has a video returns immediately, and
+ * a lesson whose assets were fetched but came back with no video is retried — no more than once
+ * an hour — rather than left stamped and never looked at again, which is what silently turned
+ * "the provider was slow this one time" into "this lesson will never have a video".
  */
-export async function ensureLessonAssets(lessonId: string): Promise<number> {
+export async function ensureLessonAssets(
+  lessonId: string,
+  opts: { provider?: CurriculumProvider } = {},
+): Promise<EnsureAssetsResult> {
   const lesson = await prisma.lesson.findUnique({
     where: { id: lessonId },
-    select: { id: true, provider: true, providerSlug: true, assetsSyncedAt: true },
+    select: {
+      id: true,
+      provider: true,
+      providerSlug: true,
+      assetsSyncedAt: true,
+      resources: { where: { type: "VIDEO" }, select: { id: true } },
+    },
   });
-  if (!lesson || lesson.assetsSyncedAt) return 0;
+  if (!lesson) return { outcome: "failed", written: 0 };
   // The bundled placeholder curriculum has nothing to fetch — its assets are made up.
-  if (lesson.provider === "fixture") return 0;
+  if (lesson.provider === "fixture") return { outcome: "fixture", written: 0 };
 
-  const provider = getCurriculumProvider();
+  const hasVideo = lesson.resources.length > 0;
+  if (lesson.assetsSyncedAt && hasVideo) return { outcome: "already_has_video", written: 0 };
+
+  if (lesson.assetsSyncedAt && !hasVideo) {
+    // Assets were read once already and there was no video in them. A real answer, but not
+    // necessarily a permanent one — worth trying again, just not on every single open.
+    const last = lastRetryAttempt.get(lessonId);
+    if (last != null && Date.now() - last < RETRY_COOLDOWN_MS) {
+      return { outcome: "throttled", written: 0 };
+    }
+    lastRetryAttempt.set(lessonId, Date.now());
+  }
+
+  const provider = opts.provider ?? getCurriculumProvider();
   const fetched = await provider.getAssets(lesson.providerSlug).catch(() => null);
-  if (!fetched) return 0;
+  if (!fetched) return { outcome: "failed", written: 0 };
 
   const written = await writeResources(
     lesson.id,
@@ -764,5 +831,5 @@ export async function ensureLessonAssets(lessonId: string): Promise<number> {
       ),
     },
   });
-  return written;
+  return { outcome: "fetched", written };
 }
