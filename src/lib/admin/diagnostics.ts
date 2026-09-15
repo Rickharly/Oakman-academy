@@ -19,7 +19,7 @@ import { describeFetchError, resolveAssetUrl } from "@/lib/curriculum/asset-fetc
 import { resolveMedia } from "@/lib/curriculum/media-link";
 import { isPlaceholderUrl, isPlayableResource } from "@/lib/curriculum/video-status";
 import { imageSchema } from "@/lib/questions/types";
-import { dateOnlyKey, toDateOnly, todayDateOnly, weekStartKey } from "@/lib/dates";
+import { addDaysKey, dateOnlyKey, toDateOnly, todayDateOnly, weekStartKey } from "@/lib/dates";
 
 export type CheckStatus = "ok" | "warn" | "fail" | "skip";
 
@@ -734,12 +734,27 @@ async function bugReportCheck(): Promise<Check> {
 /**
  * Why a child's day is empty, in full.
  *
- * The planner produces nothing for a hundred quiet reasons — no schedule, no enrolment, a
- * programme with no lessons, every lesson already done, a subject id that does not match. From
- * the outside all of them look identical: a blank board. This prints every link in that chain
- * for every child, so the broken one is visible instead of guessed at.
+ * The planner produces nothing for a hundred quiet reasons, and they are not all the same kind
+ * of wrong. Some are a real shortage — no timetable, no enrolment, a subject that has run out —
+ * and those are worth an alarm. Others are just "nothing has asked the planner yet": planning
+ * only happens when a child opens Today, or a parent opens that child's page or presses
+ * "Rebuild today's lessons" — nothing runs on a timer — so a profile nobody has visited this week
+ * will always show an empty week, and that is the system working as designed, not a failure.
+ * Counting that alongside a genuine shortage buries the real problem under noise a parent cannot
+ * act on, and trains them to stop reading the headline at all.
+ *
+ * So this tells three things apart:
+ *  - a real supply problem (no timetable, no enrolment, or a subject with too few lessons left) —
+ *    this is what "problem(s) stopping lessons being scheduled" counts, and the only thing that
+ *    should make a parent worry;
+ *  - a student nobody is linked to — a real misconfiguration, counted alongside the above, because
+ *    no parent-facing action (including "Rebuild today's lessons") can ever reach them until it is
+ *    fixed, however many times anyone presses it;
+ *  - a week nobody has planned yet, or a day that came up short once the planner did run — both
+ *    printed for context, at a lower severity, because pressing an alarm about them sends someone
+ *    hunting a bug that is not there.
  */
-async function timetableCheck(): Promise<Check> {
+export async function timetableCheck(): Promise<Check> {
   const name = "Why today looks like this";
   const students = await prisma.studentProfile.findMany({
     include: { user: { select: { displayName: true } } },
@@ -747,10 +762,12 @@ async function timetableCheck(): Promise<Check> {
   if (students.length === 0) return { name, status: "fail", summary: "No students." };
 
   const lines: string[] = [];
-  let broken = 0;
+  let broken = 0; // real problems: nothing here can put a lesson on the board, however many times anyone tries.
+  let unplannedWeeks = 0; // nobody has asked the planner to run yet — not a failure.
+  let shortDays = 0; // the planner ran this week but today itself came up short.
 
   for (const student of students) {
-    const [schedules, enrolments, today] = await Promise.all([
+    const [schedules, enrolments, today, parentLinks] = await Promise.all([
       prisma.studentSchedule.findMany({ where: { studentId: student.id, active: true }, include: { subject: true } }),
       prisma.studentEnrolment.findMany({
         where: { studentId: student.id, active: true },
@@ -760,6 +777,7 @@ async function timetableCheck(): Promise<Check> {
         where: { studentId: student.id, date: todayDateOnly(), status: { not: "MOVED" } },
         include: { subject: true },
       }),
+      prisma.parentStudentLink.count({ where: { studentId: student.userId } }),
     ]);
 
     lines.push(
@@ -769,6 +787,16 @@ async function timetableCheck(): Promise<Check> {
       `  today: ${today.filter((a) => a.kind === "LESSON").length} lesson(s), ` +
         `${today.filter((a) => a.kind === "REVIEW").length} review(s)`,
     );
+
+    if (parentLinks === 0) {
+      lines.push(
+        "  NO PARENT LINKED — nobody is set up to look after this child, so no parent-facing " +
+          "action reaches them: opening their page, pressing \"Rebuild today's lessons\", none of " +
+          "it, because none of it knows this child exists. Their board stays empty however many " +
+          "times anyone presses anything, until a parent is linked to this account.",
+      );
+      broken += 1;
+    }
 
     if (schedules.length === 0) {
       lines.push("  NO TIMETABLE — nothing tells the planner which subjects to teach.");
@@ -810,56 +838,85 @@ async function timetableCheck(): Promise<Check> {
           })
         : 0;
       const left = lessons.length - done;
-      if (left <= 0) broken += 1;
+      // Two shapes of the same shortage: nothing left at all, or not enough left to last a
+      // single week at the rate the timetable promises. Both are a real supply problem — the
+      // second just has not bitten yet.
+      const outOfLessons = left <= 0;
+      const runningOut = !outOfLessons && left < schedule.weeklyFrequency;
+      if (outOfLessons || runningOut) broken += 1;
       lines.push(
         `  ${schedule.subject.title}: ${schedule.weeklyFrequency}/week · ` +
           `programme ${programme.provider}:y${programme.yearGroup} · ` +
-          `${lessons.length} lesson(s), ${done} done, ${left} left${left <= 0 ? "  <-- NOTHING TO TEACH" : ""}`,
+          `${lessons.length} lesson(s), ${done} done, ${left} left` +
+          (outOfLessons
+            ? "  <-- NOTHING TO TEACH"
+            : runningOut
+              ? `  <-- ONLY ${left} LEFT FOR A ${schedule.weeklyFrequency}/WEEK TIMETABLE — will run out this week`
+              : ""),
       );
       subjectsWithMaterial += left > 0 ? 1 : 0;
     }
 
     /**
-     * The day itself, when every part of it checks out.
+     * The day itself, when the timetable and the material both check out.
      *
-     * A timetable and material that both look right, and a board with nothing on it, is the
-     * hardest failure to see from outside and the one that has cost the most mornings. When it
-     * happens the week is printed: which days did get lessons tells you whether the planner ran
-     * at all, ran and placed them elsewhere, or ran and produced nothing.
+     * A short day here has two very different causes that look identical from a blank board:
+     * nobody has ever asked the planner to run this week (nothing to fix — say so and name what
+     * would fix it), or the planner ran and genuinely could not fill every period today (the
+     * "SHORT DAY" this message was originally written for). Telling them apart needs the week's
+     * assignments, not just today's: no rows at all this week means the first; some rows means
+     * the second.
      */
     const lessonsToday = today.filter((a) => a.kind === "LESSON").length;
     if (lessonsToday < student.lessonsPerDay && subjectsWithMaterial > 0) {
-      broken += 1;
+      const weekStart = weekStartKey(dateOnlyKey(todayDateOnly()));
       const week = await prisma.dailyAssignment.groupBy({
         by: ["date"],
         where: {
           studentId: student.id,
           kind: "LESSON",
           status: { not: "MOVED" },
-          date: { gte: toDateOnly(weekStartKey(dateOnlyKey(todayDateOnly()))) },
+          date: { gte: toDateOnly(weekStart), lt: toDateOnly(addDaysKey(weekStart, 7)) },
         },
         _count: { _all: true },
         orderBy: { date: "asc" },
       });
-      lines.push(
-        `  SHORT DAY — ${lessonsToday} of ${student.lessonsPerDay} periods, with ` +
-          `${subjectsWithMaterial} subject(s) that still have lessons to give.`,
-      );
-      lines.push(
-        `  this week: ${week.length ? week.map((d) => `${dateOnlyKey(d.date)}=${d._count._all}`).join(", ") : "nothing planned"}`,
-      );
+      const weekTotal = week.reduce((n, d) => n + d._count._all, 0);
+
+      if (weekTotal === 0) {
+        unplannedWeeks += 1;
+        lines.push(
+          `  NOTHING PLANNED THIS WEEK YET — ${subjectsWithMaterial} subject(s) have lessons ready ` +
+            "to give, but nobody has asked the planner to run: it only happens when this child " +
+            'signs in and opens Today, or when a parent opens their page or presses "Rebuild ' +
+            "today's lessons\" above. This is not a fault — it just has not happened yet.",
+        );
+      } else {
+        shortDays += 1;
+        lines.push(
+          `  SHORT DAY — ${lessonsToday} of ${student.lessonsPerDay} periods, with ` +
+            `${subjectsWithMaterial} subject(s) that still have lessons to give.`,
+        );
+        lines.push(`  this week: ${week.map((d) => `${dateOnlyKey(d.date)}=${d._count._all}`).join(", ")}`);
+      }
     }
 
     lines.push("");
   }
 
+  const notes: string[] = [];
+  if (broken > 0) notes.push(`${broken} problem(s) stopping lessons being scheduled`);
+  if (unplannedWeeks > 0) {
+    notes.push(
+      `${unplannedWeeks} child(ren) whose week nobody has planned yet — not a problem, just not started`,
+    );
+  }
+  if (shortDays > 0) notes.push(`${shortDays} day(s) short once the planner ran out of material for today`);
+
   return {
     name,
-    status: broken > 0 ? "fail" : "ok",
-    summary:
-      broken > 0
-        ? `${broken} problem(s) stopping lessons being scheduled — see below.`
-        : "Every subject on every timetable has lessons to give.",
+    status: broken > 0 ? "fail" : unplannedWeeks > 0 || shortDays > 0 ? "warn" : "ok",
+    summary: notes.length > 0 ? `${notes.join("; ")} — see below.` : "Every subject on every timetable has lessons to give.",
     detail: lines.join("\n"),
   };
 }
