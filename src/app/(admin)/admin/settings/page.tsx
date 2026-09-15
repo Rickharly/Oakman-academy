@@ -6,6 +6,7 @@ import { Card } from "@/components/ui/Card";
 import { Avatar, isPhotoAvatar } from "@/components/ui/Avatar";
 import { PhotoUpload } from "@/components/admin/PhotoUpload";
 import { ResetProgress } from "@/components/admin/ResetProgress";
+import { RemoveStudent } from "@/components/admin/RemoveStudent";
 import { enrolStudentInYearGroup } from "@/lib/admin/enrol";
 import { dayEndsAt } from "@/lib/scheduling/timetable";
 import { Input } from "@/components/ui/Input";
@@ -393,6 +394,8 @@ export default async function AdminSettingsPage({
                       Reset PIN
                     </Button>
                   </form>
+
+                  <RemoveStudent studentId={profile.id} name={s.displayName} />
                 </div>
               );
             })}
