@@ -65,3 +65,46 @@ export async function requireParentOfStudentApi(
   if (!link) throw new ApiError(404, "Student not found");
   return { parent, student };
 }
+
+/**
+ * The parent, and a student profile they are allowed to remove: one of their own linked
+ * children, OR a student profile with no parent links at all.
+ *
+ * That second case is deliberate, not a hole: a test student created and then left unlinked
+ * (a bug, an abandoned setup) is exactly the kind of account a parent wants gone, but the
+ * ordinary "parent of this student" guard 404s on it because no link exists to check — which
+ * would leave the parent unable to remove the very account they are trying to get rid of. An
+ * orphaned profile has no owner to protect, so any signed-in parent may remove it; a profile
+ * linked to a *different* parent still 404s here exactly as `requireParentOfStudentApi` does.
+ *
+ * The role check runs before any of that: whatever the link state, this must never be able to
+ * reach a parent's own `User` row. It has its own explicit check and its own message — this is
+ * the guard that matters most, since a parent's account is also just a `User` a student profile
+ * lookup could never accidentally return, but the id in the request body is client-supplied and
+ * must never be trusted to actually name a student.
+ */
+export async function requireParentForRemovalApi(
+  req: Request,
+  studentProfileId: string,
+): Promise<{ parent: SessionUser; student: StudentProfile & { user: User } }> {
+  const parent = await requireParentApi(req);
+  const student = await prisma.studentProfile.findUnique({
+    where: { id: studentProfileId },
+    include: { user: true },
+  });
+  if (!student) throw new ApiError(404, "Student not found");
+
+  if (student.user.role !== "STUDENT") {
+    throw new ApiError(400, "Only student accounts can be removed.");
+  }
+
+  const link = await prisma.parentStudentLink.findUnique({
+    where: { parentId_studentId: { parentId: parent.id, studentId: student.userId } },
+  });
+  if (link) return { parent, student };
+
+  const linkedToAnyone = await prisma.parentStudentLink.findFirst({ where: { studentId: student.userId } });
+  if (!linkedToAnyone) return { parent, student }; // orphaned profile — no parent to protect it from removal
+
+  throw new ApiError(404, "Student not found");
+}
