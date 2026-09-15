@@ -65,9 +65,9 @@ export function MicButton({
         setState("thinking");
         try {
           const form = new FormData();
-          // Safari records `audio/mp4`, not `audio/webm` — naming the upload after whatever
-          // the recorder actually produced (not always webm) is how the transcription service
-          // knows which container it is looking at.
+          // Chrome records `audio/webm`; Safari records `audio/mp4` instead — naming the
+          // upload after whatever the recorder actually produced (not always webm) is how the
+          // transcription service knows which container it is looking at.
           form.append("audio", blob, `speech.${extensionFor(blob.type)}`);
           const res = await fetch("/api/teacher/listen", { method: "POST", body: form });
           const data = (await res.json()) as { text?: string; error?: string };
