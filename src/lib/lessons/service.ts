@@ -184,6 +184,31 @@ async function finalizeStageAdvance(attempt: LessonAttempt, stage: GradedStage, 
   }
 }
 
+/**
+ * Advances the attempt off PRACTICE as a side effect of extra-practice work actually being
+ * graded (`POST /api/lessons/[lessonId]/practice/submit`), instead of leaving the advance to a
+ * second, separate request the browser happens to make afterwards. Stamps `practiceCompletedAt`
+ * and sets `currentStage` to CHECK exactly the way `submitStage("PRACTICE")` would — it reuses
+ * `finalizeStageAdvance` so an attempt advanced this way is indistinguishable from one advanced
+ * the ordinary way.
+ *
+ * A no-op unless the attempt is genuinely still sitting on PRACTICE. Extra practice is also
+ * taken from FEEDBACK or COMPLETE — the "extra round" (`practiseMore`/`practiseWeakSpots`/
+ * `takeFinalTest` in `LessonPlayer.tsx`) that runs after the lesson is already marked — and in
+ * that case the child is revisiting, not progressing, so `currentStage` must be left exactly as
+ * it is.
+ *
+ * The attempt is re-read fresh rather than trusting the caller's copy, so this stays idempotent
+ * and never fights a concurrent caller: called again after the stage has already moved on — the
+ * browser's own `submitGraded("PRACTICE")` follow-up racing this, or the child submitting a
+ * second round of extra practice — it sees `currentStage` is no longer PRACTICE and does nothing.
+ */
+export async function advanceFromExtraPractice(lessonAttemptId: string): Promise<void> {
+  const attempt = await prisma.lessonAttempt.findUnique({ where: { id: lessonAttemptId } });
+  if (!attempt || attempt.currentStage !== "PRACTICE") return;
+  await finalizeStageAdvance(attempt, "PRACTICE", true);
+}
+
 /** Blends CHECK % with PRACTICE % (0.8 / 0.2) per ARCHITECTURE §4 and stamps score/masteryScore. */
 async function recomputeMasteryScore(lessonAttemptId: string): Promise<void> {
   const checkActivity = await prisma.activityAttempt.findFirst({
@@ -315,16 +340,36 @@ export async function getAttemptView(attemptId: string, studentId: string): Prom
     orderBy: { startedAt: "asc" },
   });
 
+  /**
+   * What the player pre-fills each question with: the child's own latest answer, whether it is
+   * still a live draft or has already been graded.
+   *
+   * This used to keep only PENDING responses, on the assumption a graded question shows its
+   * answer some other way. It doesn't — the renderer is handed `value`, and a graded question
+   * with nothing in `drafts` renders with no answer at all, disabled, next to feedback saying
+   * "well done, that's correct" for a choice the child can no longer see. So every question's
+   * latest response is kept here, regardless of grading state; the renderer's own `disabled`
+   * (driven by whether the *stage* has been submitted) is what stops a restored value from ever
+   * being written back as a fresh answer — this only supplies what to show, never what to save.
+   *
+   * `attemptNumber` counts retries *within one activity* (`saveDraftAnswer`/`retryQuestion` both
+   * scope it to `{ activityAttemptId, questionId }`), so it cannot be compared across different
+   * activities for the same question — an activity's own first attempt is always `1`, whichever
+   * activity it is. `activities` is ordered oldest-first, so resolving attempt-number ties
+   * *within* each activity and then simply overwriting question-by-question as later activities
+   * are processed gives the chronologically latest answer either way.
+   */
   const drafts: Record<string, unknown> = {};
-  const draftAttemptNumber: Record<string, number> = {};
   for (const activity of activities) {
+    const latestInActivity = new Map<string, { attemptNumber: number; response: unknown }>();
     for (const qa of activity.questionAttempts) {
-      if (qa.gradedBy !== "PENDING") continue;
-      const seen = draftAttemptNumber[qa.questionId];
-      if (seen === undefined || qa.attemptNumber > seen) {
-        draftAttemptNumber[qa.questionId] = qa.attemptNumber;
-        drafts[qa.questionId] = qa.response;
+      const seen = latestInActivity.get(qa.questionId);
+      if (!seen || qa.attemptNumber > seen.attemptNumber) {
+        latestInActivity.set(qa.questionId, { attemptNumber: qa.attemptNumber, response: qa.response });
       }
+    }
+    for (const [questionId, entry] of latestInActivity) {
+      drafts[questionId] = entry.response;
     }
   }
 

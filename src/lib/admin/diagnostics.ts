@@ -17,6 +17,7 @@ import { getAiProvider, resolveModelId } from "@/lib/ai/provider";
 import { explainerSchema } from "@/lib/lessons/explainer";
 import { describeFetchError, resolveAssetUrl } from "@/lib/curriculum/asset-fetch";
 import { resolveMedia } from "@/lib/curriculum/media-link";
+import { isPlaceholderUrl, isPlayableResource } from "@/lib/curriculum/video-status";
 import { imageSchema } from "@/lib/questions/types";
 import { dateOnlyKey, toDateOnly, todayDateOnly, weekStartKey } from "@/lib/dates";
 
@@ -119,6 +120,12 @@ async function oakQuotaCheck(): Promise<Check> {
  */
 async function videoCheck(): Promise<Check> {
   const name = "Playing a video";
+  // This check runs on the server and proves only what the server can do. It has been read as
+  // proof that children can watch the lesson three times now, and each reading was wrong — the
+  // server's network and browser are not theirs. Said plainly below, on every "looks fine" result,
+  // next to the section that actually answers the child's question.
+  const CLIENT_EVIDENCE_NOTE =
+    'This proves the server can reach the file — it says nothing about whether a child\'s browser can play it. See "What children\'s browsers actually got (video)" below for that.';
   // A real one. Testing a `fixture://` placeholder proves nothing except that placeholders are
   // placeholders, and reports a failure that sends someone hunting a bug that does not exist.
   const resource = await prisma.lessonResource.findFirst({
@@ -201,9 +208,11 @@ async function videoCheck(): Promise<Check> {
       return {
         name,
         status: type.startsWith("video/") ? "ok" : "warn",
-        summary: type.startsWith("video/")
-          ? `The provider streams the file itself (${type}, ${length} bytes); it is passed through to the player.`
-          : `The provider streams the file itself but calls it "${type}"; it is relabelled as video for the player.`,
+        summary:
+          (type.startsWith("video/")
+            ? `The provider streams the file itself (${type}, ${length} bytes); it is passed through to the player.`
+            : `The provider streams the file itself but calls it "${type}"; it is relabelled as video for the player.`) +
+          ` ${CLIENT_EVIDENCE_NOTE}`,
         detail: `${resource.lesson.title}\n${target}${staleNote}`,
       };
     }
@@ -216,9 +225,11 @@ async function videoCheck(): Promise<Check> {
     return {
       name,
       status: direct ? "ok" : "warn",
-      summary: direct
-        ? `Video plays straight from ${host} (${type}, ranges honoured).`
-        : `The file link at ${host} is ${link.acceptsRanges ? `labelled "${type}"` : "not seekable"}, so the server proxies and relabels it. It should still play; if it does not, this is where to look.`,
+      summary:
+        (direct
+          ? `Video plays straight from ${host} (${type}, ranges honoured).`
+          : `The file link at ${host} is ${link.acceptsRanges ? `labelled "${type}"` : "not seekable"}, so the server proxies and relabels it. It should still play; if it does not, this is where to look.`) +
+        ` ${CLIENT_EVIDENCE_NOTE}`,
       detail: `${resource.lesson.title}\nEndpoint: ${target}\nLink host: ${host}\nContent type: ${type}\nRanges: ${link.acceptsRanges ? "yes" : "no"}\nLink good for about ${expiresIn} more minute(s)${staleNote}`,
     };
   } catch (err) {
@@ -462,11 +473,9 @@ async function todaysVideosCheck(): Promise<Check> {
     if (!lesson) continue;
 
     const video = lesson.resources.find((r) => r.type === "VIDEO");
-    // A real address: absolute, or a path we resolve against the provider. `fixture://` is the
-    // bundled placeholder pretending to be a video, and it is why players sat black for days.
-    const url = video?.providerUrl ?? "";
-    const usable = Boolean(url) && (/^https?:\/\//i.test(url) || !url.includes("://"));
-
+    // The same question the player asks of the same row, from the same shared helper — see
+    // `src/lib/curriculum/video-status.ts`. Two independent readings of "is this fetchable" is
+    // how a parent's diagnostics and a child's own screen ended up disagreeing.
     if (!video) {
       missing += 1;
       lines.push(
@@ -475,9 +484,13 @@ async function todaysVideosCheck(): Promise<Check> {
             ? " — the provider was asked and had none."
             : " — its assets were never fetched. Opening the lesson now fetches them."),
       );
-    } else if (!usable) {
+    } else if (!isPlayableResource(video)) {
       missing += 1;
-      lines.push(`  ${lesson.title}: placeholder video (${video.providerUrl ?? "no address"}) — not a real one.`);
+      lines.push(
+        isPlaceholderUrl(video.providerUrl)
+          ? `  ${lesson.title}: sample curriculum placeholder (${video.providerUrl ?? "no address"}) — not a real video.`
+          : `  ${lesson.title}: video not downloaded yet (${video.providerUrl ?? "no address"}) — not fetchable.`,
+      );
     } else {
       lines.push(`  ${lesson.title}: video ok`);
     }
@@ -558,6 +571,116 @@ async function childReportsCheck(): Promise<Check> {
 /** Keeps anything key-shaped out of a child's own words. Belt and braces. */
 function redactish(text: string): string {
   return text.replace(/\b(sk|xi|ghp|github_pat)[-_][A-Za-z0-9_-]{12,}/g, "[redacted]").slice(0, 500);
+}
+
+/** A user-agent string, cut down to the two things a parent actually needs: browser, platform. */
+function browserSummary(ua: string): string {
+  if (!ua) return "(no user agent given)";
+  const platform = /CrOS/i.test(ua)
+    ? "ChromeOS"
+    : /Android/i.test(ua)
+      ? "Android"
+      : /iPhone|iPad|iPod/i.test(ua)
+        ? "iOS"
+        : /Windows/i.test(ua)
+          ? "Windows"
+          : /Mac OS X/i.test(ua)
+            ? "macOS"
+            : /Linux/i.test(ua)
+              ? "Linux"
+              : "unknown platform";
+  const browser = /Edg\//.test(ua)
+    ? "Edge"
+    : /OPR\//.test(ua)
+      ? "Opera"
+      : /CriOS\//.test(ua)
+        ? "Chrome (iOS)"
+        : /Chrome\//.test(ua)
+          ? "Chrome"
+          : /FxiOS\//.test(ua)
+            ? "Firefox (iOS)"
+            : /Firefox\//.test(ua)
+              ? "Firefox"
+              : /Version\/.*Safari\//.test(ua)
+                ? "Safari"
+                : "unknown browser";
+  return `${browser} on ${platform}`;
+}
+
+/**
+ * What a child's own browser actually got, the times a lesson video failed.
+ *
+ * `videoCheck` above proves the server can fetch a file; this is the thing children asked for
+ * without knowing it — evidence from the machine that was actually failing. Every reading of
+ * this fault before this existed was a guess made from a server with different network access
+ * and a different browser than the Chromebook a child was holding, and every guess was wrong.
+ */
+async function videoReportsCheck(): Promise<Check> {
+  const name = "What children's browsers actually got (video)";
+  const logs = await prisma.activityLog.findMany({
+    where: { kind: "video_report" },
+    include: { student: { include: { user: { select: { displayName: true } } } } },
+    orderBy: { createdAt: "desc" },
+    take: 25,
+  });
+
+  if (logs.length === 0) {
+    return { name, status: "ok", summary: "No child's browser has reported a video failure." };
+  }
+
+  const lessonIds = Array.from(
+    new Set(
+      logs
+        .map((log) => (log.data as Record<string, unknown>).lessonId)
+        .filter((id): id is string => typeof id === "string"),
+    ),
+  );
+  const lessons = await prisma.lesson.findMany({ where: { id: { in: lessonIds } }, select: { id: true, title: true } });
+  const lessonTitle = new Map(lessons.map((l) => [l.id, l.title]));
+
+  const lines: string[] = [];
+  for (const log of logs) {
+    const data = (log.data ?? {}) as Record<string, unknown>;
+    const probe = (data.probe ?? {}) as Record<string, unknown>;
+    const who = log.student?.user.displayName ?? "someone";
+    const when = log.createdAt.toISOString().slice(0, 16).replace("T", " ");
+    const title =
+      typeof data.lessonId === "string" ? (lessonTitle.get(data.lessonId) ?? data.lessonId) : "an unknown lesson";
+
+    lines.push(`${when} — ${who} — "${title}"`);
+    lines.push(`  Browser: ${browserSummary(String(data.userAgent ?? ""))}`);
+    lines.push(
+      `  The player itself said: ${
+        data.elementErrorMessage
+          ? redactish(String(data.elementErrorMessage))
+          : data.elementErrorCode != null
+            ? `code ${String(data.elementErrorCode)}`
+            : "(nothing given)"
+      }`,
+    );
+
+    if (probe.networkErrorName) {
+      lines.push(`  Fetching the same URL itself failed: ${probe.networkErrorName}: ${redactish(String(probe.networkErrorMessage ?? ""))}`);
+    } else {
+      lines.push(
+        `  Fetching the same URL got: HTTP ${probe.status ?? "?"}, content-type ${probe.contentType ?? "(none)"}, ` +
+          `content-length ${probe.contentLength ?? "(none)"}, content-range ${probe.contentRange ?? "(none)"}, ` +
+          `accept-ranges ${probe.acceptRanges ?? "(none)"}`,
+      );
+      if (probe.redirected) {
+        lines.push(`  Redirected (type "${probe.responseType ?? "?"}") to: ${probe.urlHost ?? "(unknown host)"}`);
+      }
+      if (probe.bodySnippet) lines.push(`  First bytes: ${redactish(String(probe.bodySnippet))}`);
+    }
+    lines.push("");
+  }
+
+  return {
+    name,
+    status: "warn",
+    summary: `${logs.length} report(s) from children's own browsers, newest first — this is what actually reached them, not a server's guess.`,
+    detail: lines.join("\n"),
+  };
 }
 
 /**
@@ -752,6 +875,9 @@ export async function runDiagnostics(): Promise<Check[]> {
     explainerCheck().catch((err) => fail("Writing a lesson (OpenAI)", "Check failed.", err)),
     oakQuotaCheck().catch((err) => fail("Curriculum provider (Oak)", "Check failed.", err)),
     videoCheck().catch((err) => fail("Playing a video", "Check failed.", err)),
+    videoReportsCheck().catch((err) =>
+      fail("What children's browsers actually got (video)", "Check failed.", err),
+    ),
     speechCheck().catch((err) => fail("Reading text aloud", "Check failed.", err)),
     voiceCheck().catch((err) => fail("Voice picker (ElevenLabs)", "Check failed.", err)),
     bugReportCheck().catch((err) => fail("Sending a bug report", "Check failed.", err)),
