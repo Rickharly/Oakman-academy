@@ -19,6 +19,7 @@ import { describeFetchError, resolveAssetUrl } from "@/lib/curriculum/asset-fetc
 import { resolveMedia } from "@/lib/curriculum/media-link";
 import { isPlaceholderUrl, isPlayableResource } from "@/lib/curriculum/video-status";
 import { imageSchema } from "@/lib/questions/types";
+import { isLessonDone } from "@/lib/progress/aggregate";
 import { addDaysKey, dateOnlyKey, toDateOnly, todayDateOnly, weekStartKey } from "@/lib/dates";
 
 export type CheckStatus = "ok" | "warn" | "fail" | "skip";
@@ -507,6 +508,202 @@ async function todaysVideosCheck(): Promise<Check> {
   };
 }
 
+/** A lesson stage, in a parent's words rather than the record's. */
+const STAGE_WORDS: Record<string, string> = {
+  STARTER: "the starter",
+  LEARN: "the explanation",
+  PRACTICE: "practice",
+  CHECK: "the quiz",
+  FEEDBACK: "feedback, after the quiz",
+  COMPLETE: "the very end",
+};
+function stageWord(stage: string): string {
+  return STAGE_WORDS[stage] ?? stage.toLowerCase();
+}
+
+/** A `LessonStatus` value, in a parent's words. Shared by `LessonAttempt` and `StudentLessonProgress`. */
+const STATUS_WORDS: Record<string, string> = {
+  NOT_STARTED: "not started",
+  IN_PROGRESS: "in progress",
+  COMPLETED: "completed",
+  MASTERED: "mastered",
+  NEEDS_REVIEW: "needs review",
+  ALREADY_KNOWN: "already known",
+};
+function statusWord(status: string): string {
+  return STATUS_WORDS[status] ?? status.toLowerCase();
+}
+
+/**
+ * Why is this lesson on the board again?
+ *
+ * `planWeek` (`src/lib/scheduling/planner.ts`) never sets a lesson whose `StudentLessonProgress`
+ * row already counts as done, by `isLessonDone` (`src/lib/progress/aggregate.ts`) — COMPLETED,
+ * MASTERED, NEEDS_REVIEW, ALREADY_KNOWN, or a completion date. So a lesson reappearing has one of
+ * a small number of causes, and reading the planner's code only says what *should* clear it —
+ * never which of those causes is actually true for the lesson in front of a specific child this
+ * morning. That is looked up here instead of reasoned about, the same way the video checks above
+ * stopped guessing and started asking the database.
+ *
+ * It is also why "I pressed Rebuild and it's still there" can be true and nothing is broken:
+ * `POST /api/admin/plan` calls `planWeek` directly. It does not settle a finished-but-unclosed
+ * attempt — only `getTodayView` does that, which runs when the *child* opens Today — so a lesson
+ * whose quiz was marked but whose attempt was never finalised stays "not done" no matter how many
+ * times a parent presses the button. This check says so in exactly those cases, so that reading is
+ * a fact about this lesson, not a guess about the code.
+ */
+export async function whyLessonsRepeatCheck(): Promise<Check> {
+  const name = "Why these lessons are on the board";
+  const today = todayDateOnly();
+
+  const assignments = await prisma.dailyAssignment.findMany({
+    where: { date: today, kind: "LESSON", status: { not: "MOVED" } },
+    include: {
+      student: { include: { user: { select: { displayName: true } } } },
+      lesson: { select: { id: true, title: true } },
+    },
+    orderBy: [{ studentId: "asc" }, { order: "asc" }],
+  });
+
+  if (assignments.length === 0) {
+    return { name, status: "ok", summary: "No lessons on any board today, so there is nothing to explain." };
+  }
+
+  const lines: string[] = [];
+  let current = "";
+  let freshCount = 0;
+  let deliberateRepeatCount = 0;
+  let neverOpenedCount = 0;
+  let abandonedCount = 0;
+  let unclosedCount = 0;
+  let bugCount = 0;
+
+  for (const assignment of assignments) {
+    const lesson = assignment.lesson;
+    if (!lesson) continue;
+    const who = assignment.student.user.displayName;
+    if (who !== current) {
+      if (current) lines.push("");
+      lines.push(who);
+      current = who;
+    }
+
+    const [priorCount, mostRecent, progress, attempts] = await Promise.all([
+      prisma.dailyAssignment.count({
+        where: {
+          studentId: assignment.studentId,
+          lessonId: lesson.id,
+          kind: "LESSON",
+          status: { not: "MOVED" },
+          date: { lt: today },
+        },
+      }),
+      prisma.dailyAssignment.findFirst({
+        where: {
+          studentId: assignment.studentId,
+          lessonId: lesson.id,
+          kind: "LESSON",
+          status: { not: "MOVED" },
+          date: { lt: today },
+        },
+        orderBy: { date: "desc" },
+        select: { date: true },
+      }),
+      prisma.studentLessonProgress.findUnique({
+        where: { studentId_lessonId: { studentId: assignment.studentId, lessonId: lesson.id } },
+      }),
+      prisma.lessonAttempt.findMany({
+        where: { studentId: assignment.studentId, lessonId: lesson.id },
+        orderBy: { attemptNumber: "asc" },
+      }),
+    ]);
+
+    const before = priorCount > 0 ? `given before, last on ${dateOnlyKey(mostRecent!.date)}` : "never given before";
+    const latest = attempts.at(-1) ?? null;
+
+    // No attempt at all: either genuinely new, or it has sat on a board before without ever
+    // being opened. Both are "never started" — only the severity differs, because a lesson
+    // nobody has touched is not a fault, but one offered before and ignored is unfinished work.
+    if (!latest) {
+      if (priorCount > 0) {
+        neverOpenedCount += 1;
+        lines.push(`  ${lesson.title} — ${before}, but never started: it sat on the board unopened, so it is back.`);
+      } else {
+        freshCount += 1;
+        lines.push(`  ${lesson.title} — new: ${who} has not had this lesson before.`);
+      }
+      continue;
+    }
+
+    const attemptDone = isLessonDone(latest);
+    const progressDone = progress ? isLessonDone(progress) : false;
+
+    if (attemptDone && progressDone) {
+      // Finished, and the planner agrees it's finished — so an assignment for it today is not
+      // the planner's mistake. It is a repeat or a review someone chose on purpose.
+      deliberateRepeatCount += 1;
+      lines.push(
+        `  ${lesson.title} — ${before}. Finished (${statusWord(latest.status)}) and correctly counted as done: this is a deliberate repeat or review, not a mistake.`,
+      );
+      continue;
+    }
+
+    if (attemptDone && !progressDone) {
+      // The one real fault: the attempt itself says the child finished, but the row the planner
+      // actually reads disagrees, so the planner still thinks there is work to do. Nothing about
+      // the child explains this — `recomputeLessonProgress` should have kept these in step.
+      bugCount += 1;
+      lines.push(
+        `  ${lesson.title} — ${before}. The last attempt is finished (${statusWord(latest.status)}), but the progress ` +
+          `record says "${progress ? statusWord(progress.status) : "no record at all"}" — the planner does not see ` +
+          "this as done. That is a bug, not the child's doing, and it is why the lesson keeps coming back.",
+      );
+      continue;
+    }
+
+    // Not finished. The quiz having been marked is what tells "still working on it" apart from
+    // "finished it and nobody closed the file" — the exact gap `settleFinishedLessons` exists to
+    // close, and the exact gap "Rebuild today's lessons" cannot close on its own.
+    const checkGraded = await prisma.activityAttempt.findFirst({
+      where: {
+        lessonAttemptId: latest.id,
+        stage: "CHECK",
+        OR: [{ status: "GRADED" }, { status: "IN_PROGRESS", gradedAt: { not: null } }],
+      },
+    });
+
+    if (checkGraded) {
+      unclosedCount += 1;
+      lines.push(
+        `  ${lesson.title} — ${before}. The quiz was answered and marked, but the lesson was never closed off ` +
+          `(still "${statusWord(latest.status)}", sitting at ${stageWord(latest.currentStage)}). Pressing Rebuild ` +
+          "will not fix this by itself — only finishing it does.",
+      );
+    } else {
+      abandonedCount += 1;
+      lines.push(
+        `  ${lesson.title} — ${before}. Started but stopped partway, at ${stageWord(latest.currentStage)}: not ` +
+          "finished, so it is back.",
+      );
+    }
+  }
+
+  const parts: string[] = [];
+  if (freshCount > 0) parts.push(`${freshCount} new lesson(s)`);
+  if (deliberateRepeatCount > 0) parts.push(`${deliberateRepeatCount} deliberate repeat(s) of finished work`);
+  if (neverOpenedCount > 0) parts.push(`${neverOpenedCount} back because they were never opened`);
+  if (abandonedCount > 0) parts.push(`${abandonedCount} back because they were left partway through`);
+  if (unclosedCount > 0) parts.push(`${unclosedCount} back because the quiz was done but never closed off`);
+  if (bugCount > 0) parts.push(`${bugCount} that are a bug: finished but not recorded as done`);
+
+  return {
+    name,
+    status: bugCount > 0 ? "fail" : neverOpenedCount + abandonedCount + unclosedCount > 0 ? "warn" : "ok",
+    summary: `${assignments.length} lesson(s) on boards today — ${parts.join(", ")}.`,
+    detail: lines.join("\n"),
+  };
+}
+
 /**
  * What the children have actually reported, in their own words.
  *
@@ -939,6 +1136,7 @@ export async function runDiagnostics(): Promise<Check[]> {
     voiceCheck().catch((err) => fail("Voice picker (ElevenLabs)", "Check failed.", err)),
     bugReportCheck().catch((err) => fail("Sending a bug report", "Check failed.", err)),
     todaysVideosCheck().catch((err) => fail("Videos in today's lessons", "Check failed.", err)),
+    whyLessonsRepeatCheck().catch((err) => fail("Why these lessons are on the board", "Check failed.", err)),
     childReportsCheck().catch((err) => fail("What the children have reported", "Check failed.", err)),
   ]);
   return checks;
