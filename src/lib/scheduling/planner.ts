@@ -8,7 +8,7 @@ import type { DailyAssignment, Lesson, Programme, ReviewItem, StudentLessonProgr
 import { Prisma } from "@/generated/prisma/client";
 import { addDaysKey, dateOnlyKey, isoWeekday, schoolDayEnd, todayDateOnly, toDateOnly, weekStartKey } from "@/lib/dates";
 import { alignSchedulesToEnrolments, enrolStudentInYearGroup, fixYearGroupEnrolments } from "@/lib/admin/enrol";
-import { settleFinishedLessons } from "@/lib/lessons/service";
+import { requeueAbandonedReviews, settleAbandonedLessons, settleFinishedLessons } from "@/lib/lessons/service";
 import { isLessonDone } from "@/lib/progress/aggregate";
 import { ensureLessonAssets } from "@/lib/curriculum/sync";
 import { catchUpImport } from "@/lib/curriculum/autofill";
@@ -89,6 +89,20 @@ export async function planWeek(studentId: string, weekStart: string, opts?: { re
   const replace = opts?.replace ?? false;
   const student = await prisma.studentProfile.findUnique({ where: { id: studentId } });
   if (!student) throw new Error("Student not found");
+
+  /**
+   * Settle before choosing anything — this is the function that actually decides which lesson
+   * goes on which day, via `getIncompleteLessonSequence` below, and it is reachable two ways:
+   * through `ensureDayPlanned` (which settles first for the same reason) and directly, from
+   * `POST /api/admin/plan` ("re-plan this day/week"), which has no settle step of its own. Doing
+   * it here too — rather than trusting every route that can trigger planning to remember its own
+   * call — is what stops a future entry point from quietly skipping it. Both settle functions are
+   * cheap no-ops once a student has nothing stale, so calling them again from `ensureDayPlanned`
+   * a moment earlier costs nothing.
+   */
+  await settleFinishedLessons(studentId).catch(() => undefined);
+  await settleAbandonedLessons(studentId).catch(() => undefined);
+  await requeueAbandonedReviews(studentId).catch(() => undefined);
 
   const mondayKey = weekStartKey(weekStart);
   const dayKeys = [0, 1, 2, 3, 4].map((i) => addDaysKey(mondayKey, i));
@@ -437,6 +451,26 @@ async function purgeFillerReviews(studentId: string): Promise<void> {
 export async function ensureDayPlanned(studentId: string, dateKey: string): Promise<DailyAssignment[]> {
   if (isoWeekday(dateKey) > 5) return []; // weekends: plan nothing
 
+  /**
+   * Settle finished work before planning ever looks at it — not after.
+   *
+   * This used to run the other way round: `getTodayView` planned the day first and only settled
+   * unfinished attempts afterwards, and "rebuild today's lessons" / `pnpm plan` (`ensureDayPlanned`
+   * called directly, with no settle step of its own) never settled anything before planning at
+   * all. A lesson finished at the end of yesterday's session and never revisited was still sitting
+   * IN_PROGRESS — with `StudentLessonProgress` IN_PROGRESS to match — at the moment
+   * `getIncompleteLessonSequence` asked whether it was done, so it got planned again for today;
+   * only afterwards did the settle step catch up, too late to stop the duplicate. That is the
+   * whole mechanism behind a lesson a child plainly finished coming back the next morning, and
+   * pressing "rebuild today's lessons" changing nothing — it re-ran exactly this same broken
+   * order. `planWeek` (below) settles again for the same reason, since `POST /api/admin/plan`
+   * calls it directly and skips this function entirely; both settle calls are cheap no-ops once
+   * there is nothing stale, so paying for it twice on the paths that go through both costs nothing.
+   */
+  await settleFinishedLessons(studentId).catch(() => undefined);
+  await settleAbandonedLessons(studentId).catch(() => undefined);
+  await requeueAbandonedReviews(studentId).catch(() => undefined);
+
   await purgeFillerReviews(studentId).catch(() => undefined);
   // A child enrolled on the wrong year is taught the wrong curriculum every day until someone
   // notices. Cheap to check, and it repairs itself rather than waiting to be reported again.
@@ -509,6 +543,25 @@ export async function ensureDayPlanned(studentId: string, dateKey: string): Prom
  * Only PLANNED lessons are removed: work already started or finished is a child's own and is
  * never deleted, even when that leaves the day long.
  */
+/**
+ * Returns duplicate/surplus review assignments' `ReviewItem`s to PENDING before the slot
+ * carrying them is deleted.
+ *
+ * The planner only ever plans a `ReviewItem` with `status: "PENDING"` (see `planWeek`'s
+ * `pendingReviews` query); a review is flipped to SCHEDULED the moment it is placed on a board.
+ * Deleting that `DailyAssignment` without also releasing the item — which is exactly what this
+ * function used to do — leaves the item stuck SCHEDULED with nothing left anywhere that will ever
+ * plan it again: not lost loudly, as a lesson that keeps reappearing is, but lost silently, which
+ * is worse for a mechanism whose entire purpose is bringing back material a child got wrong. Only
+ * PLANNED assignments reach here (the callers below already filter to that), so nothing about a
+ * review the child has actually opened is touched by this.
+ */
+async function releaseReviewItems(assignments: { reviewItemId: string | null }[]): Promise<void> {
+  const ids = assignments.map((a) => a.reviewItemId).filter((id): id is string => id != null);
+  if (ids.length === 0) return;
+  await prisma.reviewItem.updateMany({ where: { id: { in: ids }, status: "SCHEDULED" }, data: { status: "PENDING" } });
+}
+
 async function trimDayToTimetable(studentId: string, dayDate: Date, cap: number): Promise<void> {
   const lessons = await prisma.dailyAssignment.findMany({
     where: { studentId, date: dayDate, kind: "LESSON", status: { not: "MOVED" } },
@@ -564,6 +617,7 @@ async function trimDayToTimetable(studentId: string, dayDate: Date, cap: number)
     seenReviewLessons.add(key);
   }
   if (duplicateReviews.length > 0) {
+    await releaseReviewItems(reviews.filter((r) => duplicateReviews.includes(r.id)));
     await prisma.dailyAssignment.deleteMany({ where: { id: { in: duplicateReviews } } });
   }
 
@@ -572,6 +626,7 @@ async function trimDayToTimetable(studentId: string, dayDate: Date, cap: number)
   const keptReviews = reviews.filter((r) => !duplicateReviews.includes(r.id));
   const surplusReviews = keptReviews.slice(MAX_REVIEWS_PER_DAY).filter((r) => r.status === "PLANNED");
   if (surplusReviews.length > 0) {
+    await releaseReviewItems(surplusReviews);
     await prisma.dailyAssignment.deleteMany({ where: { id: { in: surplusReviews.map((r) => r.id) } } });
   }
 
@@ -585,11 +640,9 @@ async function trimDayToTimetable(studentId: string, dayDate: Date, cap: number)
 }
 
 export async function getTodayView(studentId: string, dateKey: string): Promise<TodayView> {
+  // Settling finished and abandoned work happens inside `ensureDayPlanned`, before it makes any
+  // planning decision — see the comment there for why the order matters.
   await ensureDayPlanned(studentId, dateKey);
-
-  // A lesson someone actually did should be on the board as done, whether or not they pressed
-  // the button that says so. Never fatal — the board renders either way.
-  await settleFinishedLessons(studentId).catch(() => undefined);
 
   const dayDate = toDateOnly(dateKey);
   const full = await prisma.dailyAssignment.findMany({
