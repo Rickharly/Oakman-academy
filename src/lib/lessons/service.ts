@@ -945,15 +945,27 @@ function abandonedSince(): Date {
  * not. The Learn step's own fallback copy already warns against exactly this: a child sent into
  * an assessment on material nobody gave them will believe the failure is theirs.
  *
- * So only an attempt that reached the far side of the teaching counts: a graded PRACTICE round
- * (they were taught, and they practised), or a `currentStage` that has already reached CHECK or
- * beyond (a review re-run stalled the same way, or the stage advanced without a PRACTICE
- * activity being recorded for some other reason). For those, and only those, `settleFinishedLessons`
- * cannot see the gap at all — it only settles an attempt whose CHECK has actually been graded,
- * and one abandoned *before* CHECK has no such thing to find. Left alone, the `LessonAttempt`
- * would stay IN_PROGRESS forever and `StudentLessonProgress` with it — `isLessonDone` never
- * returns true for it — so the planner would offer the same lesson again indefinitely even
- * though there is nothing left to teach, only a quiz left to sit.
+ * So only an attempt with a graded (or submitted) PRACTICE round counts — genuinely taught, and
+ * genuinely practised. An earlier version of this also matched any `currentStage` that had
+ * already reached CHECK, meaning to catch "the stage advanced without a recorded PRACTICE
+ * activity for some other reason" — but that branch turned out to be both redundant for an
+ * ordinary lesson (every legitimate path to CHECK, including an empty PRACTICE stage and the
+ * extra-practice route, always leaves a PRACTICE `ActivityAttempt` behind first) and actively
+ * dangerous for a REVIEW assignment, whose attempt is forced straight to `currentStage: "CHECK"`
+ * by `runReviewAssignment` with **no** PRACTICE round at all, by construction. That branch would
+ * have caught a review opened and never answered — zero activities, nothing to show for it — and
+ * marked it NEEDS_REVIEW as though it had been taught and practised. It has been removed; a
+ * review attempt is additionally excluded outright below, so nothing about this function ever
+ * reasons about a review's `currentStage` again. A stale review is settled by
+ * `requeueAbandonedReviews` instead, on the `ReviewItem` itself — see its comment for why that is
+ * the right unit for a review's obligation.
+ *
+ * For a genuinely taught-and-practised, CHECK-abandoned lesson, `settleFinishedLessons` cannot
+ * see the gap at all — it only settles an attempt whose CHECK has actually been graded, and one
+ * abandoned before CHECK has no such thing to find. Left alone, the `LessonAttempt` would stay
+ * IN_PROGRESS forever and `StudentLessonProgress` with it — `isLessonDone` never returns true for
+ * it — so the planner would offer the same lesson again indefinitely even though there is nothing
+ * left to teach, only a quiz left to sit.
  *
  * The honest middle ground: not COMPLETED (nobody watched them finish — that is the point of the
  * CHECK), and not left open forever either (the teaching and the practice genuinely happened, and
@@ -975,12 +987,14 @@ export async function settleAbandonedLessons(studentId: string): Promise<number>
       // A CHECK that was actually graded is `settleFinishedLessons`'s to settle, on its own much
       // shorter clock — it has a real result to record, not just an absence of one.
       NOT: { activities: { some: { stage: "CHECK", gradedAt: { not: null } } } },
-      OR: [
-        { activities: { some: { stage: "PRACTICE", status: { in: ["SUBMITTED", "GRADED"] } } } },
-        // stageIndex(currentStage) >= stageIndex("CHECK") — spelled out as the three stages it
-        // actually means, since `currentStage` is a plain enum column here, not a computed value.
-        { currentStage: { in: ["CHECK", "FEEDBACK", "COMPLETE"] } },
-      ],
+      activities: { some: { stage: "PRACTICE", status: { in: ["SUBMITTED", "GRADED"] } } },
+      // Excluded outright, not merely left to fail the PRACTICE check above: a REVIEW
+      // assignment's attempt never has a PRACTICE round by construction, so it would already be
+      // excluded — but a review is not "a lesson abandoned before its quiz", it is *only* a quiz,
+      // and reasoning about it here at all is the mistake, not just this particular condition.
+      // `isNot` matches both "no assignment" (an attempt started without one) and "an assignment
+      // that isn't a review".
+      assignment: { isNot: { kind: "REVIEW" } },
     },
     take: 20,
   });
@@ -1010,6 +1024,15 @@ async function settleOneAbandonedLesson(attempt: LessonAttempt): Promise<void> {
 
   // One review item per lesson, not one per abandoned attempt — a revisit that stalls again
   // must not queue a second reminder alongside the first still waiting.
+  //
+  // Counting SCHEDULED as "already queued" here is only honest because SCHEDULED can no longer
+  // mean "stranded" elsewhere: `requeueAbandonedReviews` puts a stale SCHEDULED item straight
+  // back to PENDING, and the two other places that used to leave one dangling — deleting a
+  // duplicate/surplus review assignment in `trimDayToTimetable`, and `runReviewAssignment`'s own
+  // abandoned-quiz case — now do the same. So a SCHEDULED item found here is always still live:
+  // on a board somewhere, waiting to be opened, or a moment away from being requeued if it is
+  // stale. Nothing here needs to re-check that; it would just be re-deriving what those functions
+  // already guarantee.
   const alreadyQueued = await prisma.reviewItem.findFirst({
     where: { studentId, lessonId, reason: "LOW_SCORE", status: { in: ["PENDING", "SCHEDULED"] } },
   });
@@ -1033,6 +1056,58 @@ async function settleOneAbandonedLesson(attempt: LessonAttempt): Promise<void> {
       data: { lessonId, attemptId: updated.id, status: "NEEDS_REVIEW", reason: "abandoned_before_check" },
     },
   });
+}
+
+/**
+ * Puts a stale review back to PENDING when the child opened it and never answered it.
+ *
+ * A review's whole content is its CHECK — `runReviewAssignment` forces `currentStage` there the
+ * moment it is opened, before any PRACTICE round could exist — so `settleAbandonedLessons`'s
+ * "taught and practised" reasoning has nothing to attach to here at all, and reviews are excluded
+ * from it outright (see its comment). But a review abandoned after being opened is a real gap all
+ * the same, and it needs its own honest answer, because leaving it alone is not neutral: the
+ * planner only ever plans a `ReviewItem` with `status: "PENDING"` (see `planWeek`'s
+ * `pendingReviews` query), and the item was flipped to SCHEDULED the moment it was placed on a
+ * board. An abandoned, SCHEDULED item that is never put back is not "still there" — its board slot
+ * is a past day nobody replans, so it is invisible and permanently unresolved: the exact opposite
+ * of a review's purpose, which is to bring back material the child got wrong. A lesson merely
+ * *reappearing* too often is a visible nuisance; a review silently vanishing is a hidden one, and
+ * worse.
+ *
+ * The obligation lives in the `ReviewItem`, not the `LessonAttempt` or the `DailyAssignment` — the
+ * item is what `completeReview` actually discharges, and only that function should ever move it
+ * to DONE. So this only ever moves SCHEDULED back to PENDING: the assignment is left exactly as
+ * it is (in particular, never ticked COMPLETED — the review was not done), and the attempt is left
+ * exactly as it is too. Whatever partial CHECK answers the child left in that attempt are still
+ * there for `startOrResumeAttempt` to hand back once the requeued item is opened again; a review
+ * genuinely lost twice over would be an attempt reset on top of an item lost, and there is no need
+ * to reset anything here to fix the one thing that was actually broken.
+ */
+export async function requeueAbandonedReviews(studentId: string): Promise<number> {
+  const cutoff = abandonedSince();
+
+  const stale = await prisma.dailyAssignment.findMany({
+    where: {
+      studentId,
+      kind: "REVIEW",
+      status: { in: ["PLANNED", "IN_PROGRESS"] },
+      updatedAt: { lt: cutoff },
+      reviewItemId: { not: null },
+      reviewItem: { status: "SCHEDULED" },
+    },
+    select: { reviewItemId: true },
+  });
+
+  let requeued = 0;
+  for (const { reviewItemId } of stale) {
+    // `updateMany` with the status still in the `where` guards against two settle passes (one
+    // from `ensureDayPlanned`, one from `planWeek`) both trying to requeue the same item.
+    const result = await prisma.reviewItem
+      .updateMany({ where: { id: reviewItemId!, status: "SCHEDULED" }, data: { status: "PENDING" } })
+      .catch(() => ({ count: 0 }));
+    if (result.count > 0) requeued += 1;
+  }
+  return requeued;
 }
 
 export async function recordVideoProgress(

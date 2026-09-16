@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { prisma } from "@/lib/db";
 import { resetDb } from "./helpers/db";
 import { ensureDayPlanned, planWeek } from "@/lib/scheduling/planner";
-import { settleAbandonedLessons, startOrResumeAttempt } from "@/lib/lessons/service";
+import { requeueAbandonedReviews, settleAbandonedLessons, startOrResumeAttempt } from "@/lib/lessons/service";
 import { recomputeLessonProgress } from "@/lib/progress/aggregate";
 import { addDaysKey, schoolDayKey, toDateOnly, weekStartKey } from "@/lib/dates";
 
@@ -54,6 +54,12 @@ function nextPlanningMonday(): string {
 async function backdateUpdatedAt(attemptId: string, hoursAgo: number): Promise<void> {
   const when = new Date(Date.now() - hoursAgo * HOURS);
   await prisma.$executeRaw`UPDATE "LessonAttempt" SET "updatedAt" = ${when} WHERE id = ${attemptId}`;
+}
+
+/** Same idea as `backdateUpdatedAt`, for a `DailyAssignment` — also an `@updatedAt` column. */
+async function backdateAssignmentUpdatedAt(assignmentId: string, hoursAgo: number): Promise<void> {
+  const when = new Date(Date.now() - hoursAgo * HOURS);
+  await prisma.$executeRaw`UPDATE "DailyAssignment" SET "updatedAt" = ${when} WHERE id = ${assignmentId}`;
 }
 
 async function buildStudentWithTwoLessons(lessonsPerDay = 1) {
@@ -348,5 +354,211 @@ describe("a lesson abandoned before practice is left open, to be resumed", () =>
     await backdateUpdatedAt(attempt.id, 30);
 
     expect(await settleAbandonedLessons(studentId)).toBe(0);
+  });
+});
+
+describe("a review is never silently lost", () => {
+  /**
+   * A review's whole content is its CHECK — `runReviewAssignment` forces `currentStage` there
+   * the moment it is opened, with no PRACTICE round ever existing for it. An earlier version of
+   * `settleAbandonedLessons` matched on `currentStage` reaching CHECK alone, so a review opened
+   * and never answered — zero `ActivityAttempt`s, nothing to show for it — was swept up, marked
+   * NEEDS_REVIEW as though it had been taught and practised, and its `DailyAssignment` ticked
+   * COMPLETED — while the linked `ReviewItem` stayed SCHEDULED forever, since only `completeReview`
+   * ever moves it to DONE. The planner only ever plans a PENDING item, so a SCHEDULED item with no
+   * live assignment anywhere is invisible and lost for good: the exact opposite of what a review
+   * is for.
+   */
+  beforeEach(async () => {
+    await resetDb();
+  });
+
+  it("settleAbandonedLessons never touches a review attempt, even one forced straight to CHECK", async () => {
+    const { studentId, lesson1 } = await buildStudentWithTwoLessons();
+
+    const reviewItem = await prisma.reviewItem.create({
+      data: { studentId, lessonId: lesson1.id, reason: "LOW_SCORE", status: "SCHEDULED", dueAt: toDateOnly(schoolDayKey()) },
+    });
+    const assignment = await prisma.dailyAssignment.create({
+      data: {
+        studentId,
+        date: toDateOnly(schoolDayKey()),
+        order: 0,
+        kind: "REVIEW",
+        source: "REVIEW_ENGINE",
+        status: "IN_PROGRESS", // opened
+        reviewItemId: reviewItem.id,
+        lessonId: lesson1.id,
+        estimatedMinutes: 15,
+      },
+    });
+    // Exactly what `runReviewAssignment` leaves behind: forced straight to CHECK, no PRACTICE
+    // round, because a review never has one.
+    const attempt = await prisma.lessonAttempt.create({
+      data: {
+        studentId,
+        lessonId: lesson1.id,
+        attemptNumber: 1,
+        status: "IN_PROGRESS",
+        currentStage: "CHECK",
+        assignmentId: assignment.id,
+      },
+    });
+    await backdateUpdatedAt(attempt.id, 30);
+    await backdateAssignmentUpdatedAt(assignment.id, 30);
+
+    expect(await settleAbandonedLessons(studentId)).toBe(0);
+    const untouched = await prisma.lessonAttempt.findUniqueOrThrow({ where: { id: attempt.id } });
+    expect(untouched.status).toBe("IN_PROGRESS");
+    const untouchedAssignment = await prisma.dailyAssignment.findUniqueOrThrow({ where: { id: assignment.id } });
+    expect(untouchedAssignment.status).toBe("IN_PROGRESS");
+    expect(untouchedAssignment.completedAt).toBeNull();
+  });
+
+  it("a review opened and then abandoned requeues to PENDING instead, is not recorded as completed, and is offered again", async () => {
+    const { studentId, lesson1 } = await buildStudentWithTwoLessons();
+
+    const reviewItem = await prisma.reviewItem.create({
+      data: { studentId, lessonId: lesson1.id, reason: "LOW_SCORE", status: "SCHEDULED", dueAt: toDateOnly(schoolDayKey()) },
+    });
+    const assignment = await prisma.dailyAssignment.create({
+      data: {
+        studentId,
+        date: toDateOnly(schoolDayKey()),
+        order: 0,
+        kind: "REVIEW",
+        source: "REVIEW_ENGINE",
+        status: "IN_PROGRESS",
+        reviewItemId: reviewItem.id,
+        lessonId: lesson1.id,
+        estimatedMinutes: 15,
+      },
+    });
+    await backdateAssignmentUpdatedAt(assignment.id, 30);
+
+    expect(await requeueAbandonedReviews(studentId)).toBe(1);
+
+    const requeuedItem = await prisma.reviewItem.findUniqueOrThrow({ where: { id: reviewItem.id } });
+    expect(requeuedItem.status).toBe("PENDING");
+
+    // Not recorded as completed — the review was not done.
+    const untouchedAssignment = await prisma.dailyAssignment.findUniqueOrThrow({ where: { id: assignment.id } });
+    expect(untouchedAssignment.status).toBe("IN_PROGRESS");
+    expect(untouchedAssignment.completedAt).toBeNull();
+
+    // The next plan brings it back.
+    const planningDay = nextPlanningMonday();
+    await ensureDayPlanned(studentId, planningDay);
+    const weekDates = [0, 1, 2, 3, 4].map((i) => toDateOnly(addDaysKey(planningDay, i)));
+    const broughtBack = await prisma.dailyAssignment.findFirst({
+      where: { studentId, date: { in: weekDates }, kind: "REVIEW", reviewItemId: reviewItem.id, status: { not: "MOVED" } },
+    });
+    expect(broughtBack).not.toBeNull();
+  });
+
+  it("does not requeue an item twice for the same stale assignment", async () => {
+    const { studentId, lesson1 } = await buildStudentWithTwoLessons();
+
+    const reviewItem = await prisma.reviewItem.create({
+      data: { studentId, lessonId: lesson1.id, reason: "LOW_SCORE", status: "SCHEDULED", dueAt: toDateOnly(schoolDayKey()) },
+    });
+    const assignment = await prisma.dailyAssignment.create({
+      data: {
+        studentId,
+        date: toDateOnly(schoolDayKey()),
+        order: 0,
+        kind: "REVIEW",
+        source: "REVIEW_ENGINE",
+        status: "IN_PROGRESS",
+        reviewItemId: reviewItem.id,
+        lessonId: lesson1.id,
+        estimatedMinutes: 15,
+      },
+    });
+    await backdateAssignmentUpdatedAt(assignment.id, 30);
+
+    // Two different callers reaching the same stale review — the same real possibility as for
+    // `settleAbandonedLessons`, since both `ensureDayPlanned` and `planWeek` call this.
+    expect(await requeueAbandonedReviews(studentId)).toBe(1);
+    expect(await requeueAbandonedReviews(studentId)).toBe(0);
+  });
+
+  it("a duplicate review removed by trimDayToTimetable is never left SCHEDULED with nothing to open it", async () => {
+    const { studentId, lesson1 } = await buildStudentWithTwoLessons();
+    const planningDay = nextPlanningMonday();
+    const dayDate = toDateOnly(planningDay);
+
+    // Two different review items both scheduling the same lesson on the same day — the
+    // duplicate case `trimDayToTimetable` de-duplicates.
+    const itemA = await prisma.reviewItem.create({
+      data: { studentId, lessonId: lesson1.id, reason: "LOW_SCORE", status: "SCHEDULED", dueAt: dayDate },
+    });
+    const itemB = await prisma.reviewItem.create({
+      data: { studentId, lessonId: lesson1.id, reason: "MISCONCEPTION", status: "SCHEDULED", dueAt: dayDate },
+    });
+    await prisma.dailyAssignment.create({
+      data: { studentId, date: dayDate, order: 0, kind: "REVIEW", source: "REVIEW_ENGINE", status: "PLANNED", reviewItemId: itemA.id, lessonId: lesson1.id, estimatedMinutes: 15 },
+    });
+    await prisma.dailyAssignment.create({
+      data: { studentId, date: dayDate, order: 1, kind: "REVIEW", source: "REVIEW_ENGINE", status: "PLANNED", reviewItemId: itemB.id, lessonId: lesson1.id, estimatedMinutes: 15 },
+    });
+
+    await ensureDayPlanned(studentId, planningDay);
+
+    const reviewsOnDay = await prisma.dailyAssignment.count({
+      where: { studentId, date: dayDate, kind: "REVIEW", status: { not: "MOVED" } },
+    });
+    expect(reviewsOnDay).toBe(1); // de-duplicated down to one
+
+    // Whichever item lost its slot must be either re-placed (still SCHEDULED, with a live
+    // assignment somewhere) or handed back to PENDING — never SCHEDULED with nothing left
+    // anywhere that will ever plan it again.
+    for (const itemId of [itemA.id, itemB.id]) {
+      const item = await prisma.reviewItem.findUniqueOrThrow({ where: { id: itemId } });
+      if (item.status === "SCHEDULED") {
+        const liveAssignments = await prisma.dailyAssignment.count({ where: { reviewItemId: itemId } });
+        expect(liveAssignments).toBeGreaterThan(0);
+      } else {
+        expect(item.status).toBe("PENDING");
+      }
+    }
+  });
+
+  it("a surplus review (over the daily cap) removed by trimDayToTimetable is never left stranded either", async () => {
+    const { studentId, lesson1, lesson2 } = await buildStudentWithTwoLessons();
+    const planningDay = nextPlanningMonday();
+    const dayDate = toDateOnly(planningDay);
+
+    // Two reviews for two *different* lessons on the same day — not duplicates of each other,
+    // but still over `MAX_REVIEWS_PER_DAY` (1), so the surplus-cap branch removes one.
+    const itemA = await prisma.reviewItem.create({
+      data: { studentId, lessonId: lesson1.id, reason: "LOW_SCORE", status: "SCHEDULED", dueAt: dayDate },
+    });
+    const itemB = await prisma.reviewItem.create({
+      data: { studentId, lessonId: lesson2.id, reason: "LOW_SCORE", status: "SCHEDULED", dueAt: dayDate },
+    });
+    await prisma.dailyAssignment.create({
+      data: { studentId, date: dayDate, order: 0, kind: "REVIEW", source: "REVIEW_ENGINE", status: "PLANNED", reviewItemId: itemA.id, lessonId: lesson1.id, estimatedMinutes: 15 },
+    });
+    await prisma.dailyAssignment.create({
+      data: { studentId, date: dayDate, order: 1, kind: "REVIEW", source: "REVIEW_ENGINE", status: "PLANNED", reviewItemId: itemB.id, lessonId: lesson2.id, estimatedMinutes: 15 },
+    });
+
+    await ensureDayPlanned(studentId, planningDay);
+
+    const reviewsOnDay = await prisma.dailyAssignment.count({
+      where: { studentId, date: dayDate, kind: "REVIEW", status: { not: "MOVED" } },
+    });
+    expect(reviewsOnDay).toBe(1); // capped down to one
+
+    for (const itemId of [itemA.id, itemB.id]) {
+      const item = await prisma.reviewItem.findUniqueOrThrow({ where: { id: itemId } });
+      if (item.status === "SCHEDULED") {
+        const liveAssignments = await prisma.dailyAssignment.count({ where: { reviewItemId: itemId } });
+        expect(liveAssignments).toBeGreaterThan(0);
+      } else {
+        expect(item.status).toBe("PENDING");
+      }
+    }
   });
 });

@@ -8,7 +8,7 @@ import type { DailyAssignment, Lesson, Programme, ReviewItem, StudentLessonProgr
 import { Prisma } from "@/generated/prisma/client";
 import { addDaysKey, dateOnlyKey, isoWeekday, schoolDayEnd, todayDateOnly, toDateOnly, weekStartKey } from "@/lib/dates";
 import { alignSchedulesToEnrolments, enrolStudentInYearGroup, fixYearGroupEnrolments } from "@/lib/admin/enrol";
-import { settleAbandonedLessons, settleFinishedLessons } from "@/lib/lessons/service";
+import { requeueAbandonedReviews, settleAbandonedLessons, settleFinishedLessons } from "@/lib/lessons/service";
 import { isLessonDone } from "@/lib/progress/aggregate";
 import { ensureLessonAssets } from "@/lib/curriculum/sync";
 import { catchUpImport } from "@/lib/curriculum/autofill";
@@ -102,6 +102,7 @@ export async function planWeek(studentId: string, weekStart: string, opts?: { re
    */
   await settleFinishedLessons(studentId).catch(() => undefined);
   await settleAbandonedLessons(studentId).catch(() => undefined);
+  await requeueAbandonedReviews(studentId).catch(() => undefined);
 
   const mondayKey = weekStartKey(weekStart);
   const dayKeys = [0, 1, 2, 3, 4].map((i) => addDaysKey(mondayKey, i));
@@ -468,6 +469,7 @@ export async function ensureDayPlanned(studentId: string, dateKey: string): Prom
    */
   await settleFinishedLessons(studentId).catch(() => undefined);
   await settleAbandonedLessons(studentId).catch(() => undefined);
+  await requeueAbandonedReviews(studentId).catch(() => undefined);
 
   await purgeFillerReviews(studentId).catch(() => undefined);
   // A child enrolled on the wrong year is taught the wrong curriculum every day until someone
@@ -541,6 +543,25 @@ export async function ensureDayPlanned(studentId: string, dateKey: string): Prom
  * Only PLANNED lessons are removed: work already started or finished is a child's own and is
  * never deleted, even when that leaves the day long.
  */
+/**
+ * Returns duplicate/surplus review assignments' `ReviewItem`s to PENDING before the slot
+ * carrying them is deleted.
+ *
+ * The planner only ever plans a `ReviewItem` with `status: "PENDING"` (see `planWeek`'s
+ * `pendingReviews` query); a review is flipped to SCHEDULED the moment it is placed on a board.
+ * Deleting that `DailyAssignment` without also releasing the item — which is exactly what this
+ * function used to do — leaves the item stuck SCHEDULED with nothing left anywhere that will ever
+ * plan it again: not lost loudly, as a lesson that keeps reappearing is, but lost silently, which
+ * is worse for a mechanism whose entire purpose is bringing back material a child got wrong. Only
+ * PLANNED assignments reach here (the callers below already filter to that), so nothing about a
+ * review the child has actually opened is touched by this.
+ */
+async function releaseReviewItems(assignments: { reviewItemId: string | null }[]): Promise<void> {
+  const ids = assignments.map((a) => a.reviewItemId).filter((id): id is string => id != null);
+  if (ids.length === 0) return;
+  await prisma.reviewItem.updateMany({ where: { id: { in: ids }, status: "SCHEDULED" }, data: { status: "PENDING" } });
+}
+
 async function trimDayToTimetable(studentId: string, dayDate: Date, cap: number): Promise<void> {
   const lessons = await prisma.dailyAssignment.findMany({
     where: { studentId, date: dayDate, kind: "LESSON", status: { not: "MOVED" } },
@@ -596,6 +617,7 @@ async function trimDayToTimetable(studentId: string, dayDate: Date, cap: number)
     seenReviewLessons.add(key);
   }
   if (duplicateReviews.length > 0) {
+    await releaseReviewItems(reviews.filter((r) => duplicateReviews.includes(r.id)));
     await prisma.dailyAssignment.deleteMany({ where: { id: { in: duplicateReviews } } });
   }
 
@@ -604,6 +626,7 @@ async function trimDayToTimetable(studentId: string, dayDate: Date, cap: number)
   const keptReviews = reviews.filter((r) => !duplicateReviews.includes(r.id));
   const surplusReviews = keptReviews.slice(MAX_REVIEWS_PER_DAY).filter((r) => r.status === "PLANNED");
   if (surplusReviews.length > 0) {
+    await releaseReviewItems(surplusReviews);
     await prisma.dailyAssignment.deleteMany({ where: { id: { in: surplusReviews.map((r) => r.id) } } });
   }
 
