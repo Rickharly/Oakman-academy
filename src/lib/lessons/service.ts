@@ -24,7 +24,7 @@ import { ApiError } from "@/lib/auth/api";
 import { gradeQuestion, type GradingContext } from "@/lib/grading/grade";
 import { teacherAgent, teacherModeForStage } from "@/lib/ai/teacher-agent";
 import { recomputeLessonProgress } from "@/lib/progress/aggregate";
-import { todayDateOnly } from "@/lib/dates";
+import { schoolDayKey, schoolDayStart, todayDateOnly } from "@/lib/dates";
 import { hideUnanswerableQuestions } from "@/lib/questions/unanswerable";
 import { parkOpenGaps } from "@/lib/lessons/understanding";
 import { afterActivityGraded } from "@/lib/progress/review";
@@ -236,6 +236,17 @@ async function recomputeMasteryScore(lessonAttemptId: string): Promise<void> {
 
 // ───────────────────────────── contract exports ─────────────────────────────
 
+/**
+ * Deliberately no settling for a lesson abandoned before PRACTICE is done.
+ *
+ * An attempt stuck at STARTER or partway through LEARN is not a bug to close off: it is not
+ * done, so the planner correctly keeps offering the lesson, and `existing` below is returned
+ * exactly as it was left — same `currentStage`, same drafts — so opening it resumes the teaching
+ * where the child stopped, rather than restarting or skipping to a quiz on material they never
+ * saw. See `settleAbandonedLessons` for the narrower case (taught and practised, only the CHECK
+ * missing) that *is* settled, and why forcing a status here instead would be worse than the
+ * lesson simply coming back.
+ */
 export async function startOrResumeAttempt(
   studentId: string,
   lessonId: string,
@@ -873,8 +884,8 @@ const SETTLE_AFTER_MINUTES = 5;
  * that button was hidden whenever there was time left in the period. Bookkeeping should not be
  * able to un-do a lesson someone did.
  *
- * The rule is deliberately narrow: the quiz must have been marked, and a quarter of an hour
- * must have passed since. A lesson still being worked on is left alone.
+ * The rule is deliberately narrow: the quiz must have been marked, and five minutes must have
+ * passed since. A lesson still being worked on is left alone.
  */
 export async function settleFinishedLessons(studentId: string): Promise<number> {
   const cutoff = new Date(Date.now() - SETTLE_AFTER_MINUTES * 60 * 1000);
@@ -901,6 +912,127 @@ export async function settleFinishedLessons(studentId: string): Promise<number> 
       .catch(() => undefined);
   }
   return settled;
+}
+
+/**
+ * How long a lesson can sit untouched before it counts as given up on rather than mid-session.
+ *
+ * Not a raw duration: a school day has breaks in it, and a real gap between two periods of the
+ * same sitting must not trip this. `LessonAttempt.updatedAt` moves every time the child's own
+ * time-tracking (`recordTime`) ticks over their attempt, so a lesson still genuinely open today
+ * keeps a fresh timestamp no matter how long today's gaps are. Only an attempt last touched
+ * before *today's school day began* is a different day's business — tying the cutoff to the
+ * school day, rather than to a fixed number of hours, is what makes that distinction exact.
+ *
+ * Always today, regardless of which day or week a caller is busy planning: this answers "is this
+ * genuinely stale as of right now", not "is this stale relative to the day I'm about to fill in".
+ */
+function abandonedSince(): Date {
+  return schoolDayStart(schoolDayKey());
+}
+
+/**
+ * Marks NEEDS_REVIEW the lessons a child was genuinely taught and practised, and then never
+ * came back to sit the CHECK for.
+ *
+ * This is deliberately narrower than "any abandoned attempt". An attempt abandoned at STARTER or
+ * during LEARN needs none of this: it is not done, so the planner rightly offers the lesson
+ * again, and `startOrResumeAttempt` resumes the *same* attempt at the *same* `currentStage` — a
+ * child who stopped partway through the teaching picks the teaching back up, which is exactly
+ * what should happen. Settling that attempt here — forcing NEEDS_REVIEW, which routes back as a
+ * `runReviewAssignment` CHECK-only re-run — would hand a quiz on material the child was never
+ * taught to someone who never saw it, and record them as having done the lesson when they have
+ * not. The Learn step's own fallback copy already warns against exactly this: a child sent into
+ * an assessment on material nobody gave them will believe the failure is theirs.
+ *
+ * So only an attempt that reached the far side of the teaching counts: a graded PRACTICE round
+ * (they were taught, and they practised), or a `currentStage` that has already reached CHECK or
+ * beyond (a review re-run stalled the same way, or the stage advanced without a PRACTICE
+ * activity being recorded for some other reason). For those, and only those, `settleFinishedLessons`
+ * cannot see the gap at all — it only settles an attempt whose CHECK has actually been graded,
+ * and one abandoned *before* CHECK has no such thing to find. Left alone, the `LessonAttempt`
+ * would stay IN_PROGRESS forever and `StudentLessonProgress` with it — `isLessonDone` never
+ * returns true for it — so the planner would offer the same lesson again indefinitely even
+ * though there is nothing left to teach, only a quiz left to sit.
+ *
+ * The honest middle ground: not COMPLETED (nobody watched them finish — that is the point of the
+ * CHECK), and not left open forever either (the teaching and the practice genuinely happened, and
+ * are genuinely behind them). NEEDS_REVIEW is this app's existing word for "done, but come back
+ * to it" — the same status a poor CHECK score already gets — so it is settled the exact same way:
+ * one short REVIEW item re-runs just the CHECK, once.
+ *
+ * A lesson that keeps being abandoned before PRACTICE, on the other hand, can legitimately keep
+ * reappearing — that is unresolved by design, not missed: see the note on `startOrResumeAttempt`.
+ */
+export async function settleAbandonedLessons(studentId: string): Promise<number> {
+  const cutoff = abandonedSince();
+
+  const stale = await prisma.lessonAttempt.findMany({
+    where: {
+      studentId,
+      status: "IN_PROGRESS",
+      updatedAt: { lt: cutoff },
+      // A CHECK that was actually graded is `settleFinishedLessons`'s to settle, on its own much
+      // shorter clock — it has a real result to record, not just an absence of one.
+      NOT: { activities: { some: { stage: "CHECK", gradedAt: { not: null } } } },
+      OR: [
+        { activities: { some: { stage: "PRACTICE", status: { in: ["SUBMITTED", "GRADED"] } } } },
+        // stageIndex(currentStage) >= stageIndex("CHECK") — spelled out as the three stages it
+        // actually means, since `currentStage` is a plain enum column here, not a computed value.
+        { currentStage: { in: ["CHECK", "FEEDBACK", "COMPLETE"] } },
+      ],
+    },
+    take: 20,
+  });
+
+  let settled = 0;
+  for (const attempt of stale) {
+    // Never fatal: a lesson that will not settle must not stop the board from rendering.
+    await settleOneAbandonedLesson(attempt)
+      .then(() => {
+        settled += 1;
+      })
+      .catch(() => undefined);
+  }
+  return settled;
+}
+
+async function settleOneAbandonedLesson(attempt: LessonAttempt): Promise<void> {
+  const { studentId, lessonId } = attempt;
+
+  const updated = await prisma.lessonAttempt.update({
+    where: { id: attempt.id },
+    data: { completedAt: attempt.completedAt ?? new Date(), status: "NEEDS_REVIEW", currentStage: "COMPLETE" },
+  });
+
+  await tickTheBoard(attempt.assignmentId, { studentId, lessonId });
+  await recomputeLessonProgress(studentId, lessonId);
+
+  // One review item per lesson, not one per abandoned attempt — a revisit that stalls again
+  // must not queue a second reminder alongside the first still waiting.
+  const alreadyQueued = await prisma.reviewItem.findFirst({
+    where: { studentId, lessonId, reason: "LOW_SCORE", status: { in: ["PENDING", "SCHEDULED"] } },
+  });
+  if (!alreadyQueued) {
+    await prisma.reviewItem.create({
+      data: {
+        studentId,
+        lessonId,
+        reason: "LOW_SCORE",
+        status: "PENDING",
+        dueAt: todayDateOnly(),
+        detail: "Started this lesson but never reached the check quiz.",
+      },
+    });
+  }
+
+  await prisma.activityLog.create({
+    data: {
+      studentId,
+      kind: "lesson_completed",
+      data: { lessonId, attemptId: updated.id, status: "NEEDS_REVIEW", reason: "abandoned_before_check" },
+    },
+  });
 }
 
 export async function recordVideoProgress(
