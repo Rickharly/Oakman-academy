@@ -98,7 +98,18 @@ describe("a lesson finished but never signed off must not be planned again", () 
     // Yesterday: the CHECK was answered and marked in full — then the child closed the laptop.
     // Nobody pressed Finish, and Today was never reopened, so nothing ever settled the attempt.
     const attempt = await prisma.lessonAttempt.create({
-      data: { studentId, lessonId: lesson1.id, attemptNumber: 1, status: "IN_PROGRESS", currentStage: "FEEDBACK", masteryScore: 1 },
+      data: {
+        studentId,
+        lessonId: lesson1.id,
+        attemptNumber: 1,
+        status: "IN_PROGRESS",
+        currentStage: "FEEDBACK",
+        masteryScore: 1,
+        // A period's worth of time. Settling closes a period, and a period is only over when
+        // its clock has run — a lesson still mid-period is left open on purpose, because
+        // closing the tab must not end one.
+        timeSpentSeconds: 46 * 60,
+      },
     });
     await prisma.activityAttempt.create({
       data: {
@@ -138,7 +149,18 @@ describe("a lesson finished but never signed off must not be planned again", () 
     const { studentId, lesson1, lesson2 } = await buildStudentWithTwoLessons();
 
     const attempt = await prisma.lessonAttempt.create({
-      data: { studentId, lessonId: lesson1.id, attemptNumber: 1, status: "IN_PROGRESS", currentStage: "FEEDBACK", masteryScore: 1 },
+      data: {
+        studentId,
+        lessonId: lesson1.id,
+        attemptNumber: 1,
+        status: "IN_PROGRESS",
+        currentStage: "FEEDBACK",
+        masteryScore: 1,
+        // A period's worth of time. Settling closes a period, and a period is only over when
+        // its clock has run — a lesson still mid-period is left open on purpose, because
+        // closing the tab must not end one.
+        timeSpentSeconds: 46 * 60,
+      },
     });
     await prisma.activityAttempt.create({
       data: {

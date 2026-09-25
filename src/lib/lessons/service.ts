@@ -24,7 +24,7 @@ import { ApiError } from "@/lib/auth/api";
 import { gradeQuestion, type GradingContext } from "@/lib/grading/grade";
 import { teacherAgent, teacherModeForStage } from "@/lib/ai/teacher-agent";
 import { recomputeLessonProgress } from "@/lib/progress/aggregate";
-import { schoolDayKey, schoolDayStart, todayDateOnly } from "@/lib/dates";
+import { schoolDayKey, schoolDayStart, toDateOnly, todayDateOnly } from "@/lib/dates";
 import { hideUnanswerableQuestions } from "@/lib/questions/unanswerable";
 import { parkOpenGaps } from "@/lib/lessons/understanding";
 import { afterActivityGraded } from "@/lib/progress/review";
@@ -459,10 +459,16 @@ export async function saveDraftAnswer(
 }
 
 /**
- * Marks today's period done. Idempotent, and it never touches a period somebody already closed.
+ * Marks today's period as begun. Idempotent, and it never touches a period somebody already closed.
  *
- * Called the moment a CHECK is marked, because that is when the child finished the lesson —
- * not when they later find and press a button on the feedback screen.
+ * It used to mark it DONE the moment a CHECK was marked, and a nine year old found the hole in
+ * that inside a day: answer the quiz, close the tab, reopen the app, and the period is ticked
+ * and gone. Twelve minutes of work bought a forty-five minute period.
+ *
+ * Doing the quiz is not the end of the period — the end of the period is the end of the period.
+ * So this records that they are in it, and `finaliseAttempt` closes it when the time is
+ * genuinely up. Anyone coming back to the app mid-period is put straight back into the lesson
+ * (see `unfinishedPeriod`), so closing the tab buys nothing at all.
  *
  * `fallback` covers a lesson started without an assignment id at all — "Start the next lesson"
  * from Today. It may still be sitting on today's board under its own LESSON slot; that is the
@@ -489,10 +495,100 @@ async function tickTheBoard(
   if (!id) return;
   await prisma.dailyAssignment
     .updateMany({
+      where: { id, status: "PLANNED" },
+      data: { status: "IN_PROGRESS" },
+    })
+    .catch(() => undefined);
+}
+
+/**
+ * Closes today's period: the work is done AND the time is up.
+ *
+ * The other half of the pair. `tickTheBoard` says a child is in a period; this says the period
+ * is over, and only the things that genuinely end one call it — finishing the lesson once the
+ * clock allows it, or settling a lesson from a day that is already behind us.
+ */
+async function closeTheBoard(
+  assignmentId: string | null,
+  fallback?: { studentId: string; lessonId: string }
+): Promise<void> {
+  let id = assignmentId;
+  if (!id && fallback) {
+    const todays = await prisma.dailyAssignment.findFirst({
+      where: {
+        studentId: fallback.studentId,
+        lessonId: fallback.lessonId,
+        kind: "LESSON",
+        status: { in: ["PLANNED", "IN_PROGRESS"] },
+        date: todayDateOnly(),
+      },
+    });
+    id = todays?.id ?? null;
+  }
+  if (!id) return;
+  await prisma.dailyAssignment
+    .updateMany({
       where: { id, status: { in: ["PLANNED", "IN_PROGRESS"] } },
       data: { status: "COMPLETED", completedAt: new Date() },
     })
     .catch(() => undefined);
+}
+
+/**
+ * The period a child is in the middle of, if there is one.
+ *
+ * "Where was I" has to be answerable by the server, because the child may come back on a
+ * different device, in a different browser, an hour later. Anything kept in the page is gone
+ * by then — and anything kept in the page is also editable by the child, which is how the last
+ * loophole worked.
+ *
+ * A period is unfinished when today has a lesson slot that has been started and not closed, and
+ * the subject's clock has not yet run out. That is the lesson they go back to.
+ */
+export async function unfinishedPeriod(
+  studentId: string,
+  dateKey: string,
+): Promise<{ assignmentId: string; lessonId: string } | null> {
+  const student = await prisma.studentProfile.findUnique({ where: { id: studentId } });
+  if (!student) return null;
+
+  const started = await prisma.dailyAssignment.findFirst({
+    where: {
+      studentId,
+      date: toDateOnly(dateKey),
+      kind: "LESSON",
+      status: "IN_PROGRESS",
+      lessonId: { not: null },
+    },
+    include: { lesson: { include: { unit: { include: { programme: true } } } } },
+    orderBy: { order: "asc" },
+  });
+  if (!started?.lesson) return null;
+
+  const spent = await periodSecondsSpent(
+    studentId,
+    started.lesson.unit.programme.subjectId,
+    toDateOnly(dateKey),
+  );
+  if (spent >= student.lessonMinutes * 60) return null; // the period genuinely ran its course
+
+  /**
+   * Which lesson, exactly.
+   *
+   * They may have moved on to a second topic inside the period, so the slot's own lesson is not
+   * necessarily where they are. The most recent attempt in that subject today is.
+   */
+  const latest = await prisma.lessonAttempt.findFirst({
+    where: {
+      studentId,
+      startedAt: { gte: toDateOnly(dateKey) },
+      lesson: { unit: { programme: { subjectId: started.lesson.unit.programme.subjectId } } },
+    },
+    orderBy: { startedAt: "desc" },
+    select: { lessonId: true },
+  });
+
+  return { assignmentId: started.id, lessonId: latest?.lessonId ?? started.lessonId! };
 }
 
 export async function submitStage(
@@ -666,9 +762,10 @@ export async function submitStage(
      * the day will not let them.
      *
      * Everything after the quiz — reading the feedback, practising what they missed, the
-     * tutoring loop — is worth doing and none of it is what makes the lesson done. The board
-     * ticks here. `finaliseAttempt` still runs when they leave properly, and setting the same
-     * row to the same value twice costs nothing.
+     * tutoring loop — is part of the period, and the period is what the board is counting.
+     * So this records that they are in it; `finaliseAttempt` closes it when the clock is
+     * genuinely up. Marking it finished here is what let a child answer the quiz, close the
+     * tab, and come back to a ticked period twelve minutes in.
      */
     await tickTheBoard(attempt.assignmentId, { studentId, lessonId: attempt.lessonId });
   }
@@ -855,7 +952,7 @@ export async function finaliseAttempt(attempt: LessonAttempt): Promise<LessonAtt
   // Tick whichever slot this belongs to — the attempt's own assignment, or (a lesson started
   // without one, e.g. "Start the next lesson" from Today) today's LESSON assignment for the
   // same lesson, if it's sitting on the board waiting for it.
-  await tickTheBoard(attempt.assignmentId, { studentId, lessonId: attempt.lessonId });
+  await closeTheBoard(attempt.assignmentId, { studentId, lessonId: attempt.lessonId });
 
   await recomputeLessonProgress(studentId, attempt.lessonId);
 
@@ -885,7 +982,9 @@ const SETTLE_AFTER_MINUTES = 5;
  * able to un-do a lesson someone did.
  *
  * The rule is deliberately narrow: the quiz must have been marked, and five minutes must have
- * passed since. A lesson still being worked on is left alone.
+ * passed since. A lesson still being worked on is left alone — and so is one whose period is
+ * still running, which is the important half. Settling those was a second way out of a period:
+ * answer the quiz, wait five minutes, and the board closed the lesson for you.
  */
 export async function settleFinishedLessons(studentId: string): Promise<number> {
   const cutoff = new Date(Date.now() - SETTLE_AFTER_MINUTES * 60 * 1000);
@@ -899,11 +998,31 @@ export async function settleFinishedLessons(studentId: string): Promise<number> 
       // resubmitted. Without that, an interrupted retry never settles at all.
       activities: { some: { stage: "CHECK", status: { in: ["GRADED", "IN_PROGRESS"] }, gradedAt: { lt: cutoff } } },
     },
+    include: { lesson: { include: { unit: { include: { programme: true } } } } },
     take: 20,
   });
 
+  const student = await prisma.studentProfile.findUnique({ where: { id: studentId } });
+  const dayStart = toDateOnly(schoolDayKey());
+
   let settled = 0;
   for (const attempt of stale) {
+    /**
+     * A period that is still running is not a lesson someone walked away from.
+     *
+     * Today's attempt, with time left on its subject's clock, is a child who is coming back —
+     * or who has closed the tab to see whether that finishes it for them. It is left open.
+     * Yesterday's is genuinely abandoned and settles as before.
+     */
+    if (student && attempt.startedAt >= dayStart) {
+      const spent = await periodSecondsSpent(
+        studentId,
+        attempt.lesson.unit.programme.subjectId,
+        dayStart,
+      ).catch(() => Number.MAX_SAFE_INTEGER);
+      if (spent < student.lessonMinutes * 60) continue;
+    }
+
     // Never fatal: a lesson that will not settle must not stop the board from rendering.
     await finaliseAttempt(attempt)
       .then(() => {
@@ -1019,7 +1138,7 @@ async function settleOneAbandonedLesson(attempt: LessonAttempt): Promise<void> {
     data: { completedAt: attempt.completedAt ?? new Date(), status: "NEEDS_REVIEW", currentStage: "COMPLETE" },
   });
 
-  await tickTheBoard(attempt.assignmentId, { studentId, lessonId });
+  await closeTheBoard(attempt.assignmentId, { studentId, lessonId });
   await recomputeLessonProgress(studentId, lessonId);
 
   // One review item per lesson, not one per abandoned attempt — a revisit that stalls again

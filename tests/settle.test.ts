@@ -13,7 +13,7 @@ import { completeStage, settleFinishedLessons, submitStage } from "@/lib/lessons
  */
 const MINUTES = 60 * 1000;
 
-async function buildAttempt(opts: { gradedMinutesAgo: number | null }) {
+async function buildAttempt(opts: { gradedMinutesAgo: number | null; periodSeconds?: number }) {
   const user = await prisma.user.create({
     data: { role: "STUDENT", username: `s${Math.random().toString(36).slice(2, 8)}`, passwordHash: "x", displayName: "Eva" },
   });
@@ -57,6 +57,15 @@ async function buildAttempt(opts: { gradedMinutesAgo: number | null }) {
       attemptNumber: 1,
       currentStage: "FEEDBACK",
       masteryScore: 1,
+      /**
+       * A period's worth of time on it.
+       *
+       * Settling closes a period, and a period is only over when its time is up — otherwise
+       * waiting five minutes was a second way out of one: answer the quiz, sit still, and the
+       * board closed the lesson for you. These tests are about a child who did the work and
+       * never pressed Finish, so the clock has run.
+       */
+      timeSpentSeconds: opts.periodSeconds ?? 46 * 60,
     },
   });
   if (opts.gradedMinutesAgo !== null) {
@@ -161,16 +170,32 @@ describe("the tick on the board", () => {
     await resetDb();
   });
 
-  it("appears as soon as the quiz is marked, not when a button is pressed", async () => {
-    // A child who answered every question and got their marks has finished the lesson. Making
-    // the board wait for a button on a later screen told them they had not.
-    const { studentId, attemptId, assignmentId } = await buildAttempt({ gradedMinutesAgo: null });
+  /**
+   * This used to assert that the board ticked the moment the quiz was marked, which was right
+   * when a lesson ended when its work ended. Now a period runs for its full length, and a nine
+   * year old found what that early tick was worth: answer the quiz, close the tab, reopen the
+   * app, and the period was ticked and gone twelve minutes in.
+   *
+   * So the quiz marks the period as begun, and it closes when the time is actually up.
+   */
+  it("says the period has begun when the quiz is marked, not that it is over", async () => {
+    const { studentId, attemptId, assignmentId } = await buildAttempt({
+      gradedMinutesAgo: null,
+      periodSeconds: 12 * 60,
+    });
     await prisma.lessonAttempt.update({ where: { id: attemptId }, data: { currentStage: "CHECK" } });
 
-    const before = await prisma.dailyAssignment.findUniqueOrThrow({ where: { id: assignmentId } });
-    expect(before.status).toBe("PLANNED");
-
     await submitStage(attemptId, studentId, "CHECK");
+
+    const after = await prisma.dailyAssignment.findUniqueOrThrow({ where: { id: assignmentId } });
+    expect(after.status).toBe("IN_PROGRESS");
+    expect(after.completedAt).toBeNull();
+  });
+
+  it("closes it when they finish once the clock allows it", async () => {
+    const { studentId, attemptId, assignmentId } = await buildAttempt({ gradedMinutesAgo: 1 });
+
+    await completeStage(attemptId, studentId, "COMPLETE");
 
     const after = await prisma.dailyAssignment.findUniqueOrThrow({ where: { id: assignmentId } });
     expect(after.status).toBe("COMPLETED");

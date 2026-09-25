@@ -113,10 +113,17 @@ describe("an interrupted CHECK retry", () => {
     await submitStage(attempt.id, studentId, "CHECK");
     await retryQuestion(attempt.id, studentId, q1);
 
-    // Backdate the grading so it looks old enough to settle.
+    // Backdate the grading so it looks old enough to settle, and give the attempt a period's
+    // worth of time — settling closes a period, and a period is only over when its clock has
+    // run. A lesson still mid-period is deliberately left open, because closing the tab must
+    // not be a way of ending one.
     await prisma.activityAttempt.updateMany({
       where: { lessonAttemptId: attempt.id, stage: "CHECK" },
       data: { gradedAt: new Date(Date.now() - 30 * 60 * 1000) },
+    });
+    await prisma.lessonAttempt.update({
+      where: { id: attempt.id },
+      data: { timeSpentSeconds: 46 * 60 },
     });
 
     const settled = await settleFinishedLessons(studentId);

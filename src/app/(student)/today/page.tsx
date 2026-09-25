@@ -1,3 +1,4 @@
+import { redirect } from "next/navigation";
 import { formatInTimeZone } from "date-fns-tz";
 import { FileText, BookOpen, CalendarClock, CheckCircle2, PartyPopper, Sparkles } from "lucide-react";
 import { requireStudent } from "@/lib/auth/session";
@@ -5,6 +6,7 @@ import { SCHOOL_TIMEZONE, isoWeekday, schoolDayKey } from "@/lib/dates";
 import { ensureDayPlanned, getTodayView } from "@/lib/scheduling/planner";
 import { subjectSupply } from "@/lib/scheduling/gaps";
 import { catchUpRunning } from "@/lib/curriculum/autofill";
+import { unfinishedPeriod } from "@/lib/lessons/service";
 import { WaitingForLessons } from "@/components/student/WaitingForLessons";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
@@ -32,6 +34,24 @@ export default async function TodayPage({
   const isWeekend = isoWeekday(dateKey) > 5;
 
   await ensureDayPlanned(profileId, dateKey);
+
+  /**
+   * Back into the lesson they were in the middle of.
+   *
+   * A period that has been started and has time left on it is where this child is, whatever
+   * they did to the browser. Closing the tab, reopening the app, switching from the iPad to a
+   * Chromebook — none of it ends a period, and coming back to the board and finding the lesson
+   * ticked was the loophole a nine year old found inside a day.
+   *
+   * Worked out on the server, because the child may come back an hour later on another device,
+   * where nothing the page remembered still exists — and because anything the page remembers is
+   * something the child can edit.
+   */
+  const resume = await unfinishedPeriod(profileId, dateKey).catch(() => null);
+  if (resume) {
+    redirect(`/lessons/${resume.lessonId}?assignmentId=${resume.assignmentId}`);
+  }
+
   const view = await getTodayView(profileId, dateKey);
 
   // A short day has a reason, and the child is the one looking at it. Better they read "two

@@ -1403,7 +1403,22 @@ export function LessonPlayer(props: LessonPlayerProps) {
           ) : (
             <>
               {extraMode === "TEST" && testPassed ? (
-                <Button onClick={() => setViewStage("COMPLETE")}>All right — finish the lesson</Button>
+                /*
+                  Passed: straight into the next topic, inside this period.
+                  
+                  This used to go to the finish screen, which is behind the period lock — so a
+                  child who had just proved they knew the topic was shown a door that would not
+                  open. Knowing it is the reason to move on, and moving on is what happens.
+                */
+                nextLessonId && minutesLeftInPeriod >= 8 ? (
+                  <Button href={`/lessons/${nextLessonId}`}>
+                    Start {nextLessonTitle ? `"${nextLessonTitle}"` : "the next topic"}
+                  </Button>
+                ) : (
+                  <Button onClick={() => setViewStage(minutesLeftInPeriod > 0 ? "FEEDBACK" : "COMPLETE")}>
+                    {minutesLeftInPeriod > 0 ? "Back to my lesson" : "All right — finish the lesson"}
+                  </Button>
+                )
               ) : (
                 <Button variant="secondary" onClick={() => void practiseMore()} disabled={generatingPractice}>
                   {generatingPractice ? "Writing more…" : "More like these"}
@@ -1962,22 +1977,65 @@ export function LessonPlayer(props: LessonPlayerProps) {
           mistakes rather than being the same quiz again. They can still choose to stop: this
           is a nudge with a reason, not a lock on the door.
         */}
-        {secure && timeRemaining >= 5 ? (
-          // A period is 45 minutes. Finishing the quiz in twelve does not end the lesson — it
-          // means the content ran out, and the honest response is more of it, not a break.
+        {/*
+          Prove it, then move on.
+
+          This used to offer "harder questions on the same topic", which is how a child spent
+          forty-five minutes on an idea they had already got — the thing that was actually
+          complained about. A school moves on when you have shown you know it, so that is the
+          shape: pass a short test on this topic and the next one starts inside this period.
+
+          The test is not optional and not a reward. Getting the quiz right can be luck or
+          pattern-matching across four options; a second set of questions, written fresh, is the
+          difference between having answered and knowing.
+
+          It lives here rather than on the finish screen because the finish screen is behind the
+          period lock — which is why the topics never changed however many times it was asked
+          for. The path existed and nothing could reach it.
+        */}
+        {secure && minutesLeftInPeriod >= 8 ? (
           <Card padding="lg" className="space-y-3 bg-accent-soft">
             <h3 className="text-base font-semibold text-ink">
-              Good — and there&apos;s still {timeRemaining} minutes of this lesson.
+              {testPassed
+                ? "You've shown me you know this one."
+                : `Good — and there's still ${minutesLeftInPeriod} minutes of this lesson.`}
             </h3>
-            <p className="text-sm text-ink">
-              Let&apos;s use them. Your teacher can set you harder questions on the same topic.
-            </p>
-            <div className="flex flex-wrap items-center gap-3">
-              <Button onClick={() => void practiseMore()} disabled={generatingPractice}>
-                {generatingPractice ? "Writing your questions…" : "Keep going"}
-              </Button>
-            </div>
-            {practiceError ? <p className="text-sm text-danger">{practiceError}</p> : null}
+            {testPassed ? (
+              <>
+                <p className="text-sm text-ink">
+                  So we move on. {nextLessonTitle ? `Next: ${nextLessonTitle}.` : "On to the next topic."}
+                  {" "}If we don&apos;t finish it today you&apos;ll pick it up tomorrow.
+                </p>
+                {nextLessonId ? (
+                  <Button href={`/lessons/${nextLessonId}`}>
+                    Start {nextLessonTitle ? `"${nextLessonTitle}"` : "the next topic"}
+                  </Button>
+                ) : (
+                  <Button onClick={() => void practiseMore()} disabled={generatingPractice}>
+                    {generatingPractice ? "Writing your questions…" : "Give me something harder"}
+                  </Button>
+                )}
+              </>
+            ) : (
+              <>
+                <p className="text-sm text-ink">
+                  Show me you&apos;ve really got this and we&apos;ll start the next topic. A few
+                  questions — get them right and we move on.
+                </p>
+                <div className="flex flex-wrap items-center gap-3">
+                  {extraPractice.length > 0 ? (
+                    <Button onClick={() => setViewStage("PRACTICE")}>
+                      {extraMode === "TEST" ? "Back to your test" : "Back to your practice"}
+                    </Button>
+                  ) : (
+                    <Button onClick={() => void takeFinalTest()} disabled={generatingPractice}>
+                      {generatingPractice ? "Writing your questions…" : "Test me on this topic"}
+                    </Button>
+                  )}
+                </div>
+              </>
+            )}
+            {practiceError ? <p className="text-sm text-ink-muted">{practiceError}</p> : null}
           </Card>
         ) : null}
 
