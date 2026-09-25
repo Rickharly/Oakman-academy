@@ -1,5 +1,5 @@
 import { formatInTimeZone } from "date-fns-tz";
-import { BookOpen, CalendarClock, CheckCircle2, PartyPopper, Sparkles } from "lucide-react";
+import { FileText, BookOpen, CalendarClock, CheckCircle2, PartyPopper, Sparkles } from "lucide-react";
 import { requireStudent } from "@/lib/auth/session";
 import { SCHOOL_TIMEZONE, isoWeekday, schoolDayKey } from "@/lib/dates";
 import { ensureDayPlanned, getTodayView } from "@/lib/scheduling/planner";
@@ -108,14 +108,19 @@ export default async function TodayPage({
                 assignment.status === "IN_PROGRESS" || assignment.progress?.status === "IN_PROGRESS";
               const buttonLabel = isCompleted ? "Review" : isInProgress ? "Continue" : "Start";
               const isReading = assignment.kind === "READING";
+              const isExam = assignment.kind === "EXAM";
               const title = isReading
                 ? "Reading"
                 : (lesson?.title ?? assignment.customTitle ?? "Assignment");
-              const href = isReading
-                ? `/reading?assignmentId=${assignment.id}`
-                : lesson
-                  ? `/lessons/${lesson.id}?assignmentId=${assignment.id}&kind=${assignment.kind}`
-                  : undefined;
+              const href = isExam
+                ? assignment.examId
+                  ? `/exams/${assignment.examId}`
+                  : undefined
+                : isReading
+                  ? `/reading?assignmentId=${assignment.id}`
+                  : lesson
+                    ? `/lessons/${lesson.id}?assignmentId=${assignment.id}&kind=${assignment.kind}`
+                    : undefined;
 
               return (
                 <Card
@@ -144,6 +149,12 @@ export default async function TodayPage({
                         {isReading ? (
                           <Badge tone="neutral">
                             <BookOpen className="h-3 w-3" /> Reading & writing
+                          </Badge>
+                        ) : null}
+                        {/* An exam is not a lesson and should not look like one on the board. */}
+                        {isExam ? (
+                          <Badge tone="accent">
+                            <FileText className="h-3 w-3" /> Exam — on your own
                           </Badge>
                         ) : null}
                         {assignment.optional ? <Badge tone="neutral">Optional</Badge> : null}

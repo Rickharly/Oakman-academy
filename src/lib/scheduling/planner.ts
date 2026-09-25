@@ -11,6 +11,7 @@ import { alignSchedulesToEnrolments, enrolStudentInYearGroup, fixYearGroupEnrolm
 import { settleFinishedLessons } from "@/lib/lessons/service";
 import { isLessonDone } from "@/lib/progress/aggregate";
 import { ensureLessonAssets } from "@/lib/curriculum/sync";
+import { ensureExamForDay } from "@/lib/exams/schedule";
 import { catchUpImport } from "@/lib/curriculum/autofill";
 
 const REVIEW_MINUTES = 15;
@@ -453,13 +454,27 @@ export async function ensureDayPlanned(studentId: string, dateKey: string): Prom
   const student = await prisma.studentProfile.findUnique({ where: { id: studentId } });
   if (!student) return existing;
 
+  /**
+   * Friday's exam, before anything else is decided about the day.
+   *
+   * It has to come first for two reasons: it takes a period, so the lessons have to be planned
+   * around it rather than on top of it; and a day that already looks full would otherwise turn
+   * the planner round at the door and the exam would never appear at all.
+   */
+  await ensureExamForDay(studentId, dateKey).catch(() => undefined);
+  const examToday = await prisma.dailyAssignment.count({
+    where: { studentId, date: dayDate, kind: "EXAM", status: { not: "MOVED" } },
+  });
+  // An exam is a period of the day, so it is one fewer lesson — not a sixth period bolted on.
+  const lessonsWanted = Math.max(1, student.lessonsPerDay - examToday);
+
   // Repair first, always.
   //
   // A day that is already the right length can still be the wrong day: five periods made of
   // three maths and two English counts as full, so checking the length first meant days like
   // that were never looked at again. Trimming runs unconditionally now, and it removes repeated
   // subjects as well as surplus periods.
-  await trimDayToTimetable(studentId, dayDate, student.lessonsPerDay);
+  await trimDayToTimetable(studentId, dayDate, lessonsWanted);
   const afterTrim = await read();
 
   /**
@@ -472,10 +487,10 @@ export async function ensureDayPlanned(studentId: string, dateKey: string): Prom
    * timetable; it is not a period of it, and it can never stand in for one.
    */
   const lessonsToday = afterTrim.filter((a) => a.kind === "LESSON" && a.status !== "MOVED").length;
-  if (lessonsToday >= student.lessonsPerDay) return afterTrim;
+  if (lessonsToday >= lessonsWanted) return afterTrim;
 
   await planWeek(studentId, dateKey);
-  await trimDayToTimetable(studentId, dayDate, student.lessonsPerDay);
+  await trimDayToTimetable(studentId, dayDate, lessonsWanted);
   const planned = await read();
 
   // Still short after planning? Then a subject has run out of lessons, and a child is looking
@@ -483,7 +498,7 @@ export async function ensureDayPlanned(studentId: string, dateKey: string): Prom
   // having to notice and press anything.
   // New material specifically: a day propped up with revision still needs its real lessons.
   const lessonsPlanned = planned.filter((a) => a.kind === "LESSON" && a.status !== "MOVED").length;
-  if (lessonsPlanned < student.lessonsPerDay) void catchUpImport(studentId).catch(() => undefined);
+  if (lessonsPlanned < lessonsWanted) void catchUpImport(studentId).catch(() => undefined);
 
   /**
    * Today's videos, collected before anybody opens them.

@@ -109,6 +109,7 @@ model StudentProfile {
   activityLogs   ActivityLog[]
   generatedQuestions Question[] @relation("GeneratedFor")
   understandingGaps  UnderstandingGap[]
+  exams              Exam[]
 }
 
 model ParentStudentLink {
@@ -246,6 +247,7 @@ model Lesson {
   observations AiLearningObservation[]
   overrides   ParentOverride[]
   understandingGaps UnderstandingGap[]
+  examQuestions ExamQuestion[]
 
   @@unique([provider, providerSlug])
   @@index([unitId, order])
@@ -340,6 +342,7 @@ model Question {
 
   attempts    QuestionAttempt[]
   reviewItems ReviewItem[]
+  examQuestions ExamQuestion[]
   overrides   ParentOverride[]
 
   @@unique([lessonId, source, providerRef])
@@ -382,6 +385,8 @@ enum AssignmentKind {
   REVIEW
   CUSTOM
   READING
+  /// A sat exam covering a stretch of work, not one lesson. No teacher help.
+  EXAM
 }
 
 enum AssignmentSource {
@@ -416,6 +421,9 @@ model DailyAssignment {
   readingTextId    String?
   readingText      ReadingText?     @relation(fields: [readingTextId], references: [id])
   customTitle      String?
+  /// The exam this period is, when it is one.
+  examId           String?
+  exam             Exam?            @relation(fields: [examId], references: [id])
   customInstructions String?
   estimatedMinutes Int              @default(45)
   optional         Boolean          @default(false)
@@ -1075,4 +1083,67 @@ model UnderstandingGap {
 
   @@index([studentId, status])
   @@index([lessonAttemptId])
+}
+
+// ───────────────────────────── Exams ─────────────────────────────
+
+enum ExamKind {
+  /// Friday: everything covered this week.
+  WEEKLY
+  /// Everything studied so far — used the first time, and whenever a parent asks for one.
+  CATCH_UP
+}
+
+enum ExamStatus {
+  IN_PROGRESS
+  GRADED
+}
+
+/// A sat exam. Deliberately not a lesson: nobody helps, there is no teaching in it, and it is
+/// the one place the app finds out what a child can do unaided.
+model Exam {
+  id          String         @id @default(cuid())
+  studentId   String
+  student     StudentProfile @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  kind        ExamKind
+  title       String
+  /// The stretch of work it covers. Null `coversFrom` means "everything so far".
+  coversFrom  DateTime?
+  coversTo    DateTime
+  status      ExamStatus     @default(IN_PROGRESS)
+  scorePct    Float?
+  /// The letter, worked out from the percentage: "B+", "A-", "F".
+  grade       String?
+  /// The teacher's note on the result — what went well, what to go back to.
+  summary     String?
+  startedAt   DateTime       @default(now())
+  submittedAt DateTime?
+
+  questions   ExamQuestion[]
+  assignments DailyAssignment[]
+
+  @@index([studentId, startedAt])
+}
+
+/// One question on one exam, and how it went. Questions are the lessons' own — an exam that
+/// invents its own questions tests something other than what was taught.
+model ExamQuestion {
+  id         String    @id @default(cuid())
+  examId     String
+  exam       Exam      @relation(fields: [examId], references: [id], onDelete: Cascade)
+  questionId String
+  question   Question  @relation(fields: [questionId], references: [id])
+  /// The lesson this question came from: the topic a wrong answer sends them back to.
+  lessonId   String
+  lesson     Lesson    @relation(fields: [lessonId], references: [id])
+  order      Int
+  response   Json?
+  isCorrect  Boolean?
+  score      Float?
+  maxScore   Float     @default(1)
+  feedback   String?
+  answeredAt DateTime?
+
+  @@unique([examId, questionId])
+  @@index([examId, order])
 }
