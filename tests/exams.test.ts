@@ -207,3 +207,52 @@ describe("exam day", () => {
     expect(all).toHaveLength(1);
   });
 });
+
+describe("after the paper is handed in", () => {
+  beforeEach(async () => {
+    await resetDb();
+  });
+
+  it("ticks the period on the board", async () => {
+    // Handing in a paper and having the day still say "Start" is the same fault the lessons
+    // had: the work was done and the record said otherwise.
+    const { studentId, lessons } = await buildStudentWhoHasStudied(2);
+    await markStudied(studentId, lessons.map((l) => l.id));
+    await ensureExamForDay(studentId, FRIDAY);
+
+    const assignment = await prisma.dailyAssignment.findFirstOrThrow({
+      where: { studentId, kind: "EXAM" },
+    });
+    expect(assignment.status).toBe("PLANNED");
+
+    await submitExam(assignment.examId!, studentId);
+
+    const after = await prisma.dailyAssignment.findUniqueOrThrow({ where: { id: assignment.id } });
+    expect(after.status).toBe("COMPLETED");
+    expect(after.completedAt).not.toBeNull();
+  });
+
+  it("hands back the questions they got wrong, not just the topics", async () => {
+    const { studentId, lessons } = await buildStudentWhoHasStudied(2);
+    await markStudied(studentId, lessons.map((l) => l.id));
+    const exam = await buildExam(studentId, { kind: "CATCH_UP", from: null, to: new Date(), title: "T" });
+
+    const rows = await prisma.examQuestion.findMany({ where: { examId: exam!.id } });
+    for (const row of rows) {
+      await saveExamAnswer(row.id, studentId, { value: row.lessonId === lessons[0].id });
+    }
+
+    const result = await submitExam(exam!.id, studentId);
+    expect(result.missed.length).toBeGreaterThan(0);
+    // The question itself, with its words — something a child can actually be asked again.
+    expect(result.missed.every((m) => m.prompt.length > 0)).toBe(true);
+    expect(result.missed.every((m) => m.lessonId === lessons[1].id)).toBe(true);
+
+    // And the review carries the specific question, so what comes back is what went wrong.
+    const review = await prisma.reviewItem.findFirstOrThrow({
+      where: { studentId, lessonId: lessons[1].id, status: "PENDING" },
+    });
+    expect(review.questionId).not.toBeNull();
+    expect(review.detail).toContain("Ask again:");
+  });
+});

@@ -19,6 +19,7 @@ import { gradeQuestion, type GradingContext } from "@/lib/grading/grade";
 import { isLessonDone } from "@/lib/progress/aggregate";
 import { letterGrade } from "./grade";
 import { plainQuestion } from "@/lib/questions/display";
+import { plainMaths } from "@/lib/text/maths";
 
 /** Long enough to be a real measurement, short enough to sit in one period. */
 const MAX_QUESTIONS = 20;
@@ -182,6 +183,16 @@ export async function saveExamAnswer(
   });
 }
 
+export interface ExamMissedQuestion {
+  questionId: string;
+  lessonId: string;
+  lessonTitle: string;
+  prompt: string;
+  /** What they put. Shown back to them, because "you got it wrong" teaches nothing on its own. */
+  theirAnswer: unknown;
+  feedback: string | null;
+}
+
 export interface ExamResult {
   exam: Exam;
   scorePct: number;
@@ -189,6 +200,8 @@ export interface ExamResult {
   meaning: string;
   topics: ExamTopicResult[];
   weakTopics: ExamTopicResult[];
+  /** Every question they got wrong, to be asked again. */
+  missed: ExamMissedQuestion[];
 }
 
 /**
@@ -270,12 +283,34 @@ export async function submitExam(examId: string, studentId: string): Promise<Exa
   const weakTopics = topics.filter((t) => t.right < t.asked);
 
   /**
+   * The questions themselves, not just the topics they came from.
+   *
+   * A topic marked "go back over this" is a label. The question they actually got wrong,
+   * asked again after it has been explained, is the thing that shows whether going back over it
+   * worked — and it is what was asked for: give them the ones they got wrong, again.
+   */
+  const missed: ExamMissedQuestion[] = marked
+    .filter((row) => row.isCorrect === false)
+    .map((row) => {
+      const source = exam.questions.find((q) => q.id === row.id)!;
+      return {
+        questionId: source.questionId,
+        lessonId: source.lessonId,
+        lessonTitle: source.lesson.title,
+        prompt: plainMaths(source.question.prompt),
+        theirAnswer: row.response,
+        feedback: row.feedback ?? null,
+      };
+    });
+
+  /**
    * What they got wrong comes back.
    *
    * One review item per topic missed, which is what the planner reads — so a wrong answer on
    * Friday is a piece of work on Monday rather than a line in a report nobody acts on.
    */
   for (const topic of weakTopics) {
+    const missedHere = missed.filter((m) => m.lessonId === topic.lessonId);
     const existing = await prisma.reviewItem.findFirst({
       where: { studentId, lessonId: topic.lessonId, status: "PENDING", reason: "LOW_SCORE" },
     });
@@ -284,8 +319,13 @@ export async function submitExam(examId: string, studentId: string): Promise<Exa
       data: {
         studentId,
         lessonId: topic.lessonId,
+        // The exact question, so what comes back is what they actually got wrong rather than
+        // the topic in general.
+        questionId: missedHere[0]?.questionId ?? null,
         reason: "LOW_SCORE",
-        detail: `Missed ${topic.asked - topic.right} of ${topic.asked} on the ${exam.title}.`,
+        detail:
+          `Missed ${topic.asked - topic.right} of ${topic.asked} on the ${exam.title}. ` +
+          (missedHere.length > 0 ? `Ask again: ${missedHere.map((m) => m.prompt).join(" | ")}` : ""),
         dueAt: new Date(),
       },
     });
@@ -299,6 +339,18 @@ export async function submitExam(examId: string, studentId: string): Promise<Exa
       grade: letter,
       submittedAt: exam.submittedAt ?? new Date(),
     },
+  });
+
+  /**
+   * The period ticks on the board, because they sat the exam.
+   *
+   * Handing in a paper and having the day still say "Start" is the same fault the lessons had:
+   * the work was done and the record said otherwise. Marked here rather than by a button,
+   * because the paper being marked *is* the finishing of it.
+   */
+  await prisma.dailyAssignment.updateMany({
+    where: { examId: exam.id, studentId, status: { in: ["PLANNED", "IN_PROGRESS"] } },
+    data: { status: "COMPLETED", completedAt: new Date() },
   });
 
   await prisma.activityLog.create({
@@ -315,7 +367,7 @@ export async function submitExam(examId: string, studentId: string): Promise<Exa
     },
   });
 
-  return { exam: updated, scorePct, grade: letter, meaning, topics, weakTopics };
+  return { exam: updated, scorePct, grade: letter, meaning, topics, weakTopics, missed };
 }
 
 export type { Exam, ExamQuestion };

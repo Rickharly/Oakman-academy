@@ -101,9 +101,28 @@ export interface TimetableResult {
  * timetable and reported as waiting — the planner simply skips it until lessons arrive, which
  * is better than pretending the subject was never asked for.
  */
+/** The shape of a school day, the same for every child in the family. */
+export const PERIODS_PER_DAY = 5;
+export const PERIOD_MINUTES = 45;
+
 export async function applyCoreTimetable(studentId: string): Promise<TimetableResult> {
   const student = await prisma.studentProfile.findUnique({ where: { id: studentId } });
   if (!student) return { scheduled: 0, awaitingMaterial: [] };
+
+  /**
+   * The same day length for both children.
+   *
+   * A period is per-child and editable, which is right — and it meant one of them quietly had
+   * shorter lessons than the other, with nothing anywhere saying so. Two children in the same
+   * house doing the same school day is a family decision, so it belongs in the family's week
+   * rather than in two settings forms somebody has to remember to keep in step.
+   */
+  if (student.lessonsPerDay !== PERIODS_PER_DAY || student.lessonMinutes !== PERIOD_MINUTES) {
+    await prisma.studentProfile.update({
+      where: { id: studentId },
+      data: { lessonsPerDay: PERIODS_PER_DAY, lessonMinutes: PERIOD_MINUTES },
+    });
+  }
 
   const awaiting: string[] = [];
   let scheduled = 0;

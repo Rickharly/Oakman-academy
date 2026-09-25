@@ -978,7 +978,11 @@ export async function timetableCheck(): Promise<Check> {
     ]);
 
     lines.push(
-      `${student.user.displayName} — Year ${student.yearGroup}, ${student.lessonsPerDay} periods/day`,
+      // The period length too: one child quietly had shorter lessons than the other, and
+      // nothing on any page said so.
+      `${student.user.displayName} — Year ${student.yearGroup}, ` +
+        `${student.lessonsPerDay} periods/day × ${student.lessonMinutes} min` +
+        `${student.lessonMinutes !== 45 ? "  <-- NOT A 45 MINUTE PERIOD" : ""}`,
     );
     lines.push(
       `  today: ${today.filter((a) => a.kind === "LESSON").length} lesson(s), ` +

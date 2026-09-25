@@ -185,7 +185,20 @@ async function chat(input: ChatInput): Promise<ChatResult> {
     let tokensOut: number | undefined;
 
     try {
-      for await (const event of ai.stream({ model: "fast", system, messages, tools })) {
+      /**
+       * The teacher runs on the strong model.
+       *
+       * She was on the fast one, and no amount of rewriting the brief was ever going to fix
+       * that: "explain it with a story from her own life, then work an example all the way
+       * through, then check it landed" is a lot to ask of a small model, and what came back was
+       * the short mechanical answer Eva kept complaining about. The written lessons were always
+       * good because they were always written by the strong model — the difference was never
+       * the instructions, it was which brain read them.
+       *
+       * This is the single most-used, most-important call in the app: it is the teacher, in the
+       * room, at the moment a child says they do not understand. It gets the better model.
+       */
+      for await (const event of ai.stream({ model: "strong", system, messages, tools })) {
         if (event.type === "text") {
           text += event.text;
           yield event.text;

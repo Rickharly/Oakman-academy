@@ -75,3 +75,26 @@ describe("the family's week", () => {
     expect(slugs).toHaveLength(CORE_TIMETABLE.length);
   });
 });
+
+describe("the length of a school day", () => {
+  beforeEach(async () => {
+    await resetDb();
+  });
+
+  it("is the same for every child in the family", async () => {
+    // One of them quietly had shorter lessons than the other, with nothing on any page saying
+    // so, because the period length is per-child and nobody kept the two forms in step.
+    const user = await prisma.user.create({
+      data: { role: "STUDENT", username: "mikhael2", passwordHash: "x", displayName: "Mikhael" },
+    });
+    const student = await prisma.studentProfile.create({
+      data: { userId: user.id, yearGroup: 4, keyStage: "ks2", lessonsPerDay: 4, lessonMinutes: 25 },
+    });
+
+    await applyCoreTimetable(student.id);
+
+    const after = await prisma.studentProfile.findUniqueOrThrow({ where: { id: student.id } });
+    expect(after.lessonMinutes).toBe(45);
+    expect(after.lessonsPerDay).toBe(5);
+  });
+});

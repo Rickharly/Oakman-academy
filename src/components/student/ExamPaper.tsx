@@ -26,12 +26,20 @@ export type ExamPaperQuestion = LessonPlayerQuestion & {
   response?: unknown;
 };
 
+type Missed = {
+  questionId: string;
+  lessonTitle: string;
+  prompt: string;
+  feedback: string | null;
+};
+
 type Result = {
   scorePct: number;
   grade: string;
   meaning: string;
   topics: { lessonTitle: string; subject: string; asked: number; right: number }[];
   weakTopics: { lessonTitle: string; subject: string; asked: number; right: number }[];
+  missed?: Missed[];
 };
 
 export function ExamPaper({
@@ -117,6 +125,29 @@ export function ExamPaper({
             ))}
           </ul>
         </Card>
+
+        {/*
+          The questions themselves, put back in front of them.
+
+          A list of topics to "go back over" is a label. Seeing the actual question you got
+          wrong, with what the right answer was, is the part that teaches — and it was asked
+          for directly: give them the ones they got wrong, again.
+        */}
+        {result.missed && result.missed.length > 0 ? (
+          <Card padding="lg" className="space-y-4">
+            <h2 className="text-base font-semibold text-ink">The ones that went wrong</h2>
+            {result.missed.map((item) => (
+              <div key={item.questionId} className="space-y-1 border-l-2 border-warning/50 pl-4">
+                <p className="text-xs font-medium text-ink-faint">{item.lessonTitle}</p>
+                <p className="text-sm font-medium text-ink">{item.prompt}</p>
+                {item.feedback ? <p className="text-sm text-ink-muted">{item.feedback}</p> : null}
+              </div>
+            ))}
+            <p className="text-sm text-ink-muted">
+              You&apos;ll get these again in your lessons — properly taught first, then asked.
+            </p>
+          </Card>
+        ) : null}
 
         {result.weakTopics.length > 0 ? (
           <Card padding="lg" className="space-y-2 border-warning/30 bg-warning-soft/40">

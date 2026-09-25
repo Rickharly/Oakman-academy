@@ -28,6 +28,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ examId: string
       meaning: result.meaning,
       topics: result.topics,
       weakTopics: result.weakTopics,
+      missed: result.missed,
     });
   } catch (err) {
     return jsonError(err);
