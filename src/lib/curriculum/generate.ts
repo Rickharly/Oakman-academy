@@ -33,6 +33,42 @@ const SUBJECT_TITLES: Record<string, string> = {
   geography: "Geography",
   art: "Art",
   music: "Music",
+  /**
+   * Two subjects the provider does not carry, and a home school can decide to take seriously.
+   *
+   * "Writing" is separated from "English" deliberately. Oak's English is mostly reading and
+   * comprehension; being able to plan a piece, argue a point and finish a paragraph is a
+   * different skill that gets taught in the gaps of the other one and so never gets taught.
+   *
+   * "Logic" has no place on the English national curriculum at all, which is not the same as
+   * it not being worth an hour a week.
+   */
+  writing: "Writing",
+  logic: "Logic",
+};
+
+
+/**
+ * What a subject is for, where the national curriculum does not say.
+ *
+ * Writing and Logic are not on it, so without this the model is left to guess what a "Logic
+ * lesson" is and guesses differently every time — which is how a subject ends up as a pile of
+ * unrelated puzzles instead of a course.
+ */
+const SUBJECT_BRIEF: Record<string, string> = {
+  writing:
+    "This is writing as a craft, not comprehension — that is covered separately in English. " +
+    "Sentence and paragraph construction, planning a piece before starting it, description, " +
+    "argument, narrative, writing for a purpose and an audience, editing your own work. Every " +
+    "lesson ends with the child having written something of their own.",
+  logic:
+    "Reasoning, taught properly and in order: what makes an argument valid, spotting an " +
+    "assumption, necessary and sufficient, sequences and patterns, simple deduction puzzles, " +
+    "cause versus correlation, and the common ways people go wrong. Make them think hard — " +
+    "the point is difficulty they can actually climb, not trivia.",
+  maths:
+    "Fluency first, then reasoning, then problem solving. Every lesson should include at least " +
+    "one question that cannot be answered by repeating the method without understanding it.",
 };
 
 export const sequenceSchema = z.object({
@@ -142,6 +178,8 @@ export async function generateLessons(
     system: [
       `Plan the next ${wanted} lessons of ${titleCase(subjectSlug)} for a Year ${yearGroup} child in`,
       "England, following the national curriculum for that year.",
+      "",
+      SUBJECT_BRIEF[subjectSlug] ?? "",
       "",
       "These are real lessons a child will sit down and do, one per 45-minute period, in the",
       "order given. Each must build on the one before it.",

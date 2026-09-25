@@ -24,6 +24,8 @@ export function DiagnosticsPanel() {
   const [sending, setSending] = useState(false);
   const [sent, setSent] = useState<{ ok: boolean; message: string } | null>(null);
   const [rebuilding, setRebuilding] = useState(false);
+  const [applyingWeek, setApplyingWeek] = useState(false);
+  const [weekResult, setWeekResult] = useState<string | null>(null);
   const [rebuilt, setRebuilt] = useState<string | null>(null);
 
   /**
@@ -34,6 +36,34 @@ export function DiagnosticsPanel() {
    * page and have no way to touch it, waiting for a child to reload something. This is the
    * button that was missing.
    */
+  /**
+   * Puts every child on the family's week: English and Writing and Maths daily, Logic and
+   * Science three times, History and Geography twice. Safe to press again.
+   */
+  async function applyWeek() {
+    setApplyingWeek(true);
+    setWeekResult(null);
+    try {
+      const res = await fetch("/api/admin/timetable", { method: "POST" });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "Could not set the week.");
+      const waiting = (data.results ?? [])
+        .filter((r: { awaitingMaterial: string[] }) => r.awaitingMaterial.length > 0)
+        .map((r: { name: string; awaitingMaterial: string[] }) => `${r.name}: ${r.awaitingMaterial.join(", ")}`)
+        .join(" · ");
+      setWeekResult(
+        waiting
+          ? `Week set. Still writing the first lessons for — ${waiting}. They appear as they are written.`
+          : "Week set, and every subject has material.",
+      );
+      void run();
+    } catch (err) {
+      setWeekResult(err instanceof Error ? err.message : "Could not set the week.");
+    } finally {
+      setApplyingWeek(false);
+    }
+  }
+
   async function rebuild() {
     setRebuilding(true);
     setRebuilt(null);
@@ -127,6 +157,24 @@ export function DiagnosticsPanel() {
       </div>
 
       {error ? <p className="text-sm text-danger">{error}</p> : null}
+
+      <Card padding="md" className="space-y-3">
+        <div>
+          <p className="text-sm font-semibold text-ink">The family&apos;s week</p>
+          <p className="text-sm text-ink-muted">
+            Maths, English and Writing every day; Logic and Science three times; History and
+            Geography twice. Writing and Logic are written here rather than imported, so the
+            first lessons take a few minutes to appear the first time.
+          </p>
+        </div>
+        <div className="flex flex-wrap items-center gap-3">
+          <Button onClick={() => void applyWeek()} disabled={applyingWeek} variant="secondary">
+            {applyingWeek ? <Loader2 className="h-4 w-4 animate-spin" /> : <CalendarCheck className="h-4 w-4" />}
+            {applyingWeek ? "Setting the week…" : "Set the week"}
+          </Button>
+        </div>
+        {weekResult ? <p className="text-sm text-ink">{weekResult}</p> : null}
+      </Card>
 
       <Card padding="md" className="space-y-3">
         <div>
