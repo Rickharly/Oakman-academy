@@ -19,6 +19,7 @@
 import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { getAiProvider } from "@/lib/ai/provider";
+import { parseNumericAnswer } from "@/lib/questions/oak-mapper";
 import type { Lesson } from "@/generated/prisma/client";
 
 /** Stamped on everything written here, so it is never confused with the provider's own. */
@@ -283,9 +284,12 @@ async function writeQuiz(lesson: Lesson, subjectSlug: string, yearGroup: number)
       options = { choices: rotated };
       answerKey = { correctOptionId: correctId };
     } else if (q.type === "NUMERIC") {
-      const value = Number(String(q.acceptedAnswers?.[0] ?? "").replace(/[^0-9.-]/g, ""));
-      if (!Number.isFinite(value)) continue;
-      answerKey = { value, tolerance: 0, acceptedStrings: q.acceptedAnswers ?? [] };
+      // Naively stripping everything but digits/"-" turns "3/4" into 34; reuse the
+      // fraction-aware parser worksheet questions already use instead.
+      const first = q.acceptedAnswers?.[0];
+      const parsed = first ? parseNumericAnswer(first) : null;
+      if (!parsed) continue;
+      answerKey = { value: parsed.value, tolerance: 0, acceptedStrings: q.acceptedAnswers ?? [] };
     } else {
       answerKey = { accepted: q.acceptedAnswers ?? [], caseSensitive: false };
     }

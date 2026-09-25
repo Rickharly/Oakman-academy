@@ -39,7 +39,14 @@ export default async function AdminReportsPage({
   const selected = students.find((s) => s.studentProfile!.id === selectedParam) ?? students[0];
   const studentId = selected.studentProfile!.id;
 
-  const reports = await prisma.report.findMany({ where: { studentId }, orderBy: { createdAt: "desc" }, take: 12 });
+  // Only the periodic reports. The academic record is saved in the same table under its own
+  // period, with a different shape — listing it here read `reviewOutcomes` off a document that
+  // has none, and this page crashed for a child the moment their record had been written once.
+  const reports = await prisma.report.findMany({
+    where: { studentId, period: { in: ["WEEKLY", "MONTHLY"] } },
+    orderBy: { createdAt: "desc" },
+    take: 12,
+  });
 
   return (
     <>
@@ -72,7 +79,11 @@ export default async function AdminReportsPage({
       ) : null}
 
       <Card padding="lg" className="no-print mb-8">
-        <ReportGenerator studentId={studentId} weekStartKey={weekStartKey(schoolDayKey())} />
+        <ReportGenerator
+          studentId={studentId}
+          weekStartKey={weekStartKey(schoolDayKey())}
+          monthStartKey={`${schoolDayKey().slice(0, 8)}01`}
+        />
       </Card>
 
       {reports.length === 0 ? (
@@ -160,7 +171,7 @@ export default async function AdminReportsPage({
                   </div>
                 ) : null}
 
-                {data.reviewOutcomes.length > 0 ? (
+                {(data.reviewOutcomes ?? []).length > 0 ? (
                   <div className="flex flex-wrap gap-2">
                     {data.reviewOutcomes.map((r) => (
                       <Badge key={r.reason} tone="neutral">

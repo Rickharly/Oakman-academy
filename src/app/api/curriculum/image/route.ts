@@ -12,6 +12,7 @@
 import { ApiError, jsonError, requireUserApi } from "@/lib/auth/api";
 import { prisma } from "@/lib/db";
 import { imageSchema, optionSchema } from "@/lib/questions/types";
+import { resolveAssetUrl } from "@/lib/curriculum/asset-fetch";
 import { z } from "zod";
 
 export const dynamic = "force-dynamic";
@@ -42,13 +43,20 @@ export async function GET(req: Request) {
       const image = imageSchema.safeParse(question.promptImage);
       source = image.success ? image.data.url : null;
     }
-    if (!source || !/^https?:\/\//i.test(source)) throw new ApiError(404, "That question has no picture.");
+    if (!source) throw new ApiError(404, "That question has no picture.");
+
+    // Oak's own asset endpoints hand back paths relative to the API, the same as any other
+    // provider asset link — resolved the same way `fetchProviderAsset` resolves them, so a
+    // stored picture reference isn't wrongly treated as missing just because it wasn't already
+    // absolute. `resolveAssetUrl` itself throws a 404 for a scheme we don't resolve
+    // (`fixture://` placeholder content), which is exactly "this question has no real picture".
+    const resolved = resolveAssetUrl(source);
 
     // The key goes only to the provider's own host, and never to a third-party CDN that has no
     // use for it and might refuse the request because of it.
-    const isProvider = /thenational\.academy$/i.test(new URL(source).hostname);
+    const isProvider = /thenational\.academy$/i.test(new URL(resolved).hostname);
     const apiKey = process.env.OAK_API_KEY;
-    const upstream = await fetch(source, {
+    const upstream = await fetch(resolved, {
       headers: isProvider && apiKey ? { Authorization: `Bearer ${apiKey}` } : {},
       cache: "no-store",
     }).catch(() => null);

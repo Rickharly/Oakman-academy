@@ -205,3 +205,99 @@ describe("admin overrides", () => {
     expect(qa3.isCorrect).toBe(false);
   });
 });
+
+describe("admin overrides: COMMENT checks whose attempt it is writing to", () => {
+  /**
+   * Regression test for commit eed2064: COMMENT was the one override handler that never
+   * checked the lessonAttempt/questionAttempt it was given actually belonged to `studentId` —
+   * every other handler did. A comment is shown to the child the attempt belongs to, so a
+   * parent (or a compromised client) pointing a comment at another child's attempt must be
+   * rejected, not silently written.
+   */
+  let parentId: string;
+  let studentAId: string;
+  let studentBId: string;
+  let lessonAttemptAId: string;
+
+  beforeAll(async () => {
+    await resetDb();
+
+    const parentUser = await prisma.user.create({
+      data: { role: "PARENT", email: "parent@example.com", passwordHash: "x", displayName: "Parent" },
+    });
+    parentId = parentUser.id;
+
+    const subject = await prisma.subject.create({ data: { slug: "maths", title: "Maths" } });
+    const programme = await prisma.programme.create({
+      data: { providerSlug: "test-maths:7", subjectId: subject.id, yearGroup: 7, keyStage: "ks3", title: "Maths — Year 7" },
+    });
+    const unit = await prisma.unit.create({
+      data: { providerSlug: "fractions", programmeId: programme.id, title: "Fractions", order: 1 },
+    });
+    const lesson = await prisma.lesson.create({
+      data: { providerSlug: "adding-fractions", unitId: unit.id, title: "Adding fractions", order: 1, estimatedMinutes: 50 },
+    });
+
+    const makeStudent = async (username: string, displayName: string) => {
+      const user = await prisma.user.create({
+        data: { role: "STUDENT", username, passwordHash: "x", displayName },
+      });
+      await prisma.parentStudentLink.create({ data: { parentId, studentId: user.id } });
+      const profile = await prisma.studentProfile.create({
+        data: { userId: user.id, yearGroup: 7, keyStage: "ks3" },
+      });
+      return profile.id;
+    };
+    studentAId = await makeStudent("eva-a", "Eva A");
+    studentBId = await makeStudent("eva-b", "Eva B");
+
+    const lessonAttemptA = await prisma.lessonAttempt.create({
+      data: {
+        studentId: studentAId,
+        lessonId: lesson.id,
+        attemptNumber: 1,
+        status: "COMPLETED",
+        currentStage: "COMPLETE",
+        completedAt: new Date(),
+      },
+    });
+    lessonAttemptAId = lessonAttemptA.id;
+  });
+
+  it("rejects with 403 when the lessonAttempt belongs to a different student", async () => {
+    await expect(
+      applyOverride(parentId, {
+        studentId: studentBId,
+        type: "COMMENT",
+        lessonAttemptId: lessonAttemptAId,
+        comment: "Great work!",
+      }),
+    ).rejects.toMatchObject({ status: 403 });
+
+    // Nothing was written for the attempted cross-student comment.
+    expect(await prisma.parentOverride.count({ where: { studentId: studentBId } })).toBe(0);
+    expect(await prisma.teacherFeedback.count({ where: { studentId: studentBId } })).toBe(0);
+  });
+
+  it("succeeds for the student's own attempt, creating a ParentOverride and a TeacherFeedback row", async () => {
+    const override = await applyOverride(parentId, {
+      studentId: studentAId,
+      type: "COMMENT",
+      lessonAttemptId: lessonAttemptAId,
+      comment: "Great work!",
+    });
+
+    expect(override.type).toBe("COMMENT");
+    expect(override.studentId).toBe(studentAId);
+    expect(override.lessonAttemptId).toBe(lessonAttemptAId);
+    expect(override.comment).toBe("Great work!");
+
+    const feedback = await prisma.teacherFeedback.findFirstOrThrow({
+      where: { studentId: studentAId, lessonAttemptId: lessonAttemptAId },
+    });
+    expect(feedback.authorType).toBe("PARENT");
+    expect(feedback.authorId).toBe(parentId);
+    expect(feedback.content).toBe("Great work!");
+    expect(feedback.visibleToStudent).toBe(true);
+  });
+});

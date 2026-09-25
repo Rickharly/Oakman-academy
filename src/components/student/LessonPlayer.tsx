@@ -22,6 +22,8 @@ import { AlreadyLearned } from "@/components/student/AlreadyLearned";
 import { StillThere } from "@/components/student/StillThere";
 import { formatMinutes } from "@/components/student/format";
 import type { LessonExplainer } from "@/lib/lessons/explainer";
+import { isPlaceholderUrl, isPlayableResource, type VideoUnavailableReason } from "@/lib/curriculum/video-status";
+import { pickLatest, pickLatestWithMarks } from "@/lib/lessons/activity-picks";
 import { cn } from "@/lib/cn";
 
 /**
@@ -50,25 +52,10 @@ function explainerSpeech(explainer: LessonExplainer): string[] {
   return parts;
 }
 
-/**
- * Whether a resource points at something that can actually be fetched.
- *
- * The bundled placeholder curriculum lists its videos as `fixture://…`, which is not an address
- * — nothing can fetch it, and the failure is "unknown scheme" deep inside a stream. Treating
- * those rows as a video gave a child a black player stuck at 0:00 on every lesson, which looks
- * exactly like a real video failing to load. That is why "the video is broken" was the story
- * for days when the truth was that there was no video.
- *
- * A stored file is fine. An http(s) address is fine. A path with no scheme is fine — the server
- * resolves it against the provider's base. Anything else is a placeholder pretending.
- */
-function isPlayable(resource: LessonPlayerResource): boolean {
-  if (resource.storedPath) return true;
-  const url = resource.providerUrl;
-  if (!url) return false;
-  if (/^https?:\/\//i.test(url)) return true;
-  return !url.includes("://");
-}
+// `isPlayableResource`/`isPlaceholderUrl` live in `@/lib/curriculum/video-status` — shared with
+// the sync service and the parent-facing diagnostics, so "is this address fetchable" and "is
+// this the sample curriculum" are each decided in one place rather than three that can drift
+// apart. See that module's doc comment.
 
 // ───────────────────────────── props ─────────────────────────────
 
@@ -117,6 +104,12 @@ export type LessonPlayerProps = {
     oakUrl?: string | null;
     /** Whether Oak's headers permit their page being shown inside ours. */
     oakEmbeddable?: boolean;
+    /**
+     * Why there is no video, computed on the server where the facts live (whether assets were
+     * ever fetched, and how that just went). Undefined whenever a VIDEO resource row exists —
+     * playable or not — since the player can read the rest off the row itself.
+     */
+    videoUnavailableReason?: VideoUnavailableReason;
     resources: LessonPlayerResource[];
   };
   subjectTitle: string;
@@ -172,11 +165,6 @@ const RAIL_STAGES: { stage: LessonStage; label: string }[] = [
  */
 const draftSaveTimers = new Map<string, ReturnType<typeof setTimeout>>();
 
-function pickLatest(activities: LessonPlayerActivity[], stage: "STARTER" | "PRACTICE" | "CHECK") {
-  const filtered = activities.filter((a) => a.stage === stage);
-  return filtered.length > 0 ? filtered[filtered.length - 1] : undefined;
-}
-
 function buildInitialResults(activities: LessonPlayerActivity[]): Record<string, QuestionResult> {
   const latest = new Map<string, LessonPlayerQuestionAttempt>();
   for (const activity of activities) {
@@ -204,6 +192,27 @@ function buildCheckAttemptCounts(activities: LessonPlayerActivity[]): Record<str
   return counts;
 }
 
+/**
+ * Retries already in flight when this page loaded.
+ *
+ * `retryingIds` used to always start empty, on the assumption a retry only ever begins from a
+ * button press on this same page. A reload mid-retry broke that: the server already has a
+ * PENDING attempt for the question (`buildInitialResults` drops it, correctly, since it isn't
+ * graded yet), but with nothing marking it as "retrying" the question rendered as disabled with
+ * its old result gone and no way to answer it or submit — no button on the page could move it
+ * forward. Seeding this from the latest CHECK activity's PENDING rows puts the answer box and
+ * "Submit answer" back for exactly the questions that need them.
+ */
+function buildInitialRetryingIds(activities: LessonPlayerActivity[]): Set<string> {
+  const checkActivity = pickLatest(activities, "CHECK");
+  const ids = new Set<string>();
+  if (!checkActivity) return ids;
+  for (const qa of checkActivity.questionAttempts) {
+    if (qa.gradedBy === "PENDING") ids.add(qa.questionId);
+  }
+  return ids;
+}
+
 async function extractError(res: Response): Promise<string> {
   try {
     const data: unknown = await res.json();
@@ -219,6 +228,101 @@ async function extractError(res: Response): Promise<string> {
 function scorePct(score: { score: number | null; maxScore: number | null } | undefined): number | null {
   if (!score || !score.maxScore || score.maxScore <= 0) return null;
   return Math.round(((score.score ?? 0) / score.maxScore) * 100);
+}
+
+/**
+ * Cut to `max` characters, with an ellipsis to show something was cut.
+ *
+ * The teacher-chat route caps `section`/`questionPrompt`/each option and 400s a whole message
+ * over a limit a picture's alt text or a long prompt can quietly exceed. Truncating here, below
+ * the server's limits, means a long question never costs a child their teacher's reply.
+ */
+function truncate(text: string, max: number): string {
+  if (text.length <= max) return text;
+  return `${text.slice(0, Math.max(0, max - 1)).trimEnd()}…`;
+}
+
+/** What a child's own browser actually got back when it asked for the video file. */
+type VideoProbeResult = {
+  status: number | null;
+  contentType: string | null;
+  contentLength: string | null;
+  contentRange: string | null;
+  acceptRanges: string | null;
+  redirected: boolean | null;
+  responseType: string | null;
+  /** Host only — never the signed query string, which is a credential. */
+  urlHost: string | null;
+  /** The first ~16 bytes, hex and ascii, so a JSON error body is recognisable at a glance. */
+  bodySnippet: string | null;
+  networkErrorName: string | null;
+  networkErrorMessage: string | null;
+};
+
+/**
+ * Repeats the player's own request for the video and reports exactly what came back.
+ *
+ * Every "fix" so far was decided by reasoning from a server with different network access and a
+ * different browser than the Chromebook the child is actually holding. This asks the browser
+ * that is actually failing — the same URL, the same Range header a player uses to check a
+ * file before committing to it — and never throws: a diagnostic that can break the lesson it is
+ * trying to explain would be worse than no diagnostic at all.
+ */
+async function probeVideoUrl(url: string): Promise<VideoProbeResult> {
+  try {
+    const res = await fetch(url, { headers: { Range: "bytes=0-1" }, cache: "no-store" });
+
+    let urlHost: string | null = null;
+    try {
+      urlHost = new URL(res.url).host || null;
+    } catch {
+      urlHost = null;
+    }
+
+    let bodySnippet: string | null = null;
+    try {
+      const reader = res.body?.getReader();
+      const first = await reader?.read();
+      await reader?.cancel().catch(() => undefined);
+      if (first?.value && first.value.length > 0) {
+        const bytes = first.value.slice(0, 16);
+        const hex = Array.from(bytes).map((b) => b.toString(16).padStart(2, "0")).join(" ");
+        const ascii = Array.from(bytes).map((b) => (b >= 32 && b < 127 ? String.fromCharCode(b) : ".")).join("");
+        bodySnippet = `${hex} | ${ascii}`;
+      }
+    } catch {
+      // The status and headers below are still worth having even without a peek at the body.
+    }
+
+    return {
+      status: res.status,
+      contentType: res.headers.get("content-type"),
+      contentLength: res.headers.get("content-length"),
+      contentRange: res.headers.get("content-range"),
+      acceptRanges: res.headers.get("accept-ranges"),
+      redirected: res.redirected,
+      responseType: res.type,
+      urlHost,
+      bodySnippet,
+      networkErrorName: null,
+      networkErrorMessage: null,
+    };
+  } catch (err) {
+    // The fetch itself failed — no status, no headers, just what the browser says went wrong.
+    return {
+      status: null,
+      contentType: null,
+      contentLength: null,
+      contentRange: null,
+      acceptRanges: null,
+      redirected: null,
+      responseType: null,
+      urlHost: null,
+      bodySnippet: null,
+      networkErrorName: err instanceof Error ? err.name : "Error",
+      networkErrorMessage: err instanceof Error ? err.message.slice(0, 500) : String(err).slice(0, 500),
+    };
+  }
 }
 
 // ───────────────────────────── component ─────────────────────────────
@@ -249,9 +353,9 @@ export function LessonPlayer(props: LessonPlayerProps) {
   const [activityScore, setActivityScore] = useState<
     Record<"STARTER" | "PRACTICE" | "CHECK", { score: number | null; maxScore: number | null; percentage: number | null } | undefined>
   >(() => ({
-    STARTER: pickLatest(props.activities, "STARTER"),
-    PRACTICE: pickLatest(props.activities, "PRACTICE"),
-    CHECK: pickLatest(props.activities, "CHECK"),
+    STARTER: pickLatestWithMarks(props.activities, "STARTER"),
+    PRACTICE: pickLatestWithMarks(props.activities, "PRACTICE"),
+    CHECK: pickLatestWithMarks(props.activities, "CHECK"),
   }));
   /** The teacher's note, which arrives after the marks do. */
   const [lessonSummary, setLessonSummary] = useState<string | null>(props.feedbackSummary);
@@ -263,7 +367,7 @@ export function LessonPlayer(props: LessonPlayerProps) {
   const [checkAttemptCounts, setCheckAttemptCounts] = useState<Record<string, number>>(() =>
     buildCheckAttemptCounts(props.activities)
   );
-  const [retryingIds, setRetryingIds] = useState<Set<string>>(new Set());
+  const [retryingIds, setRetryingIds] = useState<Set<string>>(() => buildInitialRetryingIds(props.activities));
   const [finalAttempt, setFinalAttempt] = useState<FinalAttempt | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -271,6 +375,9 @@ export function LessonPlayer(props: LessonPlayerProps) {
   const [teacherSheetOpen, setTeacherSheetOpen] = useState(false);
 
   const lastVideoSent = useRef(0);
+  // Fired at most once per lesson open, and only when the video actually fails — the evidence a
+  // child's own browser can give that the server never could. See `reportVideoFailure`.
+  const videoReportSent = useRef(false);
   const [generatingPractice, setGeneratingPractice] = useState(false);
   // The "do you already know this?" check, offered once before a lesson is started.
   const [preCheckOpen, setPreCheckOpen] = useState(offerPreCheck);
@@ -282,6 +389,26 @@ export function LessonPlayer(props: LessonPlayerProps) {
   // "this lesson has no video" and leaves a child staring at a black rectangle. When it fails,
   // say so and give them the way through.
   const [videoFailed, setVideoFailed] = useState(false);
+  // The browser's own reason, when it gives one, so a report says "not supported" or "network"
+  // rather than only "would not play". Code 4 is a file the browser cannot play; 2 is the network.
+  const [videoError, setVideoError] = useState<string | null>(null);
+  /**
+   * A request that never resolves at all — no `onError`, because nothing ever happened for the
+   * browser to call an error. `loadedmetadata`/`loadeddata`/`canplay`/`progress` are the signals
+   * that bytes are actually arriving; if none of them has fired a while after the element was
+   * given its src, the request has hung (a blocked cross-origin redirect, a stalled download),
+   * and the child is left staring at a blank box with no controls and no message — which is
+   * worse than a video that visibly failed, because at least that one says something.
+   */
+  const [videoStalled, setVideoStalled] = useState(false);
+  // Bumped to force a fresh `<video>` element on retry — re-rendering the same element with an
+  // unchanged `src` does not make the browser try the request again.
+  const [videoAttemptKey, setVideoAttemptKey] = useState(0);
+  // Whether any of the "bytes are arriving" events has fired since the current attempt started.
+  const videoGotSignalRef = useRef(false);
+  // Which of `stalled`/`suspend` fired first, if either did, before any real signal — kept only
+  // to make the eventual report read like what actually happened rather than a guess.
+  const videoStallEventRef = useRef<"stalled" | "suspend" | null>(null);
 
   /**
    * What is in the video slot, in one sentence.
@@ -294,12 +421,80 @@ export function LessonPlayer(props: LessonPlayerProps) {
    */
   const videoResource = lesson.resources.find((r) => r.type === "VIDEO");
   const videoState = !videoResource
-    ? "no video was imported for this lesson"
-    : !isPlayable(videoResource)
-      ? `placeholder address (${videoResource.providerUrl ?? "none"}) — not a real video`
+    ? `no video was imported for this lesson (${lesson.videoUnavailableReason ?? "unknown reason"})`
+    : !isPlayableResource(videoResource)
+      ? isPlaceholderUrl(videoResource.providerUrl)
+        ? `placeholder address (${videoResource.providerUrl ?? "none"}) — sample curriculum, not a real video`
+        : `an address (${videoResource.providerUrl ?? "none"}) that has not been downloaded yet`
       : videoFailed
-        ? "a real video that would not play in the browser"
-        : "a working player";
+        ? `a real video that would not play in the browser${videoError ? ` (${videoError})` : ""}`
+        : videoStalled
+          ? "a real video that never loaded — no data arrived at all"
+          : "a working player";
+
+  /**
+   * Always through our own route — never `storedPath`.
+   *
+   * `storedPath` is a path on the server's disk (`/app/storage/assets/…/VIDEO.mp4`). Handing it
+   * to a `<video>` element asks the browser to fetch that path from the website, which is a
+   * 404, which fires onError, which replaces the player with the pale "it won't play" panel — a
+   * blob of light where the lesson's video should be. Worse, the file is on whichever container
+   * downloaded it and is gone after the next deploy, so it cannot be right even in principle.
+   * The route knows how to find the file; the browser does not need to.
+   */
+  const video = lesson.resources.find((r) => r.type === "VIDEO" && isPlayableResource(r));
+
+  /**
+   * A hung video request never tells the player anything: no `onError`, because nothing ever
+   * happened. Chrome shows no controls at all until it has metadata or an error, so a stalled
+   * request is a blank box that stays blank forever unless something here notices the silence.
+   *
+   * Twelve seconds, then — if nothing has arrived by then, declare it stalled. Cancelled and
+   * restarted whenever the video changes or a retry bumps `videoAttemptKey`; left alone (never
+   * even started) once the video has actually failed or already been flagged stalled, so it
+   * cannot fire twice for the same attempt.
+   *
+   * Also left alone whenever `viewStage` is not LEARN. The `<video>` element this timer is
+   * measuring only exists inside `renderLearn()` — every lesson opens on STARTER, well before
+   * that element is ever mounted, and `video` itself is computed at the top of the component
+   * regardless of which step is on screen. Without this guard the timer started the instant the
+   * lesson loaded, no element existed to fire any of the "data arrived" signals, and twelve
+   * seconds later every lesson with a video reported a stall that never happened. Gating on
+   * `viewStage` and including it in the deps means leaving Learn cancels the timer and coming
+   * back to it starts a fresh one — matching the element itself being unmounted and remounted,
+   * which is a genuine new request each time.
+   */
+  useEffect(() => {
+    if (!video || videoFailed || videoStalled || viewStage !== "LEARN") return undefined;
+    videoGotSignalRef.current = false;
+    videoStallEventRef.current = null;
+    const timer = setTimeout(() => {
+      if (videoGotSignalRef.current) return; // data arrived after all — not a stall
+      setVideoStalled(true);
+      const label = videoStallEventRef.current
+        ? `stalled — the browser's own "${videoStallEventRef.current}" event fired with nothing playable`
+        : "stalled — no data arrived at all";
+      void reportVideoFailure(video, null, label);
+    }, 12_000);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- reportVideoFailure is stable for the lesson's lifetime
+  }, [video?.id, videoAttemptKey, videoFailed, videoStalled, viewStage]);
+
+  /** Bytes are actually arriving — cancels the stall timer above. */
+  function markVideoHasSignal() {
+    videoGotSignalRef.current = true;
+  }
+
+  /**
+   * `stalled`/`suspend` without any real signal yet — worth noting for the eventual report, but
+   * never itself a reason to show anything before the twelve seconds are up: a `suspend` right
+   * after `preload="metadata"` finishes is completely normal, and a `stalled` blip on an
+   * otherwise slow-but-working connection must not flash a message that isn't true yet.
+   */
+  function noteVideoStallSignal(kind: "stalled" | "suspend") {
+    if (videoGotSignalRef.current) return;
+    videoStallEventRef.current = kind;
+  }
 
   // Set when the tutoring loop reports nothing left open, so the lesson stops holding them.
   const [gapsClosed, setGapsClosed] = useState(false);
@@ -353,6 +548,13 @@ export function LessonPlayer(props: LessonPlayerProps) {
     return () => {
       cancelled = true;
       abort.abort();
+      clearTimeout(timeout);
+      // Leaving Learn mid-request used to leave exactly this: `cancelled` stops the aborted
+      // fetch's catch from touching state, so `explainerState` stayed "loading" forever, and
+      // `explainerAsked` stayed true so nothing ever asked again — a spinner with no request
+      // behind it that returning to Learn could never clear. Show the same "Try again" a real
+      // failure would, rather than a wheel that spins forever with nothing behind it.
+      setExplainerState((prev) => (prev === "loading" ? "failed" : prev));
     };
   }, [explainer, lesson.id, viewStage]);
   const [extraPractice, setExtraPractice] = useState<LessonPlayerQuestion[]>([]);
@@ -464,11 +666,13 @@ export function LessonPlayer(props: LessonPlayerProps) {
   }
 
   // ── graded stage submit (STARTER / PRACTICE / CHECK) ──
-  async function submitGraded(stage: "STARTER" | "PRACTICE" | "CHECK") {
+  // Returns whether the submit actually went through, so a caller like `submitRetries` can tell
+  // a real failure apart from success without duplicating the try/catch here.
+  async function submitGraded(stage: "STARTER" | "PRACTICE" | "CHECK"): Promise<boolean> {
     // One submit at a time. The button is disabled while it runs, but a double tap on a slow
     // tablet can land twice before React has painted the disabled state — and two submits of
     // the same answers is two rounds of marking for one child pressing one button.
-    if (submitting) return;
+    if (submitting) return false;
     setSubmitting(true);
     setSubmitError(null);
     try {
@@ -498,7 +702,17 @@ export function LessonPlayer(props: LessonPlayerProps) {
         }
         return next;
       });
-      setActivityScore((prev) => ({ ...prev, [stage]: data.activity }));
+      // Never let a round that graded nothing (`maxScore: 0` — the empty-stage branch
+      // `submitStage` takes when there is nothing left of this stage to grade) overwrite a
+      // real score already on screen. See `pickLatestWithMarks` for why this can happen: the
+      // extra-practice path grades its own round directly, then this same call re-runs against
+      // whatever's left of the lesson's own stage and finds nothing to add.
+      setActivityScore((prev) => {
+        const previous = prev[stage];
+        const incomingIsEmpty = (data.activity.maxScore ?? 0) === 0;
+        const previousHasMarks = previous && (previous.maxScore ?? 0) > 0;
+        return { ...prev, [stage]: incomingIsEmpty && previousHasMarks ? previous : data.activity };
+      });
       setSubmittedStage((prev) => ({ ...prev, [stage]: true }));
 
       // The teacher's note on the lesson is written behind the submit so the marks are not held
@@ -514,10 +728,44 @@ export function LessonPlayer(props: LessonPlayerProps) {
           if (stage === "CHECK" || emptyStage) setViewStage(next);
         }
       }
+      return true;
     } catch (err) {
       setSubmitError(err instanceof Error ? err.message : "Something went wrong. Please try again.");
+      return false;
     } finally {
       setSubmitting(false);
+    }
+  }
+
+  /**
+   * The "Continue to X" control on a stage that has already been submitted.
+   *
+   * Once the server has genuinely moved past `stage`, this is just "show me where I am" — a
+   * view change, nothing more. But when the server's own `currentStage` is *still* `stage`
+   * despite the round being graded, changing the view to `currentStage` changes it to the stage
+   * already on screen: a visible no-op, and with the stage rail's next pill locked behind that
+   * same `currentStage`, nothing else on the page can move the lesson on either.
+   *
+   * So when it is stuck, ask the server to finish the stage properly instead of only looking at
+   * it. Resubmitting an already-graded round is safe — `submitStage` reuses what is already
+   * marked rather than grading it again — and this time its advance actually runs. Never silent:
+   * a failure leaves `submitError` on screen (via `submitGraded`) and this same button in place
+   * to try again, rather than swapping back to a no-op.
+   */
+  async function continueFrom(stage: "STARTER" | "PRACTICE" | "CHECK") {
+    if (currentStage !== stage) {
+      setViewStage(currentStage);
+      return;
+    }
+    const ok = await submitGraded(stage);
+    if (ok) {
+      // `submitGraded` only moves the view itself for CHECK or a genuinely empty stage (see its
+      // own `wasCurrent`/`emptyStage` handling) — everywhere else it leaves the view where it
+      // was so a child reading their marks isn't yanked off the page. Here the whole point of
+      // pressing this was to move on, so take them there directly rather than leaving them to
+      // press the very button that just fixed the lesson a second time.
+      const next = nextStage(stage);
+      if (next) setViewStage(next);
     }
   }
 
@@ -564,6 +812,42 @@ export function LessonPlayer(props: LessonPlayerProps) {
     }).catch(() => undefined);
   }
 
+  /**
+   * The evidence, sent once a video has actually failed in this browser.
+   *
+   * Invisible to the child by design — no spinner, no new text, nothing that could delay or
+   * change what they see. The panel telling them the video won't play is unaffected either way;
+   * this only makes sure the person reading a diagnostics page later sees what really happened
+   * instead of a server's guess at it.
+   */
+  async function reportVideoFailure(
+    resource: LessonPlayerResource,
+    elementError: MediaError | null,
+    errorLabel: string | null,
+  ) {
+    if (videoReportSent.current) return;
+    videoReportSent.current = true;
+    try {
+      const probe = await probeVideoUrl(`/api/curriculum/resources/${resource.id}`);
+      await fetch("/api/student/video-report", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          lessonId: lesson.id,
+          resourceId: resource.id,
+          // The same sentence the player shows for the video slot once it has failed.
+          videoState: `a real video that would not play in the browser${errorLabel ? ` (${errorLabel})` : ""}`,
+          userAgent: navigator.userAgent,
+          elementErrorCode: elementError?.code ?? null,
+          elementErrorMessage: elementError?.message ? elementError.message.slice(0, 500) : null,
+          probe,
+        }),
+      });
+    } catch {
+      // Best-effort and silent — see the doc comment above.
+    }
+  }
+
   // ── CHECK retries (shown on FEEDBACK) ──
   async function startRetry(questionId: string) {
     setSubmitError(null);
@@ -589,7 +873,13 @@ export function LessonPlayer(props: LessonPlayerProps) {
 
   async function submitRetries() {
     const ids = new Set(retryingIds);
-    await submitGraded("CHECK");
+    const ok = await submitGraded("CHECK");
+    // A failed submit used to clear retryingIds anyway — the question dropped out of the
+    // "retrying" set, its old result was already gone, and the child was left looking at a
+    // disabled box with no result, no "Try again" and no "Submit answer" to press: the error
+    // above was the only thing on the page. Keep the question in retry until a submit actually
+    // succeeds, so the answer box and the button stay put and they can just try again.
+    if (!ok) return;
     setCheckAttemptCounts((prev) => {
       const next = { ...prev };
       ids.forEach((id) => {
@@ -695,14 +985,19 @@ export function LessonPlayer(props: LessonPlayerProps) {
 
     return {
       stage: viewStage,
-      section:
+      // Below the server's limits (section ≤ 300, questionPrompt ≤ 2000, option ≤ 500) so a
+      // picture's alt text or a long prompt can never 400 the whole message — the child asking
+      // for help is the one who paid for that failure, over a limit they never knew existed.
+      section: truncate(
         `question ${index + 1} of ${onScreenQuestions.length}${isExtra ? " in their extra practice" : ""}` +
-        (question.promptImage
-          ? `, which has a picture with it${picture ? ` showing: ${picture}` : ""}`
-          : ""),
-      questionPrompt: question.prompt,
+          (question.promptImage
+            ? `, which has a picture with it${picture ? ` showing: ${picture}` : ""}`
+            : ""),
+        280,
+      ),
+      questionPrompt: truncate(question.prompt, 1900),
       options: Array.isArray(choices)
-        ? choices.map((c) => String(c?.text ?? "")).filter(Boolean).slice(0, 8)
+        ? choices.map((c) => truncate(String(c?.text ?? ""), 480)).filter(Boolean).slice(0, 8)
         : undefined,
       // Unanswered is the fact that changes what she is allowed to say, so it is derived from
       // whether the answer has actually been marked — not from which tab is open.
@@ -784,9 +1079,24 @@ export function LessonPlayer(props: LessonPlayerProps) {
             <p className="text-sm font-medium text-ink">
               {activityScore[stage]?.score ?? 0} / {activityScore[stage]?.maxScore ?? 0}
             </p>
-            <Button onClick={() => setViewStage(currentStage)}>
-              Continue to {stage === "STARTER" ? "Learn" : "Check"}
+            <Button onClick={() => void continueFrom(stage)} disabled={submitting}>
+              {submitting ? "Continuing…" : `Continue to ${stage === "STARTER" ? "Learn" : "Check"}`}
             </Button>
+            {submitError ? <p className="text-sm text-danger">{submitError}</p> : null}
+          </div>
+        ) : currentStage === "CHECK" ? (
+          /*
+            A graded CHECK whose advance to FEEDBACK never landed — the same dead end as above,
+            just with no button at all until now. In the ordinary run `submitGraded` moves
+            `viewStage` to FEEDBACK the instant CHECK is marked, so this only ever shows up after
+            a reload catches the lesson mid-fault, and the stage rail can't help either: FEEDBACK
+            is locked behind `currentStage`, which is exactly what is stuck.
+          */
+          <div className="flex flex-wrap items-center gap-3">
+            <Button onClick={() => void continueFrom("CHECK")} disabled={submitting}>
+              {submitting ? "Continuing…" : "Continue to your feedback"}
+            </Button>
+            {submitError ? <p className="text-sm text-danger">{submitError}</p> : null}
           </div>
         ) : null}
       </div>
@@ -956,12 +1266,25 @@ export function LessonPlayer(props: LessonPlayerProps) {
       /**
        * Finishing the extra practice finishes the Practice step.
        *
-       * It did not, so Practice never went green and Check stayed locked behind it — and the
-       * only way out of the extra round jumped straight to Feedback, skipping the quiz
-       * entirely. A child did the work, got no credit for it, and was carried past the
-       * assessment without being asked a single question.
+       * The server now advances the stage itself the moment the practice above is graded (see
+       * `advanceFromExtraPractice`), so this follow-up is just keeping the client's own view of
+       * the score and stage in sync — it is no longer what makes the advance happen. But its
+       * result was previously thrown away outright: on a dropped connection or a 500 here, the
+       * screen kept showing PRACTICE while the server had already moved on, and the "Continue"
+       * control below stayed a no-op because it only unlocks once `submittedStage` says this
+       * call succeeded. Never leave that silent: say so, and force the same unlock so the child
+       * has a real, working "Continue" to press instead of a screen that quietly disagrees with
+       * the server.
        */
-      if (currentStage === "PRACTICE") await submitGraded("PRACTICE");
+      if (currentStage === "PRACTICE") {
+        const ok = await submitGraded("PRACTICE");
+        if (!ok) {
+          setSubmitError(
+            "Your practice was saved, but we couldn't confirm the lesson moved on. Tap Continue below to check — it's safe to try again.",
+          );
+          setSubmittedStage((prev) => ({ ...prev, PRACTICE: true }));
+        }
+      }
     } catch (err) {
       setSubmitError(err instanceof Error ? err.message : "Could not mark that.");
     } finally {
@@ -1055,16 +1378,38 @@ export function LessonPlayer(props: LessonPlayerProps) {
               )}
               {/*
                 Where they actually are, not always Feedback.
-                
+
                 This jumped to Feedback whatever stage the lesson was at, which is how the quiz
                 got skipped: it walked straight past Check without it ever being unlocked.
+
+                And where they actually are can itself be stuck: `currentStage` here can be a
+                graded stage (STARTER/PRACTICE/CHECK) already marked submitted whose own advance
+                never landed — this extra round's own submit tried to fix that (see
+                `submitExtra`'s call to `submitGraded`) and failed. Just changing the view then
+                changes it to the stage already on screen, same trap as `continueFrom` exists to
+                close everywhere else. So try the same fix here rather than only looking at it.
               */}
-              <Button variant="ghost" onClick={() => setViewStage(currentStage)}>
-                {currentStage === "CHECK"
-                  ? "On to the quiz"
-                  : currentStage === "FEEDBACK" || currentStage === "COMPLETE"
-                    ? "Back to my feedback"
-                    : "Back to my lesson"}
+              <Button
+                variant="ghost"
+                onClick={() => {
+                  const stuck =
+                    (currentStage === "STARTER" || currentStage === "PRACTICE" || currentStage === "CHECK") &&
+                    submittedStage[currentStage];
+                  if (stuck) void continueFrom(currentStage);
+                  else setViewStage(currentStage);
+                }}
+                disabled={submitting}
+              >
+                {submitting
+                  ? "Continuing…"
+                  : (currentStage === "STARTER" || currentStage === "PRACTICE" || currentStage === "CHECK") &&
+                      submittedStage[currentStage]
+                    ? "Continue"
+                    : currentStage === "CHECK"
+                      ? "On to the quiz"
+                      : currentStage === "FEEDBACK" || currentStage === "COMPLETE"
+                        ? "Back to my feedback"
+                        : "Back to my lesson"}
               </Button>
             </>
           )}
@@ -1133,17 +1478,8 @@ export function LessonPlayer(props: LessonPlayerProps) {
   }
 
   function renderLearn() {
-    /**
-     * Always through our own route — never `storedPath`.
-     *
-     * `storedPath` is a path on the server's disk (`/app/storage/assets/…/VIDEO.mp4`). Handing
-     * it to a `<video>` element asks the browser to fetch that path from the website, which is
-     * a 404, which fires onError, which replaces the player with the pale "it won't play" panel
-     * — a blob of light where the lesson's video should be. Worse, the file is on whichever
-     * container downloaded it and is gone after the next deploy, so it cannot be right even in
-     * principle. The route knows how to find the file; the browser does not need to.
-     */
-    const video = lesson.resources.find((r) => r.type === "VIDEO" && isPlayable(r));
+    // `video` — the playable VIDEO resource, if there is one — is computed once at the top of
+    // the component, alongside the stall timer that watches it.
     const learnDone = stageIndex(currentStage) > stageIndex("LEARN");
     const teaching = explainerState === "loading";
 
@@ -1259,18 +1595,7 @@ export function LessonPlayer(props: LessonPlayerProps) {
         ) : null}
 
         <Card padding="lg" className="space-y-4">
-          {video && !videoFailed ? (
-            <video
-              controls
-              playsInline
-              preload="metadata"
-              className="aspect-video w-full rounded-xl bg-stone-900"
-              src={`/api/curriculum/resources/${video.id}`}
-              onTimeUpdate={handleVideoTimeUpdate}
-              onEnded={handleVideoEnded}
-              onError={() => setVideoFailed(true)}
-            />
-          ) : video && videoFailed ? (
+          {video && videoFailed ? (
             <div className="space-y-3 rounded-2xl border border-warning/30 bg-warning-soft/40 p-5">
               <p className="text-base font-medium text-ink">
                 The video won&apos;t play here right now.
@@ -1280,7 +1605,14 @@ export function LessonPlayer(props: LessonPlayerProps) {
                 rather watch it, it&apos;s on Oak&apos;s own page.
               </p>
               <div className="flex flex-wrap gap-2">
-                <Button variant="secondary" onClick={() => setVideoFailed(false)}>
+                <Button
+                  variant="secondary"
+                  onClick={() => {
+                    setVideoError(null);
+                    setVideoFailed(false);
+                    setVideoAttemptKey((k) => k + 1);
+                  }}
+                >
                   Try the video again
                 </Button>
                 {lesson.oakUrl ? (
@@ -1290,15 +1622,79 @@ export function LessonPlayer(props: LessonPlayerProps) {
                 ) : null}
               </div>
             </div>
+          ) : video && videoStalled ? (
+            /*
+              Not a refusal — nothing ever told us it failed. The request just never resolved:
+              no metadata, no data, no error. Chrome shows no controls at all until one of those
+              happens, so without this a stalled video is a blank box forever, with a button
+              underneath cheerfully asking whether they've finished watching it.
+            */
+            <div className="space-y-3 rounded-2xl border border-warning/30 bg-warning-soft/40 p-5">
+              <p className="text-base font-medium text-ink">
+                This video is taking too long to arrive.
+              </p>
+              <p className="text-sm text-ink-muted">
+                That&apos;s not your tablet, and it&apos;s not anything you did. Everything you
+                need is written out below, and I can read it to you. If you&apos;d rather watch
+                it, it&apos;s on Oak&apos;s own page.
+              </p>
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  variant="secondary"
+                  onClick={() => {
+                    setVideoStalled(false);
+                    setVideoAttemptKey((k) => k + 1);
+                  }}
+                >
+                  Try the video again
+                </Button>
+                {lesson.oakUrl ? (
+                  <Button variant="ghost" href={lesson.oakUrl} target="_blank" rel="noreferrer">
+                    <ExternalLink className="h-4 w-4" /> Watch it on Oak
+                  </Button>
+                ) : null}
+              </div>
+            </div>
+          ) : video ? (
+            <video
+              key={`${video.id}:${videoAttemptKey}`}
+              controls
+              playsInline
+              preload="metadata"
+              className="aspect-video w-full rounded-xl bg-stone-900"
+              src={`/api/curriculum/resources/${video.id}`}
+              onTimeUpdate={handleVideoTimeUpdate}
+              onEnded={handleVideoEnded}
+              onLoadedMetadata={markVideoHasSignal}
+              onLoadedData={markVideoHasSignal}
+              onCanPlay={markVideoHasSignal}
+              onProgress={markVideoHasSignal}
+              onStalled={() => noteVideoStallSignal("stalled")}
+              onSuspend={() => noteVideoStallSignal("suspend")}
+              onError={(e) => {
+                const err = e.currentTarget.error;
+                const names: Record<number, string> = {
+                  1: "aborted",
+                  2: "network error",
+                  3: "could not decode",
+                  4: "format not supported",
+                };
+                const label = err ? `${names[err.code] ?? `code ${err.code}`}${err.message ? `: ${err.message}` : ""}` : null;
+                setVideoError(label);
+                setVideoFailed(true);
+                void reportVideoFailure(video, err, label);
+              }}
+            />
           ) : (
             <>
               {/*
                 Say which of these it is.
 
-                A lesson with no video imported, a placeholder address, and a player that failed
-                all looked the same from the outside — an empty rectangle — and "the video is
-                blurred out" could not be told apart from "there is no video". Now the page says
-                so in a sentence, so a child knows it is not their tablet and nobody has to guess.
+                A lesson with no video imported, a placeholder address, an address that hasn't
+                been downloaded yet, and a player that failed all looked the same from the
+                outside — an empty rectangle — and "the video is blurred out" could not be told
+                apart from "there is no video". Now the page says so in a sentence, so a child
+                knows it is not their tablet and nobody has to guess.
               */}
               {!videoResource ? (
                 <div className="space-y-1 rounded-2xl border border-line bg-stone-50 p-5">
@@ -1307,8 +1703,59 @@ export function LessonPlayer(props: LessonPlayerProps) {
                     Not a broken player — this lesson came without one. Everything you need is
                     written out below, and I can read it to you.
                   </p>
+                  {/*
+                    Why, exactly — computed on the server, where the facts live (see
+                    `videoUnavailableReason` on the lesson prop). Never shown as a reason to
+                    doubt the two sentences above; only ever a true extra detail underneath them.
+                  */}
+                  {lesson.videoUnavailableReason === "placeholder_curriculum" ? (
+                    <p className="text-sm text-ink-muted">
+                      This lesson is from the sample curriculum, which was never a real one to
+                      bring in.
+                    </p>
+                  ) : lesson.videoUnavailableReason === "provider_had_none" ? (
+                    <p className="text-sm text-ink-muted">
+                      We did ask Oak for it — it simply doesn&apos;t have one for this lesson.
+                    </p>
+                  ) : lesson.videoUnavailableReason === "fetch_failed" ? (
+                    <p className="text-sm text-ink-muted">
+                      We tried to fetch it just now and couldn&apos;t reach Oak. Opening this
+                      lesson again will try once more.
+                    </p>
+                  ) : (
+                    <p className="text-sm text-ink-muted">
+                      It hasn&apos;t been fetched yet — opening this lesson again in a little
+                      while should bring it in.
+                    </p>
+                  )}
                 </div>
-              ) : null}
+              ) : isPlaceholderUrl(videoResource.providerUrl) ? (
+                // The bundled sample curriculum's made-up placeholder — see
+                // `src/lib/curriculum/video-status.ts`. Not a video that failed to arrive; this
+                // lesson never had a real one to bring in.
+                <div className="space-y-1 rounded-2xl border border-line bg-stone-50 p-5">
+                  <p className="text-base font-medium text-ink">This lesson is from the sample curriculum.</p>
+                  <p className="text-sm text-ink-muted">
+                    It doesn&apos;t come with a real video — the sample curriculum is just a
+                    handful of made-up lessons for trying the app out. Everything you need is
+                    written out below, and I can read it to you.
+                  </p>
+                </div>
+              ) : (
+                // A video row exists but its address isn't one we can fetch yet — a real lesson
+                // whose file has not been downloaded, not a lesson with no video. Saying "no
+                // video" here would be telling a child who has seen it on Oak's own site that
+                // the app is wrong, when it is only behind.
+                <div className="space-y-1 rounded-2xl border border-line bg-stone-50 p-5">
+                  <p className="text-base font-medium text-ink">
+                    This lesson&apos;s video hasn&apos;t been downloaded yet.
+                  </p>
+                  <p className="text-sm text-ink-muted">
+                    It&apos;s not a broken player — the video just isn&apos;t here yet. Everything
+                    you need is written out below, and I can read it to you.
+                  </p>
+                </div>
+              )}
 
               {/*
                 No video file for this lesson, so send them to Oak's own page rather than

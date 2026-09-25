@@ -5,7 +5,17 @@ import { useRouter } from "next/navigation";
 import { Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 
-export function ReportGenerator({ studentId, weekStartKey }: { studentId: string; weekStartKey: string }) {
+export function ReportGenerator({
+  studentId,
+  weekStartKey,
+  monthStartKey,
+}: {
+  studentId: string;
+  weekStartKey: string;
+  /** The first of the current month. A monthly report that started on a Monday mid-month
+   * covered three weeks of the future and showed zeros. */
+  monthStartKey: string;
+}) {
   const router = useRouter();
   const [period, setPeriod] = useState<"WEEKLY" | "MONTHLY">("WEEKLY");
   const [pending, setPending] = useState(false);
@@ -18,7 +28,7 @@ export function ReportGenerator({ studentId, weekStartKey }: { studentId: string
       const res = await fetch("/api/admin/reports", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ studentId, period, start: weekStartKey }),
+        body: JSON.stringify({ studentId, period, start: period === "MONTHLY" ? monthStartKey : weekStartKey }),
       });
       if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error ?? "Could not generate the report");
       router.refresh();

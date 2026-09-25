@@ -35,6 +35,14 @@ export function MicButton({
     recorderRef.current?.stop();
   }, []);
 
+  /** The file extension the transcription service needs to know its container. */
+  function extensionFor(mimeType: string): string {
+    if (mimeType.includes("mp4")) return "mp4";
+    if (mimeType.includes("ogg")) return "ogg";
+    if (mimeType.includes("wav")) return "wav";
+    return "webm";
+  }
+
   const start = useCallback(async () => {
     setError(null);
     try {
@@ -57,7 +65,10 @@ export function MicButton({
         setState("thinking");
         try {
           const form = new FormData();
-          form.append("audio", blob, "speech.webm");
+          // Chrome records `audio/webm`; Safari records `audio/mp4` instead — naming the
+          // upload after whatever the recorder actually produced (not always webm) is how the
+          // transcription service knows which container it is looking at.
+          form.append("audio", blob, `speech.${extensionFor(blob.type)}`);
           const res = await fetch("/api/teacher/listen", { method: "POST", body: form });
           const data = (await res.json()) as { text?: string; error?: string };
           if (!res.ok || !data.text) throw new Error(data.error ?? "I didn't catch that.");

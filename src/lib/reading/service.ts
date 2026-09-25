@@ -89,7 +89,7 @@ async function pickBook(yearGroup: number) {
   );
 }
 
-const chapterPromptsSchema = z.object({
+export const chapterPromptsSchema = z.object({
   prompts: z.array(z.string()).min(2).max(4),
   vocabulary: z.array(z.object({ word: z.string(), meaning: z.string() })).max(5),
 });
@@ -157,14 +157,14 @@ export async function getReadingHistory(studentId: string, take = 30) {
   });
 }
 
-const responseFeedbackSchema = z.object({
+export const responseFeedbackSchema = z.object({
   feedback: z.string(),
   reasoning: z.string(),
   strengths: z.array(z.string()),
   nextSteps: z.array(z.string()),
 });
 
-const essayFeedbackSchema = responseFeedbackSchema.extend({
+export const essayFeedbackSchema = responseFeedbackSchema.extend({
   score: z.number(),
 });
 
@@ -333,6 +333,30 @@ export async function respondToReading(entryId: string): Promise<ReadingEntry> {
       model,
     },
   });
+}
+
+/** A failed reply is left alone for at least this long before it is worth trying again — an
+ * immediate retry just repeats whatever blip caused the first failure. */
+const RETRY_AFTER_MS = 60_000;
+
+/**
+ * Gives a second try to entries whose teacher reply never came back.
+ *
+ * `submitReadingResponse` swallows a failed `respondToReading` call so a child's writing is
+ * never lost to a brief AI outage — but nothing was ever watching those entries afterwards, so
+ * "Your teacher will reply soon" stayed a lie forever. Called opportunistically whenever this
+ * student uses reading again (see `POST /api/reading/respond`); best-effort, one attempt each,
+ * so one still-failing entry never blocks the others or the response the child is waiting on.
+ */
+export async function retryStaleReadingReplies(studentId: string, limit = 3): Promise<void> {
+  const stale = await prisma.readingEntry.findMany({
+    where: { studentId, feedback: null, submittedAt: { lt: new Date(Date.now() - RETRY_AFTER_MS) } },
+    orderBy: { submittedAt: "asc" },
+    take: limit,
+  });
+  for (const entry of stale) {
+    await respondToReading(entry.id).catch(() => undefined);
+  }
 }
 
 /** Minutes of reading and pieces written, for the parent's overview. */

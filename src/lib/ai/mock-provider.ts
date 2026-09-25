@@ -212,17 +212,24 @@ function fakeDataFor(schemaName: string, system: string, messages: ChatMessage[]
         misconceptions: [] as string[],
       };
     case "daySummary":
+      // `recommendation` is nullable, not optional (see daySummarySchema) — a mock payload
+      // missing the key entirely fails the same way a real structured-output call missing an
+      // optional field does, so it has to be present as `null`, never left out.
       return {
         content: "A solid day of learning across a few subjects, with good effort throughout.",
-        data: { lessonsCompleted: 1, minutes: 45, recommendations: [] as string[] },
+        recommendation: "Keep up the same routine tomorrow.",
       };
     case "practice":
+      // `choices` and `acceptedAnswers` are nullable, not optional (see practiceSchema) for the
+      // same reason: both have to be present on every question, `choices: null` for the
+      // non-multiple-choice ones here.
       return {
         questions: [1, 2, 3].map((n) => ({
           type: "SHORT_ANSWER" as const,
           prompt: `Practice question ${n} for ${lessonTitle}.`,
-          accepted: ["answer"],
-          modelAnswer: "answer",
+          choices: null,
+          acceptedAnswers: ["answer"],
+          explanation: 'Any answer that includes the word "answer" is right for this mock question.',
         })),
       };
     case "misconceptions":
@@ -285,21 +292,17 @@ function fakeDataFor(schemaName: string, system: string, messages: ChatMessage[]
         needsWork: topics.slice(2, 3),
       };
     }
-    case "worksheet":
+    case "structured_worksheet":
+      // Matches `structuredQuestionSchema` in worksheet-pipeline.ts, not the canonical
+      // `MappedQuestion` shape — this is the AI's raw classification of one worksheet
+      // question, which `mapWorksheetQuestion` then turns into a real `Question` row.
       return {
         questions: [
-          {
-            stage: "PRACTICE" as const,
-            order: 1,
-            type: "SHORT_ANSWER" as const,
-            prompt: "Sample extracted worksheet question.",
-            answerKey: { accepted: ["sample"], caseSensitive: false },
-            maxScore: 1,
-            gradingMode: "DETERMINISTIC" as const,
-            providerRef: "mock-worksheet-1",
-          },
+          { number: "1", type: "short" as const, prompt: "Sample extracted worksheet question.", answer: "sample" },
         ],
       };
+    case "conversationSummary":
+      return { summary: "The student is working through today's lesson; nothing notable yet." };
     default:
       return {};
   }

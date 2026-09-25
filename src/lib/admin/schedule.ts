@@ -5,6 +5,7 @@
  * function here takes a `studentId` the caller has already verified belongs to this parent
  * (`requireParentOfStudent`); nothing here re-checks the parent/student link itself.
  */
+import { Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/db";
 import type { DailyAssignment } from "@/generated/prisma/client";
 import { ApiError } from "@/lib/auth/api";
@@ -31,13 +32,17 @@ export async function upsertSchedule(studentId: string, rules: ScheduleRuleInput
           weeklyFrequency: rule.weeklyFrequency,
           preferredDays: rule.preferredDays,
           priority: rule.priority ?? 0,
-          active: true,
+          // A subject set to 0 a week is off the timetable. Saving it as active put every
+          // subject in the database on the child's rota: the overview then warned that
+          // subjects they were never meant to take had "nothing to teach", and the planner
+          // used them to fill short days.
+          active: rule.weeklyFrequency > 0,
         },
         update: {
           weeklyFrequency: rule.weeklyFrequency,
           preferredDays: rule.preferredDays,
           priority: rule.priority ?? 0,
-          active: true,
+          active: rule.weeklyFrequency > 0,
         },
       })
     ),
@@ -49,6 +54,30 @@ export async function upsertSchedule(studentId: string, rules: ScheduleRuleInput
     where: { studentId, subjectId: { notIn: [...keep] }, active: true },
     data: { active: false },
   });
+}
+
+/**
+ * A lesson is on a day once.
+ *
+ * The database enforces it (one non-moved LESSON row per student, day and lesson), and used to
+ * enforce it with a bare "Internal server error" under the board — the "Repeat today" button
+ * hit it every single time, because repeating today's lesson today is exactly the duplicate
+ * the rule forbids. Said in words instead, and repeats go to the next school day.
+ */
+function isDuplicateAssignment(err: unknown): boolean {
+  return err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002";
+}
+
+async function alreadyOnDay(studentId: string, date: Date, lessonId: string): Promise<boolean> {
+  const clash = await prisma.dailyAssignment.findFirst({
+    where: { studentId, date, lessonId, kind: "LESSON", status: { not: "MOVED" } },
+    select: { id: true },
+  });
+  return clash !== null;
+}
+
+function describeDay(date: Date): string {
+  return date.toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", timeZone: "UTC" });
 }
 
 async function nextOrderForDay(studentId: string, date: Date): Promise<number> {
@@ -79,6 +108,9 @@ export async function addCustomAssignment(parentId: string, input: AddCustomAssi
     if (!lesson) throw new ApiError(404, "Lesson not found");
     subjectId = lesson.unit.programme.subjectId;
     if (!input.estimatedMinutes) estimatedMinutes = lesson.estimatedMinutes;
+    if (await alreadyOnDay(input.studentId, date, lesson.id)) {
+      throw new ApiError(409, `"${lesson.title}" is already on ${describeDay(date)}.`);
+    }
   }
 
   return prisma.dailyAssignment.create({
@@ -105,17 +137,25 @@ export async function moveAssignment(assignmentId: string, toDateKey: string): P
   if (assignment.status === "COMPLETED") throw new ApiError(400, "Cannot move a completed assignment");
 
   const date = toDateOnly(toDateKey);
+  if (assignment.kind === "LESSON" && assignment.lessonId && (await alreadyOnDay(assignment.studentId, date, assignment.lessonId))) {
+    throw new ApiError(409, `That lesson is already on ${describeDay(date)}.`);
+  }
   const order = await nextOrderForDay(assignment.studentId, date);
 
-  return prisma.dailyAssignment.update({
-    where: { id: assignmentId },
-    data: {
-      date,
-      order,
-      status: assignment.status === "MOVED" ? "PLANNED" : assignment.status,
-      movedToDate: null,
-    },
-  });
+  try {
+    return await prisma.dailyAssignment.update({
+      where: { id: assignmentId },
+      data: {
+        date,
+        order,
+        status: assignment.status === "MOVED" ? "PLANNED" : assignment.status,
+        movedToDate: null,
+      },
+    });
+  } catch (err) {
+    if (isDuplicateAssignment(err)) throw new ApiError(409, `That is already on ${describeDay(date)}.`);
+    throw err;
+  }
 }
 
 export async function skipAssignment(assignmentId: string): Promise<DailyAssignment> {
@@ -139,20 +179,28 @@ export async function repeatLesson(
   if (!lesson) throw new ApiError(404, "Lesson not found");
 
   const date = toDateOnly(dateKey);
+  if (await alreadyOnDay(studentId, date, lesson.id)) {
+    throw new ApiError(409, `"${lesson.title}" is already on ${describeDay(date)}. Pick another day to repeat it.`);
+  }
   const order = await nextOrderForDay(studentId, date);
 
-  return prisma.dailyAssignment.create({
-    data: {
-      studentId,
-      date,
-      order,
-      kind: "LESSON",
-      source: "PARENT",
-      status: "PLANNED",
-      subjectId: lesson.unit.programme.subjectId,
-      lessonId: lesson.id,
-      estimatedMinutes: lesson.estimatedMinutes,
-      createdById: parentId,
-    },
-  });
+  try {
+    return await prisma.dailyAssignment.create({
+      data: {
+        studentId,
+        date,
+        order,
+        kind: "LESSON",
+        source: "PARENT",
+        status: "PLANNED",
+        subjectId: lesson.unit.programme.subjectId,
+        lessonId: lesson.id,
+        estimatedMinutes: lesson.estimatedMinutes,
+        createdById: parentId,
+      },
+    });
+  } catch (err) {
+    if (isDuplicateAssignment(err)) throw new ApiError(409, `"${lesson.title}" is already on ${describeDay(date)}.`);
+    throw err;
+  }
 }

@@ -3,6 +3,7 @@
 import { CheckCircle2, XCircle } from "lucide-react";
 import { Input } from "@/components/ui/Input";
 import { cn } from "@/lib/cn";
+import { plainMaths } from "@/lib/text/maths";
 import type { QuestionRendererProps } from "./types";
 
 type Value = { text: string } | undefined;
@@ -49,7 +50,14 @@ export function Numeric({ question, value, onChange, disabled, result }: Questio
       </div>
       {graded && result?.isCorrect === false && answerKey ? (
         <p className="text-sm text-ink-muted">
-          Correct answer: <span className="font-medium text-ink">{answerKey.value}{opts?.unit ? ` ${opts.unit}` : ""}</span>
+          {/* `0.75` is the number the answer is checked against, not how anyone would write it
+              for "3/4" — prefer the provider's own display string, and run either one through
+              `plainMaths` since that string can itself arrive as LaTeX. */}
+          Correct answer:{" "}
+          <span className="font-medium text-ink">
+            {plainMaths(answerKey.acceptedStrings?.[0] ?? String(answerKey.value))}
+            {opts?.unit ? ` ${opts.unit}` : ""}
+          </span>
         </p>
       ) : null}
     </div>

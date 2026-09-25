@@ -24,6 +24,7 @@ import { ApiError } from "@/lib/auth/api";
 import { gradeQuestion, type GradingContext } from "@/lib/grading/grade";
 import { teacherAgent, teacherModeForStage } from "@/lib/ai/teacher-agent";
 import { recomputeLessonProgress } from "@/lib/progress/aggregate";
+import { schoolDayKey, schoolDayStart, todayDateOnly } from "@/lib/dates";
 import { hideUnanswerableQuestions } from "@/lib/questions/unanswerable";
 import { parkOpenGaps } from "@/lib/lessons/understanding";
 import { afterActivityGraded } from "@/lib/progress/review";
@@ -82,20 +83,52 @@ async function getVisibleQuestions(lessonId: string, studentId: string, stage?: 
 }
 
 /**
- * Latest ActivityAttempt for a stage, for drafting: reuses it unless the last
- * one is already GRADED, in which case a fresh round is opened (attemptNumber
- * + 1). `retryQuestion` is the normal way to reopen a GRADED activity for one
- * question; this covers the same "start a new round" contract literally.
+ * Only accepts an assignment that is genuinely this student's slot for this lesson — otherwise
+ * the id is dropped as if none had been given.
+ *
+ * Every write keyed off an assignment id used to trust it outright (`where: { id }`), so a
+ * student who knew or guessed another student's assignment id could tick that student's slot, or
+ * tie their own attempt to a lesson that was not what the assignment named. `kind` is checked too:
+ * a LESSON slot re-teaches the lesson, a REVIEW slot re-runs its CHECK — both legitimately name
+ * this lesson; a READING or CUSTOM row never does.
+ */
+async function ownedLessonAssignmentId(
+  studentId: string,
+  lessonId: string,
+  assignmentId: string | null | undefined
+): Promise<string | null> {
+  if (!assignmentId) return null;
+  const assignment = await prisma.dailyAssignment.findUnique({ where: { id: assignmentId } });
+  if (!assignment) return null;
+  if (assignment.studentId !== studentId) return null;
+  if (assignment.lessonId !== lessonId) return null;
+  if (assignment.kind !== "LESSON" && assignment.kind !== "REVIEW") return null;
+  return assignment.id;
+}
+
+/**
+ * Latest ActivityAttempt for a stage, for drafting: reused while it is still open — including
+ * one `retryQuestion` reopened for one more try, which is the only thing that flips a GRADED
+ * activity back to IN_PROGRESS.
+ *
+ * If the latest round is already GRADED, nothing legitimate is asking to save into it: no retry
+ * was requested (that would have flipped it back to IN_PROGRESS already), so this is a stray
+ * write — a renderer firing an answer's onChange on mount after a reload is the one we have
+ * seen. Opening a fresh, empty round for that would silently zero out a graded stage under the
+ * child; refusing is a no-op instead.
  */
 async function getOrOpenActivity(lessonAttemptId: string, stage: GradedStage): Promise<ActivityAttempt> {
   const latest = await prisma.activityAttempt.findFirst({
     where: { lessonAttemptId, stage },
     orderBy: { attemptNumber: "desc" },
   });
-  if (latest && latest.status !== "GRADED") return latest;
-  return prisma.activityAttempt.create({
-    data: { lessonAttemptId, stage, attemptNumber: (latest?.attemptNumber ?? 0) + 1, status: "IN_PROGRESS" },
-  });
+  if (!latest) {
+    return prisma.activityAttempt.create({ data: { lessonAttemptId, stage, attemptNumber: 1, status: "IN_PROGRESS" } });
+  }
+  if (latest.status === "GRADED") {
+    throw new ApiError(409, "This stage has already been graded.");
+  }
+  return latest;
 }
 
 /**
@@ -121,6 +154,23 @@ export async function countGradedAttempts(activityAttemptId: string, questionId:
   });
 }
 
+/**
+ * The `where` fragment for "this activity counts as graded", including one `retryQuestion`
+ * reopened for a single question. Retrying flips the whole activity's status to IN_PROGRESS so
+ * drafting targets the right round, but the round was genuinely graded once (`gradedAt` is
+ * still set from that pass) and stays so if the child never gets back to the retry — reloading
+ * before answering it must not make the CHECK look never marked. `completeStage(COMPLETE)`,
+ * `finaliseAttempt`'s mastery-eligibility count, and `settleFinishedLessons` all use this so an
+ * interrupted retry cannot dead-end the lesson; none of it re-grades anything, it only stops
+ * treating a round that was graded once as if it never was.
+ */
+function gradedIncludingReopenedRetry(stage: LessonStage | LessonStage[]) {
+  return {
+    stage: Array.isArray(stage) ? { in: stage } : stage,
+    OR: [{ status: "GRADED" as const }, { status: "IN_PROGRESS" as const, gradedAt: { not: null } }],
+  };
+}
+
 async function finalizeStageAdvance(attempt: LessonAttempt, stage: GradedStage, isCurrent: boolean): Promise<void> {
   const field = stageTimestampField(stage);
   const data: Record<string, unknown> = {};
@@ -132,6 +182,31 @@ async function finalizeStageAdvance(attempt: LessonAttempt, stage: GradedStage, 
   if (Object.keys(data).length > 0) {
     await prisma.lessonAttempt.update({ where: { id: attempt.id }, data });
   }
+}
+
+/**
+ * Advances the attempt off PRACTICE as a side effect of extra-practice work actually being
+ * graded (`POST /api/lessons/[lessonId]/practice/submit`), instead of leaving the advance to a
+ * second, separate request the browser happens to make afterwards. Stamps `practiceCompletedAt`
+ * and sets `currentStage` to CHECK exactly the way `submitStage("PRACTICE")` would — it reuses
+ * `finalizeStageAdvance` so an attempt advanced this way is indistinguishable from one advanced
+ * the ordinary way.
+ *
+ * A no-op unless the attempt is genuinely still sitting on PRACTICE. Extra practice is also
+ * taken from FEEDBACK or COMPLETE — the "extra round" (`practiseMore`/`practiseWeakSpots`/
+ * `takeFinalTest` in `LessonPlayer.tsx`) that runs after the lesson is already marked — and in
+ * that case the child is revisiting, not progressing, so `currentStage` must be left exactly as
+ * it is.
+ *
+ * The attempt is re-read fresh rather than trusting the caller's copy, so this stays idempotent
+ * and never fights a concurrent caller: called again after the stage has already moved on — the
+ * browser's own `submitGraded("PRACTICE")` follow-up racing this, or the child submitting a
+ * second round of extra practice — it sees `currentStage` is no longer PRACTICE and does nothing.
+ */
+export async function advanceFromExtraPractice(lessonAttemptId: string): Promise<void> {
+  const attempt = await prisma.lessonAttempt.findUnique({ where: { id: lessonAttemptId } });
+  if (!attempt || attempt.currentStage !== "PRACTICE") return;
+  await finalizeStageAdvance(attempt, "PRACTICE", true);
 }
 
 /** Blends CHECK % with PRACTICE % (0.8 / 0.2) per ARCHITECTURE §4 and stamps score/masteryScore. */
@@ -161,6 +236,17 @@ async function recomputeMasteryScore(lessonAttemptId: string): Promise<void> {
 
 // ───────────────────────────── contract exports ─────────────────────────────
 
+/**
+ * Deliberately no settling for a lesson abandoned before PRACTICE is done.
+ *
+ * An attempt stuck at STARTER or partway through LEARN is not a bug to close off: it is not
+ * done, so the planner correctly keeps offering the lesson, and `existing` below is returned
+ * exactly as it was left — same `currentStage`, same drafts — so opening it resumes the teaching
+ * where the child stopped, rather than restarting or skipping to a quiz on material they never
+ * saw. See `settleAbandonedLessons` for the narrower case (taught and practised, only the CHECK
+ * missing) that *is* settled, and why forcing a status here instead would be worse than the
+ * lesson simply coming back.
+ */
 export async function startOrResumeAttempt(
   studentId: string,
   lessonId: string,
@@ -172,11 +258,30 @@ export async function startOrResumeAttempt(
   // perfectly well. Never fatal; a lesson opens either way.
   await hideUnanswerableQuestions(lessonId).catch(() => undefined);
 
+  // Only ever trust an assignment id that is genuinely this student's slot for this lesson.
+  const safeAssignmentId = await ownedLessonAssignmentId(studentId, lessonId, assignmentId);
+
   const existing = await prisma.lessonAttempt.findFirst({
     where: { studentId, lessonId, status: "IN_PROGRESS" },
     orderBy: { attemptNumber: "desc" },
   });
-  if (existing) return existing;
+  if (existing) {
+    // A child who started via "Start the next lesson" (no assignment id) may still land back on
+    // today's board under this exact lesson later — via its LESSON card, or a REVIEW slot for
+    // it. Attach the slot now so completion (below, and in `finaliseAttempt`) has something to
+    // tick, the same as if they had opened it from the board in the first place.
+    if (safeAssignmentId && existing.assignmentId !== safeAssignmentId) {
+      await prisma.lessonAttempt.update({ where: { id: existing.id }, data: { assignmentId: safeAssignmentId } });
+      existing.assignmentId = safeAssignmentId;
+    }
+    if (safeAssignmentId) {
+      await prisma.dailyAssignment.updateMany({
+        where: { id: safeAssignmentId, status: "PLANNED" },
+        data: { status: "IN_PROGRESS" },
+      });
+    }
+    return existing;
+  }
 
   const priorCount = await prisma.lessonAttempt.count({ where: { studentId, lessonId } });
 
@@ -184,16 +289,16 @@ export async function startOrResumeAttempt(
     data: {
       studentId,
       lessonId,
-      assignmentId: assignmentId ?? null,
+      assignmentId: safeAssignmentId,
       attemptNumber: priorCount + 1,
       status: "IN_PROGRESS",
       currentStage: "STARTER",
     },
   });
 
-  if (assignmentId) {
+  if (safeAssignmentId) {
     await prisma.dailyAssignment.updateMany({
-      where: { id: assignmentId, status: "PLANNED" },
+      where: { id: safeAssignmentId, status: "PLANNED" },
       data: { status: "IN_PROGRESS" },
     });
   }
@@ -246,16 +351,36 @@ export async function getAttemptView(attemptId: string, studentId: string): Prom
     orderBy: { startedAt: "asc" },
   });
 
+  /**
+   * What the player pre-fills each question with: the child's own latest answer, whether it is
+   * still a live draft or has already been graded.
+   *
+   * This used to keep only PENDING responses, on the assumption a graded question shows its
+   * answer some other way. It doesn't — the renderer is handed `value`, and a graded question
+   * with nothing in `drafts` renders with no answer at all, disabled, next to feedback saying
+   * "well done, that's correct" for a choice the child can no longer see. So every question's
+   * latest response is kept here, regardless of grading state; the renderer's own `disabled`
+   * (driven by whether the *stage* has been submitted) is what stops a restored value from ever
+   * being written back as a fresh answer — this only supplies what to show, never what to save.
+   *
+   * `attemptNumber` counts retries *within one activity* (`saveDraftAnswer`/`retryQuestion` both
+   * scope it to `{ activityAttemptId, questionId }`), so it cannot be compared across different
+   * activities for the same question — an activity's own first attempt is always `1`, whichever
+   * activity it is. `activities` is ordered oldest-first, so resolving attempt-number ties
+   * *within* each activity and then simply overwriting question-by-question as later activities
+   * are processed gives the chronologically latest answer either way.
+   */
   const drafts: Record<string, unknown> = {};
-  const draftAttemptNumber: Record<string, number> = {};
   for (const activity of activities) {
+    const latestInActivity = new Map<string, { attemptNumber: number; response: unknown }>();
     for (const qa of activity.questionAttempts) {
-      if (qa.gradedBy !== "PENDING") continue;
-      const seen = draftAttemptNumber[qa.questionId];
-      if (seen === undefined || qa.attemptNumber > seen) {
-        draftAttemptNumber[qa.questionId] = qa.attemptNumber;
-        drafts[qa.questionId] = qa.response;
+      const seen = latestInActivity.get(qa.questionId);
+      if (!seen || qa.attemptNumber > seen.attemptNumber) {
+        latestInActivity.set(qa.questionId, { attemptNumber: qa.attemptNumber, response: qa.response });
       }
+    }
+    for (const [questionId, entry] of latestInActivity) {
+      drafts[questionId] = entry.response;
     }
   }
 
@@ -338,12 +463,33 @@ export async function saveDraftAnswer(
  *
  * Called the moment a CHECK is marked, because that is when the child finished the lesson —
  * not when they later find and press a button on the feedback screen.
+ *
+ * `fallback` covers a lesson started without an assignment id at all — "Start the next lesson"
+ * from Today. It may still be sitting on today's board under its own LESSON slot; that is the
+ * card the child is actually looking at, so find and tick that instead of leaving it stuck on
+ * "not started" for having been begun the other way in.
  */
-async function tickTheBoard(assignmentId: string | null): Promise<void> {
-  if (!assignmentId) return;
+async function tickTheBoard(
+  assignmentId: string | null,
+  fallback?: { studentId: string; lessonId: string }
+): Promise<void> {
+  let id = assignmentId;
+  if (!id && fallback) {
+    const todays = await prisma.dailyAssignment.findFirst({
+      where: {
+        studentId: fallback.studentId,
+        lessonId: fallback.lessonId,
+        kind: "LESSON",
+        status: { in: ["PLANNED", "IN_PROGRESS"] },
+        date: todayDateOnly(),
+      },
+    });
+    id = todays?.id ?? null;
+  }
+  if (!id) return;
   await prisma.dailyAssignment
     .updateMany({
-      where: { id: assignmentId, status: { in: ["PLANNED", "IN_PROGRESS"] } },
+      where: { id, status: { in: ["PLANNED", "IN_PROGRESS"] } },
       data: { status: "COMPLETED", completedAt: new Date() },
     })
     .catch(() => undefined);
@@ -365,22 +511,46 @@ export async function submitStage(
   const questions = await getVisibleQuestions(attempt.lessonId, studentId, stage);
 
   if (questions.length === 0) {
-    const activity = await prisma.activityAttempt.create({
-      data: {
-        lessonAttemptId: attempt.id,
-        stage,
-        attemptNumber: 1,
-        status: "GRADED",
-        submittedAt: new Date(),
-        gradedAt: new Date(),
-        score: 0,
-        maxScore: 0,
-        percentage: null,
-      },
+    // An activity for this stage may already exist — a PRACTICE round created by
+    // /practice/submit, or a stage that had visible questions when it was opened and lost every
+    // one of them to an exclusion since. Creating a fresh row with `attemptNumber: 1` unchecked
+    // used to collide with it (`@@unique([lessonAttemptId, stage, attemptNumber])`) and 500 —
+    // the stage must advance instead.
+    const existingActivity = await prisma.activityAttempt.findFirst({
+      where: { lessonAttemptId: attempt.id, stage },
+      orderBy: { attemptNumber: "desc" },
     });
+    const activity =
+      existingActivity && existingActivity.status === "GRADED"
+        ? existingActivity // already graded elsewhere — nothing new to grade, just move on
+        : existingActivity
+          ? await prisma.activityAttempt.update({
+              where: { id: existingActivity.id },
+              data: {
+                status: "GRADED",
+                submittedAt: existingActivity.submittedAt ?? new Date(),
+                gradedAt: new Date(),
+                score: existingActivity.score ?? 0,
+                maxScore: existingActivity.maxScore ?? 0,
+                percentage: existingActivity.percentage ?? null,
+              },
+            })
+          : await prisma.activityAttempt.create({
+              data: {
+                lessonAttemptId: attempt.id,
+                stage,
+                attemptNumber: 1,
+                status: "GRADED",
+                submittedAt: new Date(),
+                gradedAt: new Date(),
+                score: 0,
+                maxScore: 0,
+                percentage: null,
+              },
+            });
     await finalizeStageAdvance(attempt, stage, isCurrent);
     // A quiz with nothing in it is still a quiz they got to the end of.
-    if (stage === "CHECK") await tickTheBoard(attempt.assignmentId);
+    if (stage === "CHECK") await tickTheBoard(attempt.assignmentId, { studentId, lessonId: attempt.lessonId });
     return { activity, results: [] };
   }
 
@@ -500,7 +670,7 @@ export async function submitStage(
      * ticks here. `finaliseAttempt` still runs when they leave properly, and setting the same
      * row to the same value twice costs nothing.
      */
-    await tickTheBoard(attempt.assignmentId);
+    await tickTheBoard(attempt.assignmentId, { studentId, lessonId: attempt.lessonId });
   }
 
   await finalizeStageAdvance(attempt, stage, isCurrent);
@@ -617,7 +787,7 @@ export async function completeStage(attemptId: string, studentId: string, stage:
   if (stage === "COMPLETE") {
     if (attempt.status !== "IN_PROGRESS") return attempt; // already done — say so happily
     const marked = await prisma.activityAttempt.count({
-      where: { lessonAttemptId: attempt.id, stage: "CHECK", status: "GRADED" },
+      where: { lessonAttemptId: attempt.id, ...gradedIncludingReopenedRetry("CHECK") },
     });
     if (marked === 0) throw new ApiError(400, "The quiz has not been marked yet.");
     return finaliseAttempt(attempt);
@@ -661,7 +831,7 @@ export async function completeStage(attemptId: string, studentId: string, stage:
 export async function finaliseAttempt(attempt: LessonAttempt): Promise<LessonAttempt> {
   const studentId = attempt.studentId;
   const assessedCount = await prisma.activityAttempt.count({
-    where: { lessonAttemptId: attempt.id, stage: { in: ["PRACTICE", "CHECK"] }, status: "GRADED" },
+    where: { lessonAttemptId: attempt.id, ...gradedIncludingReopenedRetry(["PRACTICE", "CHECK"]) },
   });
   const mastery = attempt.masteryScore;
   let status: LessonAttempt["status"] = "COMPLETED";
@@ -682,11 +852,10 @@ export async function finaliseAttempt(attempt: LessonAttempt): Promise<LessonAtt
     data: { completedAt: attempt.completedAt ?? new Date(), status, currentStage: "COMPLETE" },
   });
 
-  if (attempt.assignmentId) {
-    await prisma.dailyAssignment
-      .update({ where: { id: attempt.assignmentId }, data: { status: "COMPLETED", completedAt: new Date() } })
-      .catch(() => undefined);
-  }
+  // Tick whichever slot this belongs to — the attempt's own assignment, or (a lesson started
+  // without one, e.g. "Start the next lesson" from Today) today's LESSON assignment for the
+  // same lesson, if it's sitting on the board waiting for it.
+  await tickTheBoard(attempt.assignmentId, { studentId, lessonId: attempt.lessonId });
 
   await recomputeLessonProgress(studentId, attempt.lessonId);
 
@@ -715,8 +884,8 @@ const SETTLE_AFTER_MINUTES = 5;
  * that button was hidden whenever there was time left in the period. Bookkeeping should not be
  * able to un-do a lesson someone did.
  *
- * The rule is deliberately narrow: the quiz must have been marked, and a quarter of an hour
- * must have passed since. A lesson still being worked on is left alone.
+ * The rule is deliberately narrow: the quiz must have been marked, and five minutes must have
+ * passed since. A lesson still being worked on is left alone.
  */
 export async function settleFinishedLessons(studentId: string): Promise<number> {
   const cutoff = new Date(Date.now() - SETTLE_AFTER_MINUTES * 60 * 1000);
@@ -725,7 +894,10 @@ export async function settleFinishedLessons(studentId: string): Promise<number> 
     where: {
       studentId,
       status: "IN_PROGRESS",
-      activities: { some: { stage: "CHECK", status: "GRADED", gradedAt: { lt: cutoff } } },
+      // `status: "IN_PROGRESS"` here also matches a CHECK reopened for a retry the child never
+      // came back to answer — it was graded (this is what `gradedAt` reports), just not
+      // resubmitted. Without that, an interrupted retry never settles at all.
+      activities: { some: { stage: "CHECK", status: { in: ["GRADED", "IN_PROGRESS"] }, gradedAt: { lt: cutoff } } },
     },
     take: 20,
   });
@@ -740,6 +912,202 @@ export async function settleFinishedLessons(studentId: string): Promise<number> 
       .catch(() => undefined);
   }
   return settled;
+}
+
+/**
+ * How long a lesson can sit untouched before it counts as given up on rather than mid-session.
+ *
+ * Not a raw duration: a school day has breaks in it, and a real gap between two periods of the
+ * same sitting must not trip this. `LessonAttempt.updatedAt` moves every time the child's own
+ * time-tracking (`recordTime`) ticks over their attempt, so a lesson still genuinely open today
+ * keeps a fresh timestamp no matter how long today's gaps are. Only an attempt last touched
+ * before *today's school day began* is a different day's business — tying the cutoff to the
+ * school day, rather than to a fixed number of hours, is what makes that distinction exact.
+ *
+ * Always today, regardless of which day or week a caller is busy planning: this answers "is this
+ * genuinely stale as of right now", not "is this stale relative to the day I'm about to fill in".
+ */
+function abandonedSince(): Date {
+  return schoolDayStart(schoolDayKey());
+}
+
+/**
+ * Marks NEEDS_REVIEW the lessons a child was genuinely taught and practised, and then never
+ * came back to sit the CHECK for.
+ *
+ * This is deliberately narrower than "any abandoned attempt". An attempt abandoned at STARTER or
+ * during LEARN needs none of this: it is not done, so the planner rightly offers the lesson
+ * again, and `startOrResumeAttempt` resumes the *same* attempt at the *same* `currentStage` — a
+ * child who stopped partway through the teaching picks the teaching back up, which is exactly
+ * what should happen. Settling that attempt here — forcing NEEDS_REVIEW, which routes back as a
+ * `runReviewAssignment` CHECK-only re-run — would hand a quiz on material the child was never
+ * taught to someone who never saw it, and record them as having done the lesson when they have
+ * not. The Learn step's own fallback copy already warns against exactly this: a child sent into
+ * an assessment on material nobody gave them will believe the failure is theirs.
+ *
+ * So only an attempt with a graded (or submitted) PRACTICE round counts — genuinely taught, and
+ * genuinely practised. An earlier version of this also matched any `currentStage` that had
+ * already reached CHECK, meaning to catch "the stage advanced without a recorded PRACTICE
+ * activity for some other reason" — but that branch turned out to be both redundant for an
+ * ordinary lesson (every legitimate path to CHECK, including an empty PRACTICE stage and the
+ * extra-practice route, always leaves a PRACTICE `ActivityAttempt` behind first) and actively
+ * dangerous for a REVIEW assignment, whose attempt is forced straight to `currentStage: "CHECK"`
+ * by `runReviewAssignment` with **no** PRACTICE round at all, by construction. That branch would
+ * have caught a review opened and never answered — zero activities, nothing to show for it — and
+ * marked it NEEDS_REVIEW as though it had been taught and practised. It has been removed; a
+ * review attempt is additionally excluded outright below, so nothing about this function ever
+ * reasons about a review's `currentStage` again. A stale review is settled by
+ * `requeueAbandonedReviews` instead, on the `ReviewItem` itself — see its comment for why that is
+ * the right unit for a review's obligation.
+ *
+ * For a genuinely taught-and-practised, CHECK-abandoned lesson, `settleFinishedLessons` cannot
+ * see the gap at all — it only settles an attempt whose CHECK has actually been graded, and one
+ * abandoned before CHECK has no such thing to find. Left alone, the `LessonAttempt` would stay
+ * IN_PROGRESS forever and `StudentLessonProgress` with it — `isLessonDone` never returns true for
+ * it — so the planner would offer the same lesson again indefinitely even though there is nothing
+ * left to teach, only a quiz left to sit.
+ *
+ * The honest middle ground: not COMPLETED (nobody watched them finish — that is the point of the
+ * CHECK), and not left open forever either (the teaching and the practice genuinely happened, and
+ * are genuinely behind them). NEEDS_REVIEW is this app's existing word for "done, but come back
+ * to it" — the same status a poor CHECK score already gets — so it is settled the exact same way:
+ * one short REVIEW item re-runs just the CHECK, once.
+ *
+ * A lesson that keeps being abandoned before PRACTICE, on the other hand, can legitimately keep
+ * reappearing — that is unresolved by design, not missed: see the note on `startOrResumeAttempt`.
+ */
+export async function settleAbandonedLessons(studentId: string): Promise<number> {
+  const cutoff = abandonedSince();
+
+  const stale = await prisma.lessonAttempt.findMany({
+    where: {
+      studentId,
+      status: "IN_PROGRESS",
+      updatedAt: { lt: cutoff },
+      // A CHECK that was actually graded is `settleFinishedLessons`'s to settle, on its own much
+      // shorter clock — it has a real result to record, not just an absence of one.
+      NOT: { activities: { some: { stage: "CHECK", gradedAt: { not: null } } } },
+      activities: { some: { stage: "PRACTICE", status: { in: ["SUBMITTED", "GRADED"] } } },
+      // Excluded outright, not merely left to fail the PRACTICE check above: a REVIEW
+      // assignment's attempt never has a PRACTICE round by construction, so it would already be
+      // excluded — but a review is not "a lesson abandoned before its quiz", it is *only* a quiz,
+      // and reasoning about it here at all is the mistake, not just this particular condition.
+      // `isNot` matches both "no assignment" (an attempt started without one) and "an assignment
+      // that isn't a review".
+      assignment: { isNot: { kind: "REVIEW" } },
+    },
+    take: 20,
+  });
+
+  let settled = 0;
+  for (const attempt of stale) {
+    // Never fatal: a lesson that will not settle must not stop the board from rendering.
+    await settleOneAbandonedLesson(attempt)
+      .then(() => {
+        settled += 1;
+      })
+      .catch(() => undefined);
+  }
+  return settled;
+}
+
+async function settleOneAbandonedLesson(attempt: LessonAttempt): Promise<void> {
+  const { studentId, lessonId } = attempt;
+
+  const updated = await prisma.lessonAttempt.update({
+    where: { id: attempt.id },
+    data: { completedAt: attempt.completedAt ?? new Date(), status: "NEEDS_REVIEW", currentStage: "COMPLETE" },
+  });
+
+  await tickTheBoard(attempt.assignmentId, { studentId, lessonId });
+  await recomputeLessonProgress(studentId, lessonId);
+
+  // One review item per lesson, not one per abandoned attempt — a revisit that stalls again
+  // must not queue a second reminder alongside the first still waiting.
+  //
+  // Counting SCHEDULED as "already queued" here is only honest because SCHEDULED can no longer
+  // mean "stranded" elsewhere: `requeueAbandonedReviews` puts a stale SCHEDULED item straight
+  // back to PENDING, and the two other places that used to leave one dangling — deleting a
+  // duplicate/surplus review assignment in `trimDayToTimetable`, and `runReviewAssignment`'s own
+  // abandoned-quiz case — now do the same. So a SCHEDULED item found here is always still live:
+  // on a board somewhere, waiting to be opened, or a moment away from being requeued if it is
+  // stale. Nothing here needs to re-check that; it would just be re-deriving what those functions
+  // already guarantee.
+  const alreadyQueued = await prisma.reviewItem.findFirst({
+    where: { studentId, lessonId, reason: "LOW_SCORE", status: { in: ["PENDING", "SCHEDULED"] } },
+  });
+  if (!alreadyQueued) {
+    await prisma.reviewItem.create({
+      data: {
+        studentId,
+        lessonId,
+        reason: "LOW_SCORE",
+        status: "PENDING",
+        dueAt: todayDateOnly(),
+        detail: "Started this lesson but never reached the check quiz.",
+      },
+    });
+  }
+
+  await prisma.activityLog.create({
+    data: {
+      studentId,
+      kind: "lesson_completed",
+      data: { lessonId, attemptId: updated.id, status: "NEEDS_REVIEW", reason: "abandoned_before_check" },
+    },
+  });
+}
+
+/**
+ * Puts a stale review back to PENDING when the child opened it and never answered it.
+ *
+ * A review's whole content is its CHECK — `runReviewAssignment` forces `currentStage` there the
+ * moment it is opened, before any PRACTICE round could exist — so `settleAbandonedLessons`'s
+ * "taught and practised" reasoning has nothing to attach to here at all, and reviews are excluded
+ * from it outright (see its comment). But a review abandoned after being opened is a real gap all
+ * the same, and it needs its own honest answer, because leaving it alone is not neutral: the
+ * planner only ever plans a `ReviewItem` with `status: "PENDING"` (see `planWeek`'s
+ * `pendingReviews` query), and the item was flipped to SCHEDULED the moment it was placed on a
+ * board. An abandoned, SCHEDULED item that is never put back is not "still there" — its board slot
+ * is a past day nobody replans, so it is invisible and permanently unresolved: the exact opposite
+ * of a review's purpose, which is to bring back material the child got wrong. A lesson merely
+ * *reappearing* too often is a visible nuisance; a review silently vanishing is a hidden one, and
+ * worse.
+ *
+ * The obligation lives in the `ReviewItem`, not the `LessonAttempt` or the `DailyAssignment` — the
+ * item is what `completeReview` actually discharges, and only that function should ever move it
+ * to DONE. So this only ever moves SCHEDULED back to PENDING: the assignment is left exactly as
+ * it is (in particular, never ticked COMPLETED — the review was not done), and the attempt is left
+ * exactly as it is too. Whatever partial CHECK answers the child left in that attempt are still
+ * there for `startOrResumeAttempt` to hand back once the requeued item is opened again; a review
+ * genuinely lost twice over would be an attempt reset on top of an item lost, and there is no need
+ * to reset anything here to fix the one thing that was actually broken.
+ */
+export async function requeueAbandonedReviews(studentId: string): Promise<number> {
+  const cutoff = abandonedSince();
+
+  const stale = await prisma.dailyAssignment.findMany({
+    where: {
+      studentId,
+      kind: "REVIEW",
+      status: { in: ["PLANNED", "IN_PROGRESS"] },
+      updatedAt: { lt: cutoff },
+      reviewItemId: { not: null },
+      reviewItem: { status: "SCHEDULED" },
+    },
+    select: { reviewItemId: true },
+  });
+
+  let requeued = 0;
+  for (const { reviewItemId } of stale) {
+    // `updateMany` with the status still in the `where` guards against two settle passes (one
+    // from `ensureDayPlanned`, one from `planWeek`) both trying to requeue the same item.
+    const result = await prisma.reviewItem
+      .updateMany({ where: { id: reviewItemId!, status: "SCHEDULED" }, data: { status: "PENDING" } })
+      .catch(() => ({ count: 0 }));
+    if (result.count > 0) requeued += 1;
+  }
+  return requeued;
 }
 
 export async function recordVideoProgress(

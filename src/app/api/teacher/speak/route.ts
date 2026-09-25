@@ -16,7 +16,11 @@ export const maxDuration = 60;
 export async function POST(req: Request) {
   try {
     const user = await requireStudentApi(req);
-    const { text } = z.object({ text: z.string().min(1).max(2500) }).parse(await req.json());
+    // Not capped to the length `speak()` can actually voice: a longer teacher reply used to be
+    // refused outright here rather than read as far as it goes, which is exactly backwards —
+    // the longer explanations are the ones most worth hearing. `speak()` itself trims to what
+    // ElevenLabs will take, at a sentence boundary rather than mid-word.
+    const { text } = z.object({ text: z.string().min(1).max(20_000) }).parse(await req.json());
 
     const voiceId = user.studentProfile.voiceId ?? DEFAULT_VOICE_ID;
     /**

@@ -4,6 +4,15 @@ import { useEffect, useRef, useState } from "react";
 import { Loader2, Volume2, VolumeX } from "lucide-react";
 
 /**
+ * Set once the speak route reports it isn't configured at all (503, no ELEVENLABS_API_KEY) —
+ * a fact about the server, not this one reply, and true for every SpeakButton for the rest of
+ * this tab. Module-scope like `draftSaveTimers` elsewhere: every reply gets its own component
+ * instance, and without this each one would show the child the same server-config sentence in
+ * turn instead of the button just quietly not being there.
+ */
+let voiceConfigured = true;
+
+/**
  * Reads a piece of the teacher's writing aloud.
  *
  * For a younger child especially, listening beats reading a wall of text — they can keep their
@@ -12,7 +21,9 @@ import { Loader2, Volume2, VolumeX } from "lucide-react";
  * and the lesson carries on.
  */
 export function SpeakButton({ text, autoPlay = false }: { text: string; autoPlay?: boolean }) {
-  const [state, setState] = useState<"idle" | "loading" | "playing" | "unavailable">("idle");
+  const [state, setState] = useState<"idle" | "loading" | "playing" | "unavailable">(
+    voiceConfigured ? "idle" : "unavailable",
+  );
   const [problem, setProblem] = useState<string | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const urlRef = useRef<string | null>(null);
@@ -49,6 +60,15 @@ export function SpeakButton({ text, autoPlay = false }: { text: string; autoPlay
         body: JSON.stringify({ text }),
       });
       if (!res.ok) {
+        if (res.status === 503) {
+          // Not this reply's problem — nobody has set an ElevenLabs key up for the family at
+          // all, and the body is a sentence written for whoever configures the server, not for
+          // a child ("No ELEVENLABS_API_KEY is set on the server."). Stop asking, and stop
+          // showing a button for a feature that cannot work this session.
+          voiceConfigured = false;
+          setState("unavailable");
+          return;
+        }
         /**
          * Say so. Do not vanish.
          *
@@ -74,7 +94,17 @@ export function SpeakButton({ text, autoPlay = false }: { text: string; autoPlay
       };
       await audio.play();
       setState("playing");
-    } catch {
+    } catch (err) {
+      // A browser that hasn't been tapped yet refuses the very first `play()` with
+      // NotAllowedError — that is autoplay policy working as designed (Chrome enforces the same
+      // rule as everyone else), not a broken voice, and a tap right afterwards plays it fine.
+      // Saying "I couldn't reach my voice" over something a tap immediately fixes reads as a
+      // failure that never happened; stay quietly idle instead, exactly as if autoPlay had
+      // never been asked for.
+      if (err instanceof DOMException && err.name === "NotAllowedError") {
+        setState("idle");
+        return;
+      }
       setProblem("I couldn't reach my voice. Tap to try again.");
       setState("idle");
     }
@@ -83,14 +113,15 @@ export function SpeakButton({ text, autoPlay = false }: { text: string; autoPlay
   useEffect(() => {
     // Autoplay is best-effort: browsers block sound until the child has interacted with the
     // page, and a blocked play must not look like a broken button.
-    if (!autoPlay || played.current || !text.trim()) return;
+    if (!autoPlay || played.current || !text.trim() || !voiceConfigured) return;
     played.current = true;
     void play();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autoPlay, text]);
 
-  // Only ever hidden when there is genuinely nothing to read.
-  if (!text.trim()) return null;
+  // Hidden when there is nothing to read, and quietly hidden once we know the voice isn't
+  // configured at all — that is a fact about the server, not a per-reply error to surface.
+  if (!text.trim() || state === "unavailable") return null;
 
   return (
     <div className="inline-flex flex-col items-start gap-0.5">

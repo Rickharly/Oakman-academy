@@ -16,7 +16,12 @@ import { OakRateLimitError } from "@/lib/oak/client";
 import path from "node:path";
 import { prisma } from "@/lib/db";
 import type { Prisma, ResourceType, LicenceStatus } from "@/generated/prisma/client";
-import { mapOakQuizQuestion, mapWorksheetQuestion, type MappedQuestion } from "@/lib/questions/oak-mapper";
+import {
+  mapOakQuizQuestion,
+  mapWorksheetQuestion,
+  seededShuffle,
+  type MappedQuestion,
+} from "@/lib/questions/oak-mapper";
 import { FixtureProvider } from "./fixture-provider";
 import { getCurriculumProvider, type CurriculumProvider, type ProviderAsset } from "./provider";
 
@@ -230,6 +235,96 @@ async function upsertQuestions(lessonId: string, mapped: MappedQuestion[], sourc
     count += 1;
   }
   return count;
+}
+
+export interface RepairStats {
+  ordering: number;
+  matching: number;
+}
+
+/**
+ * Fixes ORDERING and MATCHING `Question` rows imported before the mapper started shuffling
+ * their displayed order (see `oak-mapper.ts`): Oak lists an ORDERING question's steps already
+ * in the correct sequence and a MATCHING question's right-hand column already lined up beside
+ * its left-hand partner, so a lesson imported before the shuffle went in would already show a
+ * child the right answer, or already be right without them touching it.
+ *
+ * A row is repaired only if it still looks pre-solved — detected structurally, not by when it
+ * was imported — which is what makes this idempotent and safe to run on every boot and every
+ * sync: an already-shuffled row (freshly mapped, or already repaired) is left exactly alone,
+ * and the row count never changes, only `options`/`answerKey` on the rows that needed it.
+ *
+ * AI_GENERATED rows are never touched here. Those are written by the AI grading/practice path,
+ * the one exception to "curriculum tables are written only by sync" (CLAUDE.md rule 1,
+ * ARCHITECTURE §1) — this function has no business deciding what one of those should look like.
+ */
+export async function repairPresolvedQuestions(): Promise<RepairStats> {
+  const stats: RepairStats = { ordering: 0, matching: 0 };
+
+  const orderingRows = await prisma.question.findMany({
+    where: { type: "ORDERING", source: { not: "AI_GENERATED" } },
+    select: { id: true, providerRef: true, options: true, answerKey: true },
+  });
+  for (const row of orderingRows) {
+    // Every row the mapper ever wrote carries a providerRef (it's part of the upsert key); a
+    // row somehow missing one has no stable seed to shuffle by, so it's left alone rather than
+    // shuffled with something that would change on every run.
+    if (!row.providerRef) continue;
+    const options = row.options as { items?: { id: string }[] } | null;
+    const answerKey = row.answerKey as { order?: string[] } | null;
+    const items = options?.items;
+    const order = answerKey?.order;
+    if (!items?.length || !order?.length || items.length !== order.length) continue;
+
+    const isPresolved = items.every((item, i) => item.id === order[i]);
+    if (!isPresolved) continue;
+
+    await prisma.question.update({
+      where: { id: row.id },
+      data: {
+        options: { ...options, items: seededShuffle(items, row.providerRef) } as Prisma.InputJsonValue,
+      },
+    });
+    stats.ordering += 1;
+  }
+
+  const matchingRows = await prisma.question.findMany({
+    where: { type: "MATCHING", source: { not: "AI_GENERATED" } },
+    select: { id: true, providerRef: true, options: true, answerKey: true },
+  });
+  for (const row of matchingRows) {
+    if (!row.providerRef) continue;
+    const options = row.options as { left?: { id: string }[]; right?: { id: string; text: string }[] } | null;
+    const answerKey = row.answerKey as { pairs?: { leftId: string; rightId: string }[] } | null;
+    const left = options?.left;
+    const right = options?.right;
+    const pairs = answerKey?.pairs;
+    if (!left?.length || !right?.length || !pairs?.length || left.length !== right.length) continue;
+
+    const isOldScheme = right.every((r, i) => r.id === left[i]?.id);
+    if (!isOldScheme) continue;
+
+    // The right column gets its own id namespace (`r` + its old id), same as a freshly mapped
+    // question — see oak-mapper.ts — so the answer key's rightIds need rewriting to match
+    // before the column itself is shuffled.
+    const rightIdRewrite = new Map(right.map((r) => [r.id, `r${r.id}`]));
+    const reIdRight = right.map((r) => ({ ...r, id: rightIdRewrite.get(r.id)! }));
+    const newPairs = pairs.map((p) => ({ ...p, rightId: rightIdRewrite.get(p.rightId) ?? p.rightId }));
+
+    await prisma.question.update({
+      where: { id: row.id },
+      data: {
+        options: {
+          ...options,
+          right: seededShuffle(reIdRight, row.providerRef),
+        } as Prisma.InputJsonValue,
+        answerKey: { ...answerKey, pairs: newPairs } as Prisma.InputJsonValue,
+      },
+    });
+    stats.matching += 1;
+  }
+
+  return stats;
 }
 
 /**
@@ -542,6 +637,22 @@ export async function syncProgramme(scope: SyncScope, opts: SyncOptions = {}): P
       }
     }
 
+    // Cheap once every row has converged, and running it here — not only at server boot —
+    // means "sync now" in Admin fixes a family's questions immediately rather than waiting for
+    // a redeploy. A failure here is a data-quality miss, not an import failure: it must never
+    // turn an otherwise-successful sync into a FAILED job.
+    try {
+      const repaired = await repairPresolvedQuestions();
+      if (repaired.ordering || repaired.matching) {
+        log(
+          `Repaired ${repaired.ordering} ordering and ${repaired.matching} matching question(s) ` +
+            `that were still pre-solved`,
+        );
+      }
+    } catch (err) {
+      log(`Repair of pre-solved questions failed (non-fatal): ${(err as Error).message}`);
+    }
+
     log(
       `Done: ${stats.units} units, ${stats.lessons} lessons, ${stats.questions} questions, ` +
         `${stats.resources} resources, ${stats.skipped} skipped, ${stats.failed} failed`,
@@ -607,6 +718,49 @@ export async function syncMany(
 
 
 /**
+ * Why a call to `ensureLessonAssets` ended the way it did — enough for a caller to tell a child
+ * "this hasn't been downloaded yet" apart from "Oak genuinely has none" apart from "we just
+ * tried and it failed", instead of all three looking like the same empty video slot.
+ *
+ * - `fixture` — the bundled placeholder curriculum. Never attempted; there is nothing real to
+ *   fetch.
+ * - `already_has_video` — nothing to do, this lesson already has a VIDEO resource row.
+ * - `throttled` — assets were already asked for at least once (successfully) and still have no
+ *   video; asked again too recently to retry now (see `RETRY_COOLDOWN_MS`).
+ * - `fetched` — a provider request was made just now and it succeeded (`written` may still be 0
+ *   if the provider genuinely returned nothing).
+ * - `failed` — a provider request was made just now and it threw, or the lesson does not exist.
+ */
+export type EnsureAssetsOutcome = "fixture" | "already_has_video" | "throttled" | "fetched" | "failed";
+
+export interface EnsureAssetsResult {
+  outcome: EnsureAssetsOutcome;
+  written: number;
+}
+
+/**
+ * How often a lesson whose assets were already fetched once — successfully, but with no video
+ * in them — is allowed to be asked again. A lesson Oak genuinely has no video for must not cost
+ * a provider request on every single open; an hour is often enough to catch Oak adding one
+ * later without hammering the quota for lessons that will never have one.
+ */
+const RETRY_COOLDOWN_MS = 60 * 60 * 1000;
+
+/**
+ * Cheap in-process guard for the retry above. Deliberately not a database column: this is a
+ * courtesy to the provider's quota, not a fact about the lesson, and a migration is not owed to
+ * a number that resets on every deploy anyway (the worst case of forgetting it between deploys
+ * is one extra provider request per lesson, which is exactly what this function exists to
+ * spend).
+ */
+const lastRetryAttempt = new Map<string, number>();
+
+/** Test-only: clears the retry-throttle guard so a test does not have to wait out the cooldown. */
+export function resetLessonAssetRetryThrottle(): void {
+  lastRetryAttempt.clear();
+}
+
+/**
  * Makes sure this one lesson has its video and worksheet, now.
  *
  * Importing a subject is rationed: the provider's quota is a fixed budget per window, so a
@@ -619,21 +773,45 @@ export async function syncMany(
  * One lesson, one provider request, when a child is about to sit down in front of it. That is
  * the cheapest possible way to spend a request and by far the most valuable.
  *
- * Safe to call on every lesson open: a lesson whose assets are stamped returns immediately, and
- * a failure leaves the stamp null so the next attempt tries again.
+ * Safe to call on every lesson open: a lesson that already has a video returns immediately, and
+ * a lesson whose assets were fetched but came back with no video is retried — no more than once
+ * an hour — rather than left stamped and never looked at again, which is what silently turned
+ * "the provider was slow this one time" into "this lesson will never have a video".
  */
-export async function ensureLessonAssets(lessonId: string): Promise<number> {
+export async function ensureLessonAssets(
+  lessonId: string,
+  opts: { provider?: CurriculumProvider } = {},
+): Promise<EnsureAssetsResult> {
   const lesson = await prisma.lesson.findUnique({
     where: { id: lessonId },
-    select: { id: true, provider: true, providerSlug: true, assetsSyncedAt: true },
+    select: {
+      id: true,
+      provider: true,
+      providerSlug: true,
+      assetsSyncedAt: true,
+      resources: { where: { type: "VIDEO" }, select: { id: true } },
+    },
   });
-  if (!lesson || lesson.assetsSyncedAt) return 0;
+  if (!lesson) return { outcome: "failed", written: 0 };
   // The bundled placeholder curriculum has nothing to fetch — its assets are made up.
-  if (lesson.provider === "fixture") return 0;
+  if (lesson.provider === "fixture") return { outcome: "fixture", written: 0 };
 
-  const provider = getCurriculumProvider();
+  const hasVideo = lesson.resources.length > 0;
+  if (lesson.assetsSyncedAt && hasVideo) return { outcome: "already_has_video", written: 0 };
+
+  if (lesson.assetsSyncedAt && !hasVideo) {
+    // Assets were read once already and there was no video in them. A real answer, but not
+    // necessarily a permanent one — worth trying again, just not on every single open.
+    const last = lastRetryAttempt.get(lessonId);
+    if (last != null && Date.now() - last < RETRY_COOLDOWN_MS) {
+      return { outcome: "throttled", written: 0 };
+    }
+    lastRetryAttempt.set(lessonId, Date.now());
+  }
+
+  const provider = opts.provider ?? getCurriculumProvider();
   const fetched = await provider.getAssets(lesson.providerSlug).catch(() => null);
-  if (!fetched) return 0;
+  if (!fetched) return { outcome: "failed", written: 0 };
 
   const written = await writeResources(
     lesson.id,
@@ -653,5 +831,5 @@ export async function ensureLessonAssets(lessonId: string): Promise<number> {
       ),
     },
   });
-  return written;
+  return { outcome: "fetched", written };
 }

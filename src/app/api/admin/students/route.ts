@@ -8,7 +8,7 @@ const bodySchema = z.discriminatedUnion("action", [
     action: z.literal("create"),
     displayName: z.string().min(1),
     username: z.string().min(3),
-    pin: z.string().min(4).max(6),
+    pin: z.string().regex(/^\d{4,6}$/, "A PIN is 4 to 6 digits — the login screen only has a number pad."),
     yearGroup: z.number().int().min(1).max(13),
     keyStage: z.string().min(1),
     avatar: z.string().optional(),
@@ -21,7 +21,7 @@ const bodySchema = z.discriminatedUnion("action", [
     yearGroup: z.number().int().min(1).max(13).optional(),
     keyStage: z.string().min(1).optional(),
   }),
-  z.object({ action: z.literal("resetPin"), studentId: z.string(), pin: z.string().min(4).max(6) }),
+  z.object({ action: z.literal("resetPin"), studentId: z.string(), pin: z.string().regex(/^\d{4,6}$/, "A PIN is 4 to 6 digits — the login screen only has a number pad.") }),
 ]);
 
 async function requireLinkedStudent(parentId: string, studentProfileId: string) {

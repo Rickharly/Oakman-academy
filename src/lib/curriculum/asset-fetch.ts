@@ -30,7 +30,9 @@ export function resolveAssetUrl(url: string): string {
   if (trimmed.includes("://")) {
     throw new ApiError(404, `"${trimmed}" is not a real file — this is placeholder content, not a lesson resource.`);
   }
-  const base = process.env.OAK_BASE_URL || DEFAULT_OAK_BASE_URL;
+  // The provider client reads `OAK_API_URL`; an older name, `OAK_BASE_URL`, is honoured too so
+  // a deploy that set either one resolves paths against the same host the client talks to.
+  const base = process.env.OAK_API_URL || process.env.OAK_BASE_URL || DEFAULT_OAK_BASE_URL;
   return new URL(trimmed.replace(/^\//, ""), base.endsWith("/") ? base : `${base}/`).toString();
 }
 

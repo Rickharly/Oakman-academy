@@ -1,72 +1,59 @@
-import { createHash } from "node:crypto";
 import fs from "node:fs";
 import fsp from "node:fs/promises";
-import os from "node:os";
-import path from "node:path";
 import { Readable } from "node:stream";
-import { pipeline } from "node:stream/promises";
-import type { ReadableStream as WebReadableStream } from "node:stream/web";
 import { requireUserApi, jsonError, ApiError } from "@/lib/auth/api";
 import { prisma } from "@/lib/db";
-import { fetchProviderAsset } from "@/lib/curriculum/asset-fetch";
+import { resolveMedia, forgetMediaLink, type MediaLink } from "@/lib/curriculum/media-link";
 
 /**
  * Serves a lesson's video or worksheet.
  *
- * Two things make this more than a redirect.
+ * **The key stays on the server.** Oak's asset endpoints need the API key, which is why linking
+ * the browser straight at them gave a child "API token not provided or invalid" instead of
+ * their worksheet, and Oak's terms require the key never be exposed. So the browser asks us.
  *
- * **The key must stay on the server.** Oak's asset endpoints need the API key, which is why
- * linking the browser straight at them gave a child "API token not provided or invalid"
- * instead of their worksheet. Oak's terms also require the key not be exposed in a publicly
- * accessible service.
+ * **The bytes come through us, streamed.** The endpoint resolves to a signed link on Oak's CDN
+ * (`media-link.ts`), and we fetch that link ourselves and pipe its body straight back to the
+ * browser — forwarding whatever Range header the player sent, and never buffering the file:
+ * no `arrayBuffer()`, no `.tee()`, no write to disk. This used to be a 302 straight to the CDN
+ * instead, which fixed the round-1 problem below but broke video for children on managed
+ * Chromebooks — a cross-origin redirect from a `<video>` element is not reliably followed by
+ * Chrome the way it is by Safari, and school network filters commonly block the CDN host
+ * outright. Streaming through our own origin plays everywhere a same-origin `<video src>` does.
+ * The redirect still exists for when it is known to be safe — see `MEDIA_REDIRECT_TO_CDN` below.
  *
- * **The file is fetched from Oak once, then cached.** A video player does not download a file
- * once — it sends a stream of Range requests as the child plays and scrubs. Passing each of
- * those upstream would spend a request from Oak's quota per seek, and a single lesson could
- * burn what a whole subject's import needs. So the first request pulls the file down, and
- * every request after that is served from local disk with proper Range support.
+ * Before either of those: this route used to download the *entire* file into the container
+ * before answering the player's first byte, buffered with `ReadableStream.tee()` and no
+ * backpressure. That stalled requests and ran the container out of memory on a ~100MB video.
+ * Streaming — not the redirect — is what fixed that, and it must not come back.
  *
- * The cache is deliberately disposable — a container restart empties it and the next request
- * simply fetches again.
+ * A signed link is resolved once and remembered until shortly before it expires, so a lesson
+ * costs one provider request however many times the player asks — not one per seek. If a
+ * fetch of the cached link fails, we drop it and resolve a fresh one once before giving up, in
+ * case it simply expired early.
  */
 export const dynamic = "force-dynamic";
 
-const CACHE_DIR = process.env.MEDIA_CACHE_DIR ?? path.join(os.tmpdir(), "oakman-media");
 /**
- * Anything larger than this is streamed through rather than cached, to protect the disk.
+ * Send the browser straight to Oak's CDN instead of streaming through us.
  *
- * This was 64MB, and a lesson video is bigger than that: the one the checks measure is 101MB.
- * So no video was ever cached, and every seek in a 45-minute lesson went back to Oak for the
- * whole file again — a request from a quota of a thousand per window, per scrub, per child.
- * The cache existed and never once held the thing it was built for.
+ * Off by default. It would save this container carrying the video's bytes, but a cross-origin
+ * redirect from a `<video>` element is not reliably playable on a managed Chromebook (see the
+ * file comment above) — and a slightly more expensive lesson that plays beats a cheap one that
+ * doesn't. Only flip this on for a deployment that has verified the redirect works for every
+ * device it serves.
  */
-const MAX_CACHE_BYTES = Number(process.env.MEDIA_CACHE_MAX_FILE_BYTES ?? 256 * 1024 * 1024);
-/**
- * The whole cache stays under this.
- *
- * A container's disk is small and shared with everything else running in it. An unbounded
- * cache of lesson videos will eventually fill it, and a full disk does not degrade a service —
- * it kills it. Better to re-fetch a video occasionally than to take the school offline.
- */
-const MAX_CACHE_TOTAL_BYTES = Number(process.env.MEDIA_CACHE_MAX_BYTES ?? 1024 * 1024 * 1024);
-
-/**
- * Downloads already running, by cache path.
- *
- * A video player does not send one request. It asks for the metadata, then a range, then
- * another the moment the child scrubs — several in the same second, all before anything has
- * been cached. Each of those used to start its own download of the same hundred-megabyte file
- * from Oak. One download, and everybody else waits for it.
- */
-const inFlight = new Map<string, Promise<void>>();
+function redirectsEnabled(): boolean {
+  return process.env.MEDIA_REDIRECT_TO_CDN === "true";
+}
 
 /**
  * What this file actually is, for the browser.
  *
  * A `<video>` element handed `application/octet-stream` renders its controls, shows 0:00, and
- * never plays — which looks exactly like "there is no video for this lesson" and is not. Oak
- * does not always send a useful content-type, and we stored whatever it sent, so the resource
- * type is the thing to trust: a VIDEO row is a video whatever the header said.
+ * never plays — which looks exactly like "there is no video for this lesson" and is not. The
+ * host does not always say something useful, so the resource type is the thing to trust: a
+ * VIDEO row is a video whatever the header said.
  */
 const TYPE_DEFAULTS: Record<string, string> = {
   VIDEO: "video/mp4",
@@ -78,25 +65,44 @@ const TYPE_DEFAULTS: Record<string, string> = {
   EXIT_QUIZ_ANSWERS: "application/pdf",
 };
 
+function cleanType(candidate: string | null | undefined): string | null {
+  const clean = candidate?.split(";")[0]?.trim().toLowerCase();
+  if (!clean) return null;
+  // Generic types tell the browser nothing.
+  if (clean === "application/octet-stream" || clean === "binary/octet-stream") return null;
+  return clean;
+}
+
 function contentTypeFor(resource: { type: string; mimeType: string | null }, upstream: string | null): string {
   const fallback = TYPE_DEFAULTS[resource.type];
   for (const candidate of [upstream, resource.mimeType]) {
-    if (!candidate) continue;
-    const clean = candidate.split(";")[0]!.trim().toLowerCase();
+    const clean = cleanType(candidate);
     if (!clean) continue;
-    // Generic types tell the browser nothing.
-    if (clean === "application/octet-stream" || clean === "binary/octet-stream") continue;
     // A type that contradicts the row is worse than none — rows were stamped
     // "application/json" back when the signed-link response was mistaken for the file, and a
     // video labelled as JSON is a video that will not play.
     if (fallback && clean.split("/")[0] !== fallback.split("/")[0]) continue;
-    return candidate;
+    return clean;
   }
   return fallback ?? "application/octet-stream";
 }
 
 /**
- * Whether a cached file is actually the provider's JSON rather than the asset.
+ * Whether the browser can be sent to the link as it is.
+ *
+ * It can when the host says the file is what the row says it is and honours ranges. A host
+ * that calls a video `application/octet-stream` would leave Safari showing 0:00 forever; one
+ * that ignores ranges would leave it unable to seek. Both are proxied and corrected instead.
+ */
+function browserCanUseDirectly(resource: { type: string }, link: MediaLink): boolean {
+  if (!link.acceptsRanges) return false;
+  const wanted = TYPE_DEFAULTS[resource.type];
+  if (!wanted) return Boolean(link.contentType);
+  return link.contentType?.split("/")[0] === wanted.split("/")[0];
+}
+
+/**
+ * Whether a stored file is actually the provider's JSON rather than the asset.
  *
  * Reads the first byte only. A video, a PDF and a slide deck all start with something that is
  * not a brace; the provider's asset response always does.
@@ -114,38 +120,6 @@ async function looksLikeJson(file: string): Promise<boolean> {
   } finally {
     await handle.close().catch(() => undefined);
   }
-}
-
-/** Deletes the least recently used files until the cache fits in its budget again. */
-async function evictTo(budget: number): Promise<void> {
-  try {
-    const names = await fsp.readdir(CACHE_DIR);
-    const files = await Promise.all(
-      names.map(async (name) => {
-        const full = path.join(CACHE_DIR, name);
-        const stat = await fsp.stat(full).catch(() => null);
-        return stat?.isFile() ? { full, size: stat.size, atime: stat.atimeMs } : null;
-      }),
-    );
-
-    const present = files.filter((f): f is { full: string; size: number; atime: number } => f !== null);
-    let total = present.reduce((n, f) => n + f.size, 0);
-    if (total <= budget) return;
-
-    present.sort((a, b) => a.atime - b.atime); // oldest touched goes first
-    for (const file of present) {
-      if (total <= budget) break;
-      await fsp.rm(file.full, { force: true }).catch(() => undefined);
-      total -= file.size;
-    }
-  } catch {
-    // A cache we cannot tidy is not a reason to fail the request.
-  }
-}
-
-function cachePathFor(resourceId: string, url: string): string {
-  const digest = createHash("sha256").update(`${resourceId}:${url}`).digest("hex").slice(0, 32);
-  return path.join(CACHE_DIR, digest);
 }
 
 /** Parses "bytes=start-end" against a known size. Returns null when it is absent or unusable. */
@@ -188,6 +162,77 @@ function serveFromDisk(file: string, size: number, contentType: string, req: Req
   return new Response(stream, { status: 206, headers });
 }
 
+/**
+ * Passes an upstream answer through to the browser, relabelled.
+ *
+ * The status and the range headers are the host's: a 206 with its content-range is exactly
+ * what the player asked for and must not be flattened into a 200. Only the content type is
+ * ours, because that is the one thing the host gets wrong. The body is passed through as the
+ * stream it already is — `upstream.body` — never read into memory first.
+ *
+ * Cache-control is deliberately weak (`max-age=0, must-revalidate` rather than the old
+ * `max-age=3600`): the children's Chromebooks are exactly the browsers that, for a while,
+ * cached a broken response from the redirect this replaces, and a longer max-age would let
+ * that stale, broken response keep being served from disk cache instead of the fixed one. Once
+ * this has been out long enough for those caches to have cycled, a longer max-age is fine again.
+ */
+function passThrough(upstream: Response, contentType: string, filename: string): Response {
+  if (!upstream.body) throw new ApiError(502, "The provider returned an empty file.");
+  const headers = new Headers({
+    "content-type": contentType,
+    "cache-control": "private, max-age=0, must-revalidate",
+    "content-disposition": `inline; filename="${encodeURIComponent(filename)}"`,
+  });
+  for (const name of ["content-length", "content-range", "accept-ranges"]) {
+    const value = upstream.headers.get(name);
+    if (value) headers.set(name, value);
+  }
+  if (upstream.status === 206 && !headers.has("accept-ranges")) headers.set("accept-ranges", "bytes");
+  return new Response(upstream.body, { status: upstream.status === 206 ? 206 : 200, headers });
+}
+
+/** Fetches a signed link, forwarding the player's Range header. A bad status is a failure too. */
+async function fetchLink(url: string, range: string | null): Promise<Response> {
+  const upstream = await fetch(url, {
+    headers: range ? { Range: range } : {},
+    cache: "no-store",
+  }).catch(() => {
+    throw new ApiError(502, `Could not reach ${new URL(url).host}.`);
+  });
+  if (!upstream.ok) throw new ApiError(502, `The file link returned ${upstream.status}.`);
+  return upstream;
+}
+
+/**
+ * Fetches a signed link ourselves and streams the answer straight back, retrying once with a
+ * freshly resolved link if the cached one turns out not to work any more.
+ *
+ * A cached link can fail before our own clock thinks it should — the provider can revoke it
+ * early, or a signing scheme we don't recognise only ever got a conservative guessed lifetime
+ * (`signedLinkExpiry` in `media-link.ts`). Either way the fix is the same: forget it and
+ * resolve again, rather than telling the player the lesson is broken over a stale cache entry.
+ */
+async function fetchAndServeLink(
+  resource: { id: string; type: string; mimeType: string | null; providerUrl: string | null; label: string },
+  link: MediaLink,
+  range: string | null,
+): Promise<Response> {
+  try {
+    const upstream = await fetchLink(link.url, range);
+    return passThrough(upstream, contentTypeFor(resource, upstream.headers.get("content-type")), resource.label);
+  } catch {
+    forgetMediaLink(resource.id);
+    const fresh = await resolveMedia(resource, { range });
+    if (fresh.kind === "stream") {
+      const upstreamType = fresh.response.headers.get("content-type");
+      return passThrough(fresh.response, contentTypeFor(resource, upstreamType), resource.label);
+    }
+    // A second failure is a real one — let it surface, there is nothing left to retry.
+    const upstream = await fetchLink(fresh.link.url, range);
+    return passThrough(upstream, contentTypeFor(resource, upstream.headers.get("content-type")), resource.label);
+  }
+}
+
 export async function GET(req: Request, ctx: { params: Promise<{ resourceId: string }> }) {
   try {
     await requireUserApi(req);
@@ -199,164 +244,53 @@ export async function GET(req: Request, ctx: { params: Promise<{ resourceId: str
     /**
      * A copy downloaded at sync time, if there still is one.
      *
-     * `storedPath` is a path on this machine's disk, and the player used to hand it straight to
-     * the browser as a `src`. That asks the browser to fetch a filesystem path from the website:
-     * a 404, an onError, and the pale "the video won't play" panel where the lesson should be.
-     * Read here instead — and only when it is really there, since the file belongs to whichever
-     * container downloaded it and does not survive a deploy.
+     * `storedPath` is a path on this machine's disk. It belongs to whichever container
+     * downloaded it and does not survive a deploy, so it is used only when it is really there
+     * — and really the file, not the provider's JSON saved under the file's name.
      */
     if (resource.storedPath) {
       const local = await fsp.stat(resource.storedPath).catch(() => null);
       if (local?.isFile() && local.size > 0 && !(await looksLikeJson(resource.storedPath))) {
-        return serveFromDisk(
-          resource.storedPath,
-          local.size,
-          contentTypeFor(resource, null),
-          req,
-          resource.label,
-        );
+        return serveFromDisk(resource.storedPath, local.size, contentTypeFor(resource, null), req, resource.label);
       }
     }
 
-    // Not required to be absolute: the provider's listing gives a download endpoint, which may
-    // be a path. `fetchProviderAsset` resolves it against the API base — rejecting it here as
-    // "no downloadable file" is why lessons with a perfectly good video showed none.
-    const url = resource.providerUrl;
-    if (!url) throw new ApiError(404, "This resource has no downloadable file.");
+    const range = req.headers.get("range");
+    const resolved = await resolveMedia(resource, { range });
 
-    const contentType = contentTypeFor(resource, null);
-    const file = cachePathFor(resourceId, url);
-
-    // Already downloaded: never touch Oak again, however much the child scrubs.
-    //
-    // Unless what was downloaded is not the file. Before the signed-link indirection was
-    // understood, every cache entry was the provider's JSON response — a few hundred bytes
-    // saved under a video's name. Serving that back is a player stuck at 0:00 for as long as
-    // the container lives, so a cached entry that is obviously not the file is thrown away and
-    // fetched again rather than trusted.
-    const servedFromCache = async (): Promise<Response | null> => {
-      const cached = await fsp.stat(file).catch(() => null);
-      if (!cached?.isFile() || cached.size === 0) return null;
-      if (await looksLikeJson(file)) {
-        await fsp.rm(file, { force: true }).catch(() => undefined);
-        return null;
-      }
-      return serveFromDisk(file, cached.size, contentType, req, resource.label);
-    };
-
-    const fromCache = await servedFromCache();
-    if (fromCache) return fromCache;
-
-    /**
-     * Somebody else is already downloading this. Wait for them.
-     *
-     * Without this, a player opening a lesson starts three or four downloads of the same
-     * hundred-megabyte video within a second of each other — one per request it makes — and a
-     * child scrubbing starts another every time they drag the bar. Waiting is slower for this
-     * one request and enormously cheaper for the lesson.
-     */
-    const running = inFlight.get(file);
-    if (running) {
-      await running.catch(() => undefined);
-      const afterWait = await servedFromCache();
-      if (afterWait) return afterWait;
+    // The endpoint handed over the file itself. Pass it through with its ranges intact.
+    if (resolved.kind === "stream") {
+      const upstreamType = resolved.response.headers.get("content-type");
+      return passThrough(resolved.response, contentTypeFor(resource, upstreamType), resource.label);
     }
 
-    /**
-     * A request for part of a file we do not have yet.
-     *
-     * Answering a Range request by streaming the whole file from the start is a seek that never
-     * arrives: the player asked for the middle and is being sent the beginning. So the file is
-     * fetched once, in full, and then the range is served off the disk like any other.
-     */
-    if (req.headers.get("range")) {
-      const download = (async () => {
-        const res = await fetchProviderAsset(url);
-        if (!res.body) throw new ApiError(502, "The provider returned an empty file.");
-        await fsp.mkdir(CACHE_DIR, { recursive: true });
-        await evictTo(Math.max(0, MAX_CACHE_TOTAL_BYTES - MAX_CACHE_BYTES));
-        const temp = `${file}.${process.pid}.${Date.now()}.part`;
-        try {
-          await pipeline(Readable.fromWeb(res.body as WebReadableStream), fs.createWriteStream(temp));
-          await fsp.rename(temp, file);
-        } catch (err) {
-          await fsp.rm(temp, { force: true }).catch(() => undefined);
-          throw err;
-        }
-      })();
-      inFlight.set(file, download);
-      try {
-        await download;
-      } catch {
-        // Fall through and stream it live: a lesson without a seek bar beats no lesson.
-      } finally {
-        inFlight.delete(file);
-      }
-      const afterDownload = await servedFromCache();
-      if (afterDownload) return afterDownload;
-    }
+    const { link } = resolved;
 
-    const upstream = await fetchProviderAsset(url);
-
-    const upstreamType = upstream.headers.get("content-type") ?? contentType;
-    const declared = Number(upstream.headers.get("content-length") ?? "0");
-
-    const bytesExpected = declared > 0 ? declared : MAX_CACHE_BYTES;
-
-    // Remember what it turned out to be, so the next request knows before fetching.
-    if (!resource.mimeType && upstreamType && !upstreamType.startsWith("application/octet-stream")) {
+    // Remember what it turned out to be, so the row says what the file is.
+    if (!resource.mimeType && link.contentType) {
       await prisma.lessonResource
-        .update({ where: { id: resource.id }, data: { mimeType: upstreamType } })
+        .update({ where: { id: resource.id }, data: { mimeType: link.contentType } })
         .catch(() => undefined);
     }
 
-    const served = contentTypeFor(resource, upstreamType);
-
-    // Play now; cache in the background.
-    //
-    // The old code downloaded the whole file before answering — and did it into memory. For a
-    // fifty-megabyte lesson video that meant a child stared at a player showing 0:00 until the
-    // request timed out, which is indistinguishable from "this lesson has no video", and on a
-    // small container it took the server down with it.
-    //
-    // The stream is split: one half goes to the browser immediately, the other is written to
-    // disk for the next request. Backpressure is bounded by the slower of the two, and if the
-    // disk copy fails the child still gets their video.
-    if (!upstream.body) throw new ApiError(502, "The provider returned an empty file.");
-    const [toClient, toDisk] = upstream.body.tee();
-
-    if (declared <= MAX_CACHE_BYTES) {
-      const writing = (async () => {
-        try {
-          await fsp.mkdir(CACHE_DIR, { recursive: true });
-          // Make room before writing, not after: the disk has to hold this file either way.
-          await evictTo(Math.max(0, MAX_CACHE_TOTAL_BYTES - bytesExpected));
-          const temp = `${file}.${process.pid}.${Date.now()}.part`;
-          await pipeline(Readable.fromWeb(toDisk as WebReadableStream), fs.createWriteStream(temp));
-          await fsp.rename(temp, file).catch(async () => {
-            await fsp.rm(temp, { force: true });
-          });
-        } catch {
-          // A cache that will not write is a slower lesson, not a broken one.
-        } finally {
-          inFlight.delete(file);
-        }
-      })();
-      // The player's next request waits for this one rather than fetching the file again.
-      inFlight.set(file, writing);
-    } else {
-      void toDisk.cancel().catch(() => undefined);
+    /**
+     * Opt-in: send the browser to the file directly instead of streaming it through us.
+     *
+     * Off by default — see `redirectsEnabled` above. A media element follows a redirect like
+     * any other fetch, and when it works the CDN answers ranges directly with nothing crossing
+     * our container. The link is signed and short-lived, so it must not be cached by anything
+     * on the way — the next request comes back here and gets a fresh one when this has expired.
+     */
+    if (redirectsEnabled() && browserCanUseDirectly(resource, link)) {
+      return new Response(null, {
+        status: 302,
+        headers: { location: link.url, "cache-control": "private, no-store" },
+      });
     }
 
-    return new Response(toClient, {
-      status: 200,
-      headers: {
-        "content-type": served,
-        ...(declared > 0 ? { "content-length": String(declared) } : {}),
-        "cache-control": "private, max-age=3600",
-        "content-disposition": `inline; filename="${encodeURIComponent(resource.label)}"`,
-      },
-    });
+    // The default path: fetch the signed link ourselves, forwarding the player's range, and
+    // stream the response straight back — never buffered, never written to disk first.
+    return await fetchAndServeLink(resource, link, range);
   } catch (err) {
     return jsonError(err);
   }
