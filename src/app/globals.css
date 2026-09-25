@@ -183,3 +183,14 @@ body {
     margin: 16mm;
   }
 }
+
+/*
+  A period that is running has no way out of it.
+
+  The nav sits on every page, so a child mid-lesson could tap "Today" and leave — which is the
+  whole of skipping a lesson, in one tap. While the period holds them the bars are hidden; the
+  lesson itself puts them back the moment the time is up or the app runs out of work to set.
+*/
+body[data-lesson-locked="1"] [data-student-nav] {
+  display: none !important;
+}

@@ -1153,3 +1153,28 @@ export async function recordTime(attemptId: string, studentId: string, seconds: 
 
 // re-export for convenience within this module's neighbours
 export { gradedStages };
+
+/**
+ * How long this child has been in this subject's period today.
+ *
+ * A period is forty-five minutes of a subject, not of a lesson. When a child finishes a topic
+ * with twenty minutes left they carry straight on into the next one, and the clock has to carry
+ * on with them — otherwise starting a second topic hands them a fresh forty-five minutes and
+ * the school day never ends.
+ *
+ * Summed on the server from the attempts themselves, across every lesson of that subject today.
+ * The timetable allows one subject per day, so "this subject, today" and "this period" are the
+ * same stretch of time. It cannot be edited from the page, which matters: the number decides
+ * when they are allowed to stop.
+ */
+export async function periodSecondsSpent(studentId: string, subjectId: string, dayStart: Date): Promise<number> {
+  const attempts = await prisma.lessonAttempt.findMany({
+    where: {
+      studentId,
+      startedAt: { gte: dayStart },
+      lesson: { unit: { programme: { subjectId } } },
+    },
+    select: { timeSpentSeconds: true },
+  });
+  return attempts.reduce((sum, a) => sum + a.timeSpentSeconds, 0);
+}

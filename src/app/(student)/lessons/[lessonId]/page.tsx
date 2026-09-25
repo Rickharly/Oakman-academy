@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import { requireStudent } from "@/lib/auth/session";
 import { prisma } from "@/lib/db";
-import { getAttemptView, startOrResumeAttempt } from "@/lib/lessons/service";
+import { getAttemptView, periodSecondsSpent, startOrResumeAttempt } from "@/lib/lessons/service";
 import { runReviewAssignment } from "@/lib/progress/review";
 import {
   LessonPlayer,
@@ -12,6 +12,7 @@ import { parseExplainer } from "@/lib/lessons/explainer";
 import { plainMaths, plainMathsDeep } from "@/lib/text/maths";
 import { ensureLessonAssets, type EnsureAssetsOutcome } from "@/lib/curriculum/sync";
 import { deriveVideoUnavailableReason } from "@/lib/curriculum/video-status";
+import { schoolDayKey, toDateOnly } from "@/lib/dates";
 
 type RawQuestion = {
   id: string;
@@ -100,6 +101,21 @@ export default async function LessonPage({
   }
 
   const oakUrl = lesson.canonicalUrl ?? lesson.providerUrl;
+
+  /**
+   * The period's clock, not this lesson's.
+   *
+   * A child who finishes a topic early carries on into the next one inside the same period, so
+   * the time already spent on this subject today comes with them. Worked out here rather than
+   * passed through the page, because the number decides when they are allowed to stop.
+   */
+  const dayStart = toDateOnly(schoolDayKey());
+  const periodSpentSeconds = await periodSecondsSpent(studentId, subject.id, dayStart);
+
+  /** The next topic in the sequence, named — so the offer to carry on says what it is. */
+  const nextLesson = nextLessonId
+    ? await prisma.lesson.findUnique({ where: { id: nextLessonId }, select: { title: true } })
+    : null;
 
   /**
    * Why there is no video to watch, when there genuinely is none — not passed at all when a
@@ -209,6 +225,8 @@ export default async function LessonPage({
       lessonMinutes={user.studentProfile.lessonMinutes}
       breakMinutes={user.studentProfile.breakMinutes}
       elapsedSeconds={view.attempt.timeSpentSeconds}
+      periodSpentSeconds={periodSpentSeconds}
+      nextLessonTitle={nextLesson ? plainMaths(nextLesson.title) : null}
       // So "I've already learned this" can take today's period off the board with it.
       assignmentId={assignmentId ?? view.attempt.assignmentId}
     />

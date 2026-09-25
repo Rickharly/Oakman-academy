@@ -38,7 +38,7 @@ export function StudentNav({ displayName, avatar }: StudentNavProps) {
   return (
     <>
       {/* Top bar (md and up) */}
-      <header className="hidden md:block sticky top-0 z-40 border-b border-line bg-surface/90 backdrop-blur">
+      <header data-student-nav className="hidden md:block sticky top-0 z-40 border-b border-line bg-surface/90 backdrop-blur">
         <div className="mx-auto flex h-16 w-full max-w-5xl items-center justify-between px-6">
           <Link href="/today" className="flex items-center gap-2.5 text-base font-semibold tracking-tight text-brand-navy">
             <LogoMark size={28} />
@@ -106,7 +106,7 @@ export function StudentNav({ displayName, avatar }: StudentNavProps) {
       </header>
 
       {/* Mobile top bar: brand + account menu only (nav lives in the bottom tab bar) */}
-      <header className="md:hidden sticky top-0 z-40 border-b border-line bg-surface/90 backdrop-blur">
+      <header data-student-nav className="md:hidden sticky top-0 z-40 border-b border-line bg-surface/90 backdrop-blur">
         <div className="flex h-14 items-center justify-between px-4">
           <Link href="/today" className="flex items-center gap-2.5 text-base font-semibold tracking-tight text-brand-navy">
             <LogoMark size={28} />
@@ -153,7 +153,7 @@ export function StudentNav({ displayName, avatar }: StudentNavProps) {
       </header>
 
       {/* Bottom tab bar (below md) */}
-      <nav className="md:hidden fixed inset-x-0 bottom-0 z-40 border-t border-line bg-surface-raised/95 backdrop-blur pb-safe">
+      <nav data-student-nav className="md:hidden fixed inset-x-0 bottom-0 z-40 border-t border-line bg-surface-raised/95 backdrop-blur pb-safe">
         <div className="mx-auto flex max-w-5xl items-stretch justify-around">
           {items.map((item) => {
             const active = isActive(pathname, item.href);

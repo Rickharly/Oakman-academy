@@ -130,6 +130,15 @@ export type LessonPlayerProps = {
   elapsedSeconds: number;
   /** Today's assignment this lesson was opened from, when it came from the board. */
   assignmentId?: string | null;
+  /**
+   * Seconds already spent in this subject's period today, across every topic of it.
+   *
+   * A period is forty-five minutes of a subject, not of a lesson. Without this, finishing a
+   * topic and starting the next one would hand a child a fresh forty-five minutes.
+   */
+  periodSpentSeconds?: number;
+  /** The next topic in the sequence, so carrying on can say what it is. */
+  nextLessonTitle?: string | null;
   /** Whether the teacher reads her replies aloud for this child. */
   voiceEnabled?: boolean;
   /**
@@ -341,6 +350,8 @@ export function LessonPlayer(props: LessonPlayerProps) {
     breakMinutes,
     elapsedSeconds,
     assignmentId,
+    periodSpentSeconds,
+    nextLessonTitle,
     offerPreCheck = false,
     voiceEnabled = false,
   } =
@@ -596,10 +607,32 @@ export function LessonPlayer(props: LessonPlayerProps) {
    * written — the door opens, because trapping a child in front of an empty screen teaches
    * nothing except that the app is their enemy.
    */
-  const minutesLeftInPeriod = Math.max(0, lessonMinutes - Math.round(spentSeconds / 60));
+  /**
+   * The period's clock: time on this subject today, including topics already finished.
+   *
+   * `spentSeconds` is this lesson's own ticking counter and `periodSpentSeconds` is what the
+   * server had when the page loaded — which already includes this attempt's saved time, so the
+   * two are joined by taking whichever is further on rather than by adding them up.
+   */
+  const periodSeconds = Math.max(spentSeconds, (periodSpentSeconds ?? 0) + (spentSeconds - elapsedSeconds));
+  const minutesLeftInPeriod = Math.max(0, lessonMinutes - Math.round(periodSeconds / 60));
   /** Set when the app admits it has nothing more to give. */
   const [outOfWork, setOutOfWork] = useState(false);
   const periodHoldsThemHere = minutesLeftInPeriod > 0 && !outOfWork;
+
+  /**
+   * Hides the way out while the period is running.
+   *
+   * The nav is on every page, so "skip the lesson" was one tap on "Today". The flag lives on
+   * the body because the nav is rendered by the layout, above this component; the class is in
+   * globals.css. Cleared on unmount, so leaving properly — or a crash — never strands a child
+   * on a page with no navigation.
+   */
+  useEffect(() => {
+    if (periodHoldsThemHere) document.body.setAttribute("data-lesson-locked", "1");
+    else document.body.removeAttribute("data-lesson-locked");
+    return () => document.body.removeAttribute("data-lesson-locked");
+  }, [periodHoldsThemHere]);
 
   const theme = subjectTheme(subjectSlug);
 
@@ -2063,7 +2096,33 @@ export function LessonPlayer(props: LessonPlayerProps) {
           all right and the lesson is over, whatever the clock says; anything wrong and that,
           specifically, is what the rest of the period is for.
         */}
-        {testPassed && !periodHoldsThemHere ? (
+        {/*
+          A topic finished with the period still running is a new topic, not a longer break.
+          
+          "Topic by topic" lessons were the complaint: forty-five minutes on one idea that took
+          twelve, then nothing. A school does not end the period when the exercise is done — it
+          moves on to the next thing, and comes back to the first one later in the week. So when
+          they have finished this one properly and there is real time left, the next topic starts
+          here, inside the same period, with the same clock still running.
+        */}
+        {periodHoldsThemHere && testPassed && nextLessonId && minutesLeftInPeriod >= 12 ? (
+          <div className="space-y-3 rounded-2xl bg-accent-soft p-5 text-left">
+            <p className="text-base font-medium text-ink">
+              You know this one. There are {minutesLeftInPeriod} minutes left, so let&apos;s
+              start the next thing.
+            </p>
+            {nextLessonTitle ? (
+              <p className="text-sm text-ink-muted">Next: {nextLessonTitle}</p>
+            ) : null}
+            <p className="text-sm text-ink-muted">
+              If we don&apos;t finish it today you&apos;ll pick it up at the start of tomorrow&apos;s
+              lesson — nothing gets lost.
+            </p>
+            <Button href={`/lessons/${nextLessonId}`}>
+              Start {nextLessonTitle ? `"${nextLessonTitle}"` : "the next topic"}
+            </Button>
+          </div>
+        ) : testPassed && !periodHoldsThemHere ? (
           <div className="space-y-2 rounded-2xl bg-success-soft p-5 text-left">
             <p className="text-base font-medium text-ink">
               You got every one of those right. This lesson is finished.
