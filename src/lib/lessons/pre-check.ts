@@ -16,6 +16,7 @@
  * never as taught. A school reading the record later must be able to tell the difference.
  */
 import { prisma } from "@/lib/db";
+import { isLessonDone } from "@/lib/progress/aggregate";
 import { ApiError } from "@/lib/auth/api";
 
 /** Score needed to skip. Deliberately near-perfect: the cost of a wrong skip is a hidden gap. */
@@ -30,6 +31,37 @@ export type PreCheckOutcome = {
   /** What the child is told. Never a bare percentage. */
   message: string;
 };
+
+
+/**
+ * The next lesson in this programme the child has not been through.
+ *
+ * Used when a pre-check places them out: the period needs something real in it, and the next
+ * thing they have not done is what a school would move on to.
+ */
+async function nextUntaughtLesson(studentId: string, lessonId: string) {
+  const current = await prisma.lesson.findUnique({
+    where: { id: lessonId },
+    include: { unit: true },
+  });
+  if (!current) return null;
+
+  const lessons = await prisma.lesson.findMany({
+    where: { unit: { programmeId: current.unit.programmeId } },
+    include: { unit: true },
+    orderBy: [{ unit: { order: "asc" } }, { order: "asc" }],
+  });
+
+  const progress = await prisma.studentLessonProgress.findMany({
+    where: { studentId, lessonId: { in: lessons.map((l) => l.id) } },
+  });
+  const done = new Set(progress.filter(isLessonDone).map((p) => p.lessonId));
+  done.add(lessonId); // the one they have just placed out of
+
+  const position = lessons.findIndex((l) => l.id === lessonId);
+  const after = position >= 0 ? lessons.slice(position + 1) : lessons;
+  return after.find((l) => !done.has(l.id)) ?? lessons.find((l) => !done.has(l.id)) ?? null;
+}
 
 /**
  * Marks a lesson as already known, from a pre-check the child passed.
@@ -76,10 +108,43 @@ export async function placeOutOfLesson(
     data: { studentId, kind: "lesson_placed_out", data: { lessonId, scorePct } },
   });
 
-  // Any assignment for it today is done — they have shown they do not need it.
-  await prisma.dailyAssignment.updateMany({
-    where: { studentId, lessonId, status: { in: ["PLANNED", "IN_PROGRESS"] } },
-    data: { status: "COMPLETED", completedAt: new Date() },
+  /**
+   * The period carries on with the next topic. It does not end.
+   *
+   * This used to mark the period finished — they had shown they did not need the lesson, so the
+   * slot was ticked and the child was free. Two things went wrong with that. A child who passes
+   * four pre-checks in ten minutes has a board of green ticks and an empty day, and the planner
+   * sees a full day and adds nothing. And the attempt for the skipped lesson was deliberately
+   * left open, so opening that ticked lesson later dropped them into a dead Feedback screen
+   * with the period lock on and nothing to do — the exact trap this app began with.
+   *
+   * Knowing the topic is a reason to move on to the next one, not a reason to stop. So the slot
+   * is pointed at the next lesson they have not done and the period keeps running, which is the
+   * same rule as passing the end-of-topic test.
+   */
+  const next = await nextUntaughtLesson(studentId, lessonId);
+  if (next) {
+    await prisma.dailyAssignment.updateMany({
+      where: { studentId, lessonId, status: { in: ["PLANNED", "IN_PROGRESS"] } },
+      data: { lessonId: next.id, status: "IN_PROGRESS" },
+    });
+  } else {
+    // Nothing left in the sequence to move them to. Then the slot really is finished.
+    await prisma.dailyAssignment.updateMany({
+      where: { studentId, lessonId, status: { in: ["PLANNED", "IN_PROGRESS"] } },
+      data: { status: "COMPLETED", completedAt: new Date() },
+    });
+  }
+
+  /**
+   * And the attempt that was opened for the lesson they skipped is closed.
+   *
+   * Left open, it is a lesson that is both "mastered" and "in progress" — which is what put a
+   * child on a Feedback screen for a lesson they never sat.
+   */
+  await prisma.lessonAttempt.updateMany({
+    where: { studentId, lessonId, status: "IN_PROGRESS" },
+    data: { status: "MASTERED", completedAt: new Date(), currentStage: "COMPLETE" },
   });
 
   // Deliberately not `recomputeLessonProgress` here: the upsert above already is the definitive
@@ -110,7 +175,7 @@ export async function judgePreCheck(input: {
       passed: true,
       scorePct,
       answered: total,
-      message: "You already know this one. Moving you on to the next lesson.",
+      message: "You already know this one — so we'll spend the rest of the period on the next one instead.",
     };
   }
 

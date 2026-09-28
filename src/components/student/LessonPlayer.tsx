@@ -131,6 +131,15 @@ export type LessonPlayerProps = {
   /** Today's assignment this lesson was opened from, when it came from the board. */
   assignmentId?: string | null;
   /**
+   * Whether the board already counts this period as finished.
+   *
+   * Lessons carrying a green tick from an earlier version of the completion rules could still
+   * hold an attempt sitting open on Feedback. Opening one put a child in a period with the quiz
+   * behind them, nothing left to do, and the nav hidden — locked in front of a finished lesson.
+   * A period the board has closed can never hold anybody.
+   */
+  periodAlreadyClosed?: boolean;
+  /**
    * Seconds already spent in this subject's period today, across every topic of it.
    *
    * A period is forty-five minutes of a subject, not of a lesson. Without this, finishing a
@@ -352,6 +361,7 @@ export function LessonPlayer(props: LessonPlayerProps) {
     assignmentId,
     periodSpentSeconds,
     nextLessonTitle,
+    periodAlreadyClosed,
     offerPreCheck = false,
     voiceEnabled = false,
   } =
@@ -618,7 +628,21 @@ export function LessonPlayer(props: LessonPlayerProps) {
   const minutesLeftInPeriod = Math.max(0, lessonMinutes - Math.round(periodSeconds / 60));
   /** Set when the app admits it has nothing more to give. */
   const [outOfWork, setOutOfWork] = useState(false);
-  const periodHoldsThemHere = minutesLeftInPeriod > 0 && !outOfWork;
+  /** Seconds the child has been held on a lesson whose quiz is behind them. */
+  const [heldWithQuizDone, setHeldWithQuizDone] = useState(0);
+  /**
+   * A finished lesson never holds anybody.
+   *
+   * This locked a child into a lesson that was already complete — nothing left to do on it,
+   * the nav hidden, forty-five minutes on the clock and no work on the screen. Exactly the
+   * fault this app started with, rebuilt by me from the other direction. A period is a stretch
+   * of *work*; a lesson with no work left in it is not one, whatever the clock says.
+   *
+   * So the lock needs three things, not one: time left, work available, and a lesson that is
+   * actually still running. Reviewing something already done is never a reason to trap anyone.
+   */
+  const lessonStillRunning = currentStage !== "COMPLETE" && !finalAttempt && !periodAlreadyClosed;
+  const periodHoldsThemHere = minutesLeftInPeriod > 0 && !outOfWork && lessonStillRunning;
 
   /**
    * Hides the way out while the period is running.
@@ -633,6 +657,32 @@ export function LessonPlayer(props: LessonPlayerProps) {
     else document.body.removeAttribute("data-lesson-locked");
     return () => document.body.removeAttribute("data-lesson-locked");
   }, [periodHoldsThemHere]);
+
+  /**
+   * The escape hatch of last resort.
+   *
+   * Every version of this app's worst bug has the same shape: a child locked in a period with
+   * nothing on the screen to do. I have now built it twice from two different directions, so
+   * this is a floor under it rather than another attempt to enumerate the ways it can happen.
+   *
+   * Once the quiz is behind them and the app has put nothing new in front of them for three
+   * minutes, a way out appears — and pressing it tells me, so an empty screen becomes a report
+   * rather than a lost morning.
+   */
+  useEffect(() => {
+    if (!periodHoldsThemHere || !submittedStage.CHECK) return;
+    const id = setInterval(() => {
+      if (!document.hidden) setHeldWithQuizDone((n) => n + 5);
+    }, 5000);
+    return () => clearInterval(id);
+  }, [periodHoldsThemHere, submittedStage.CHECK]);
+
+  const strandedWithNothingToDo =
+    periodHoldsThemHere &&
+    submittedStage.CHECK &&
+    extraPractice.length === 0 &&
+    !generatingPractice &&
+    heldWithQuizDone >= 180;
 
   const theme = subjectTheme(subjectSlug);
 
@@ -2435,6 +2485,42 @@ export function LessonPlayer(props: LessonPlayerProps) {
         to say so. It sits on the lesson page rather than in a menu because that is where the
         thing they noticed is.
       */}
+      {/*
+        Stranded: the quiz is done, nothing new has appeared for three minutes, and the period
+        still will not let them go. Never supposed to happen, and it has happened twice, so the
+        door is here and pressing it says so out loud.
+      */}
+      {strandedWithNothingToDo ? (
+        <Card padding="lg" className="mb-4 space-y-3 border-warning/40 bg-warning-soft/40">
+          <p className="text-base font-medium text-ink">
+            There&apos;s nothing here for you to do, is there?
+          </p>
+          <p className="text-sm text-ink-muted">
+            That&apos;s not your fault and you shouldn&apos;t be stuck here. Go back to your day —
+            I&apos;ll tell your teacher this lesson had nothing in it.
+          </p>
+          <Button
+            onClick={() => {
+              void fetch("/api/student/report-bug", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  what: "Stranded: the quiz was done and there was nothing left to do, but the lesson would not let me leave.",
+                  lessonTitle: lesson.title,
+                  subject: subjectTitle,
+                  stage: viewStage,
+                  videoState,
+                  url: typeof window !== "undefined" ? window.location.href : undefined,
+                }),
+              }).catch(() => undefined);
+              setOutOfWork(true);
+            }}
+          >
+            Let me out and tell my teacher
+          </Button>
+        </Card>
+      ) : null}
+
       {/*
         A teacher notices when nothing has happened for a while. Suppressed once the lesson is
         over — a child on the finish screen with their break timer running is not idling.

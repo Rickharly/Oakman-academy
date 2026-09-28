@@ -112,6 +112,14 @@ export default async function LessonPage({
   const dayStart = toDateOnly(schoolDayKey());
   const periodSpentSeconds = await periodSecondsSpent(studentId, subject.id, dayStart);
 
+  /** Has the board already signed this period off? Then there is nothing to hold them to. */
+  const periodClosed = assignmentId
+    ? ((await prisma.dailyAssignment.findUnique({
+        where: { id: assignmentId },
+        select: { status: true },
+      }))?.status ?? null) === "COMPLETED"
+    : false;
+
   /** The next topic in the sequence, named — so the offer to carry on says what it is. */
   const nextLesson = nextLessonId
     ? await prisma.lesson.findUnique({ where: { id: nextLessonId }, select: { title: true } })
@@ -226,6 +234,9 @@ export default async function LessonPage({
       breakMinutes={user.studentProfile.breakMinutes}
       elapsedSeconds={view.attempt.timeSpentSeconds}
       periodSpentSeconds={periodSpentSeconds}
+      // A period the board has already closed never holds them: reviewing something finished
+      // is not a period, and locking a child into one is the fault this app started with.
+      periodAlreadyClosed={periodClosed}
       nextLessonTitle={nextLesson ? plainMaths(nextLesson.title) : null}
       // So "I've already learned this" can take today's period off the board with it.
       assignmentId={assignmentId ?? view.attempt.assignmentId}
