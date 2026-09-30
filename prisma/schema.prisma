@@ -1092,6 +1092,8 @@ enum ExamKind {
   WEEKLY
   /// Everything studied so far — used the first time, and whenever a parent asks for one.
   CATCH_UP
+  /// Finding a level: the same subject at rising difficulty, until they stop being able to do it.
+  PLACEMENT
 }
 
 enum ExamStatus {
@@ -1137,6 +1139,14 @@ model ExamQuestion {
   lessonId   String
   lesson     Lesson    @relation(fields: [lessonId], references: [id])
   order      Int
+  /**
+   * How far ahead of them this question is, on a placement paper.
+   *
+   * 0 = behind them, already taught. 1 = where they are now. 2 = further along this year.
+   * 3 = next year's material. Null on an ordinary exam, where every question is behind them by
+   * definition. This is what turns a score into "he is solid to here and breaks there".
+   */
+  band       Int?
   response   Json?
   isCorrect  Boolean?
   score      Float?

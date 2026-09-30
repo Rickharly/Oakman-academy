@@ -65,6 +65,7 @@ export default async function ExamPage({ params }: { params: Promise<{ examId: s
         title={exam.title}
         questions={questions as unknown as ExamPaperQuestion[]}
         alreadyGraded={graded}
+        findingLevel={exam.kind === "PLACEMENT"}
       />
     </div>
   );

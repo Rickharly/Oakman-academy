@@ -47,11 +47,14 @@ export function ExamPaper({
   title,
   questions,
   alreadyGraded,
+  findingLevel,
 }: {
   examId: string;
   title: string;
   questions: ExamPaperQuestion[];
   alreadyGraded?: Result | null;
+  /** A placement paper: built to be failed, and it says so. */
+  findingLevel?: boolean;
 }) {
   const router = useRouter();
   const [answers, setAnswers] = useState<Record<string, unknown>>(() =>
@@ -188,6 +191,19 @@ export function ExamPaper({
           This one is on your own — no teacher, no hints, and nothing is marked until you hand it
           in. Answer what you can. If you don&apos;t know one, have a go anyway and move on.
         </p>
+        {/*
+          A placement paper is built to be failed, and saying so changes what getting stuck
+          means. Without this a child who hits the last band concludes they are bad at the
+          subject, when the paper has just done exactly what it was for.
+        */}
+        {findingLevel ? (
+          <p className="text-sm text-ink">
+            This one gets harder as it goes, on purpose — it runs past what you&apos;ve been
+            taught and into next year. <span className="font-medium">You are not meant to
+            finish it.</span> Getting stuck part way through is the whole point: it tells us what
+            to teach you next.
+          </p>
+        ) : null}
       </Card>
 
       {questions.map((question, i) => (

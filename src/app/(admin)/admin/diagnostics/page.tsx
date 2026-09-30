@@ -1,6 +1,8 @@
 import { PageHeader } from "@/components/ui/PageHeader";
 import { requireParent } from "@/lib/auth/session";
+import { prisma } from "@/lib/db";
 import { DiagnosticsPanel } from "@/components/admin/DiagnosticsPanel";
+import { FindTheirLevel } from "@/components/admin/FindTheirLevel";
 
 /**
  * One page that says what is broken.
@@ -10,7 +12,12 @@ import { DiagnosticsPanel } from "@/components/admin/DiagnosticsPanel";
  * alone, and each wrong answer cost part of a school day.
  */
 export default async function DiagnosticsPage() {
-  await requireParent();
+  const parent = await requireParent();
+
+  const students = await prisma.studentProfile.findMany({
+    where: { user: { studentLinks: { some: { parentId: parent.id } } } },
+    include: { user: { select: { displayName: true } } },
+  });
 
   return (
     <>
@@ -18,7 +25,12 @@ export default async function DiagnosticsPage() {
         title="What's working"
         description="Runs the real checks against the real services and reports exactly what they say."
       />
-      <DiagnosticsPanel />
+      <div className="space-y-4">
+        <FindTheirLevel
+          students={students.map((s) => ({ id: s.id, name: s.user.displayName }))}
+        />
+        <DiagnosticsPanel />
+      </div>
     </>
   );
 }

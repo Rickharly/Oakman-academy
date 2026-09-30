@@ -2043,46 +2043,54 @@ export function LessonPlayer(props: LessonPlayerProps) {
           period lock — which is why the topics never changed however many times it was asked
           for. The path existed and nothing could reach it.
         */}
+        {/*
+          Passed the quiz, time left: the next topic, now.
+
+          The quiz IS the test. I added a second one on top of it — "show me you've really got
+          this" — and that turned out to be the thing standing between a child and the next
+          topic: if the questions could not be written, or they simply did not press it, they
+          sat in front of a finished lesson for half an hour. A gate nobody asked for, holding
+          the door they did ask for.
+
+          So the rule is the plain one: finish the topic, and if the period has time left, the
+          next topic starts. More practice on the same thing is there for anyone who wants it,
+          and it is not the way out.
+        */}
         {secure && minutesLeftInPeriod >= 8 ? (
           <Card padding="lg" className="space-y-3 bg-accent-soft">
             <h3 className="text-base font-semibold text-ink">
-              {testPassed
-                ? "You've shown me you know this one."
+              {nextLessonId
+                ? `Good — that's this topic done, with ${minutesLeftInPeriod} minutes left.`
                 : `Good — and there's still ${minutesLeftInPeriod} minutes of this lesson.`}
             </h3>
-            {testPassed ? (
+            {nextLessonId ? (
               <>
                 <p className="text-sm text-ink">
-                  So we move on. {nextLessonTitle ? `Next: ${nextLessonTitle}.` : "On to the next topic."}
-                  {" "}If we don&apos;t finish it today you&apos;ll pick it up tomorrow.
+                  So we carry straight on. {nextLessonTitle ? `Next: ${nextLessonTitle}.` : ""} If
+                  we don&apos;t finish it today you&apos;ll pick it up at the start of tomorrow.
                 </p>
-                {nextLessonId ? (
+                <div className="flex flex-wrap items-center gap-3">
                   <Button href={`/lessons/${nextLessonId}`}>
                     Start {nextLessonTitle ? `"${nextLessonTitle}"` : "the next topic"}
                   </Button>
-                ) : (
-                  <Button onClick={() => void practiseMore()} disabled={generatingPractice}>
-                    {generatingPractice ? "Writing your questions…" : "Give me something harder"}
+                  <Button
+                    variant="ghost"
+                    onClick={() => void practiseMore()}
+                    disabled={generatingPractice}
+                  >
+                    {generatingPractice ? "Writing…" : "More on this one first"}
                   </Button>
-                )}
+                </div>
               </>
             ) : (
               <>
                 <p className="text-sm text-ink">
-                  Show me you&apos;ve really got this and we&apos;ll start the next topic. A few
-                  questions — get them right and we move on.
+                  That&apos;s the last topic I have for this subject, so let&apos;s use the time
+                  on harder questions about it.
                 </p>
-                <div className="flex flex-wrap items-center gap-3">
-                  {extraPractice.length > 0 ? (
-                    <Button onClick={() => setViewStage("PRACTICE")}>
-                      {extraMode === "TEST" ? "Back to your test" : "Back to your practice"}
-                    </Button>
-                  ) : (
-                    <Button onClick={() => void takeFinalTest()} disabled={generatingPractice}>
-                      {generatingPractice ? "Writing your questions…" : "Test me on this topic"}
-                    </Button>
-                  )}
-                </div>
+                <Button onClick={() => void practiseMore()} disabled={generatingPractice}>
+                  {generatingPractice ? "Writing your questions…" : "Give me something harder"}
+                </Button>
               </>
             )}
             {practiceError ? <p className="text-sm text-ink-muted">{practiceError}</p> : null}
@@ -2213,7 +2221,7 @@ export function LessonPlayer(props: LessonPlayerProps) {
           they have finished this one properly and there is real time left, the next topic starts
           here, inside the same period, with the same clock still running.
         */}
-        {periodHoldsThemHere && testPassed && nextLessonId && minutesLeftInPeriod >= 12 ? (
+        {periodHoldsThemHere && nextLessonId && minutesLeftInPeriod >= 8 ? (
           <div className="space-y-3 rounded-2xl bg-accent-soft p-5 text-left">
             <p className="text-base font-medium text-ink">
               You know this one. There are {minutesLeftInPeriod} minutes left, so let&apos;s
