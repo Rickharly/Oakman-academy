@@ -224,14 +224,24 @@ export function TeacherPanel({ lessonAttemptId, questionId, stage, className, vo
                 ) : null}
               </div>
               {/*
-                Only the teacher's finished replies get a voice, and only when a parent has
-                turned it on for this child. A half-streamed sentence read aloud is worse than
+                The button is always there. The setting decides whether it plays by itself.
+
+                This was gated on a per-child checkbox — "read explanations aloud" — so a child
+                whose box was unticked had no way to listen at all, and the Listen button simply
+                was not on the page. It has now gone missing on Eva twice, and both times the
+                "reading text aloud" check was green, because the server could speak perfectly
+                well and nobody could ask it to.
+
+                Being read to is how a child with a wall of text gets through it. That is not a
+                preference to be switched off by default and hunted for in a settings form; it
+                is the floor. What a parent reasonably controls is whether the teacher starts
+                talking unprompted, which is what the setting means now.
+
+                Still only finished replies: a half-streamed sentence read aloud is worse than
                 silence.
               */}
-              {voice && m.role === "assistant" && m.content && !sending ? (
-                // The newest reply plays by itself: a teacher who talks should not need to be
-                // asked to talk. Older ones keep the button, for hearing something again.
-                <SpeakButton text={m.content} autoPlay={m.id === lastAssistantId} />
+              {m.role === "assistant" && m.content && !sending ? (
+                <SpeakButton text={m.content} autoPlay={voice && m.id === lastAssistantId} />
               ) : null}
             </div>
           ))

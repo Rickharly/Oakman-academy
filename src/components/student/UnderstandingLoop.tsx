@@ -230,7 +230,15 @@ export function UnderstandingLoop({
                 {para}
               </p>
             ))}
-            {voice ? <ReadAloud parts={[explanation.explanation, explanation.checkQuestion]} /> : null}
+            {/*
+              Always offered, never gated on a setting.
+
+              This is the re-explanation a child gets after saying they do not understand — the
+              single place where being read to matters most. Hiding the Listen button behind a
+              checkbox in a parent's settings form meant the child who most needed it was the
+              least likely to have it. See `TeacherPanel`.
+            */}
+            <ReadAloud parts={[explanation.explanation, explanation.checkQuestion]} />
           </div>
 
           <div className="space-y-2 rounded-2xl bg-surface-raised p-4">

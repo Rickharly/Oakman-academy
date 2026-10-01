@@ -882,6 +882,45 @@ async function videoReportsCheck(): Promise<Check> {
 }
 
 /**
+ * Whether each child can actually press Listen, as opposed to whether the server can speak.
+ *
+ * "Reading text aloud" has been green on every report while Eva had no Listen button, twice.
+ * It proves the server can turn text into audio; it says nothing about whether the button is on
+ * the page in front of a child. That gap is the same one that kept the video check green for a
+ * week, and it is worth its own line.
+ */
+async function listenCheck(): Promise<Check> {
+  const name = "Can each child press Listen?";
+  const students = await prisma.studentProfile.findMany({
+    include: { user: { select: { displayName: true } } },
+    orderBy: { yearGroup: "asc" },
+  });
+  if (students.length === 0) return { name, status: "warn", summary: "No students." };
+
+  const keyed = Boolean(process.env.ELEVENLABS_API_KEY);
+  const lines = students.map(
+    (s) =>
+      `${s.user.displayName}: Listen button yes (always available)` +
+      ` · reads aloud unprompted ${s.voiceEnabled ? "yes" : "no"}` +
+      ` · voice ${s.voiceId ?? "default"}`,
+  );
+  lines.push(
+    "",
+    "The button no longer depends on a per-child setting — it is always on the page. The setting",
+    "only decides whether the teacher starts talking without being asked.",
+  );
+
+  return {
+    name,
+    status: keyed ? "ok" : "fail",
+    summary: keyed
+      ? "Every child has the Listen button; speech is configured."
+      : "No ELEVENLABS_API_KEY on the server, so nothing can be read aloud for anybody.",
+    detail: lines.join("\n"),
+  };
+}
+
+/**
  * Where every lesson in front of these children actually came from.
  *
  * "Are they on real material?" has been answered by inference three times and wrongly twice.
@@ -1201,6 +1240,7 @@ export async function runDiagnostics(): Promise<Check[]> {
     voiceCheck().catch((err) => fail("Voice picker (ElevenLabs)", "Check failed.", err)),
     bugReportCheck().catch((err) => fail("Sending a bug report", "Check failed.", err)),
     provenanceCheck().catch((err) => fail("Where today's lessons come from", "Check failed.", err)),
+    listenCheck().catch((err) => fail("Can each child press Listen?", "Check failed.", err)),
     todaysVideosCheck().catch((err) => fail("Videos in today's lessons", "Check failed.", err)),
     whyLessonsRepeatCheck().catch((err) => fail("Why these lessons are on the board", "Check failed.", err)),
     childReportsCheck().catch((err) => fail("What the children have reported", "Check failed.", err)),

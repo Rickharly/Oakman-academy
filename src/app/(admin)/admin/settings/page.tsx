@@ -358,7 +358,7 @@ export default async function AdminSettingsPage({
                           defaultChecked={profile.voiceEnabled}
                           className="h-5 w-5 rounded border-line text-accent focus:ring-accent-soft"
                         />
-                        Read explanations aloud
+                        Teacher starts reading aloud by herself
                       </label>
                     </div>
 
