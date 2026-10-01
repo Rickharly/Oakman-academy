@@ -47,14 +47,31 @@ export function DiagnosticsPanel() {
       const res = await fetch("/api/admin/timetable", { method: "POST" });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Could not set the week.");
-      const waiting = (data.results ?? [])
-        .filter((r: { awaitingMaterial: string[] }) => r.awaitingMaterial.length > 0)
-        .map((r: { name: string; awaitingMaterial: string[] }) => `${r.name}: ${r.awaitingMaterial.join(", ")}`)
+      type WeekRow = {
+        name: string;
+        awaitingMaterial: string[];
+        placeholdersRemoved?: number;
+        subjectsWithNoRealMaterial?: string[];
+      };
+      const rows: WeekRow[] = data.results ?? [];
+      const waiting = rows
+        .filter((r) => r.awaitingMaterial.length > 0)
+        .map((r) => `${r.name}: ${r.awaitingMaterial.join(", ")}`)
+        .join(" · ");
+      const swept = rows.reduce((n, r) => n + (r.placeholdersRemoved ?? 0), 0);
+      const empty = rows
+        .filter((r) => (r.subjectsWithNoRealMaterial ?? []).length > 0)
+        .map((r) => `${r.name}: ${(r.subjectsWithNoRealMaterial ?? []).join(", ")}`)
         .join(" · ");
       setWeekResult(
-        waiting
-          ? `Week set. Still writing the first lessons for — ${waiting}. They appear as they are written.`
-          : "Week set, and every subject has material.",
+        [
+          "Week set.",
+          swept > 0 ? `Removed ${swept} thing(s) from the sample curriculum.` : "No sample curriculum left.",
+          waiting ? `Still writing the first lessons for — ${waiting}.` : "",
+          empty ? `No real material yet for — ${empty}.` : "",
+        ]
+          .filter(Boolean)
+          .join(" "),
       );
       void run();
     } catch (err) {

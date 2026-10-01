@@ -20,6 +20,7 @@ import { resolveMedia } from "@/lib/curriculum/media-link";
 import { isPlaceholderUrl, isPlayableResource } from "@/lib/curriculum/video-status";
 import { imageSchema } from "@/lib/questions/types";
 import { isLessonDone } from "@/lib/progress/aggregate";
+import { lessonProvenance } from "./no-placeholders";
 import { addDaysKey, dateOnlyKey, toDateOnly, todayDateOnly, weekStartKey } from "@/lib/dates";
 
 export type CheckStatus = "ok" | "warn" | "fail" | "skip";
@@ -881,6 +882,66 @@ async function videoReportsCheck(): Promise<Check> {
 }
 
 /**
+ * Where every lesson in front of these children actually came from.
+ *
+ * "Are they on real material?" has been answered by inference three times and wrongly twice.
+ * This answers it by naming the provider of every lesson on every board: `oak` is Oak National
+ * Academy's own, `fixture` is the bundled sample curriculum that must never reach a child, and
+ * `oakman` is material written here for Writing and Logic, which Oak does not carry at all.
+ *
+ * A single `fixture` lesson anywhere is a failure, loudly, because that is a child doing
+ * invented work in front of a video player that points at nothing.
+ */
+async function provenanceCheck(): Promise<Check> {
+  const name = "Where today's lessons come from";
+  const lines: string[] = [];
+  let placeholders = 0;
+  let writtenHere = 0;
+  let oak = 0;
+
+  for (const student of await lessonProvenance()) {
+    lines.push(student.studentName);
+
+    if (student.today.length === 0) {
+      lines.push("  no lessons on the board today");
+    }
+    for (const lesson of student.today) {
+      if (lesson.provider === "fixture") placeholders += 1;
+      else if (lesson.provider === "oakman") writtenHere += 1;
+      else oak += 1;
+      lines.push(
+        `  ${lesson.subject}: ${lesson.title} — ${lesson.provider}` +
+          (lesson.provider === "fixture" ? "   <-- PLACEHOLDER, INVENTED LESSON" : ""),
+      );
+    }
+
+    lines.push("  enrolled on:");
+    for (const programme of student.programmes) {
+      if (programme.provider === "fixture") placeholders += 1;
+      lines.push(
+        `    ${programme.subject} y${programme.yearGroup} — ${programme.provider}, ` +
+          `${programme.lessons} lesson(s)` +
+          (programme.provider === "fixture" ? "   <-- SAMPLE CURRICULUM" : ""),
+      );
+    }
+    lines.push("");
+  }
+
+  if (lines.length === 0) return { name, status: "warn", summary: "No students." };
+
+  return {
+    name,
+    status: placeholders > 0 ? "fail" : "ok",
+    summary:
+      placeholders > 0
+        ? `${placeholders} placeholder item(s) still reaching a child — invented lessons from the sample curriculum.`
+        : `No placeholders. ${oak} Oak lesson(s) today` +
+          (writtenHere > 0 ? `, and ${writtenHere} written here for subjects Oak does not carry.` : "."),
+    detail: lines.join("\n"),
+  };
+}
+
+/**
  * Whether a child's bug report can actually leave the building.
  *
  * "Something's wrong here" deliberately never shows a child a send failure — being told your
@@ -1139,6 +1200,7 @@ export async function runDiagnostics(): Promise<Check[]> {
     speechCheck().catch((err) => fail("Reading text aloud", "Check failed.", err)),
     voiceCheck().catch((err) => fail("Voice picker (ElevenLabs)", "Check failed.", err)),
     bugReportCheck().catch((err) => fail("Sending a bug report", "Check failed.", err)),
+    provenanceCheck().catch((err) => fail("Where today's lessons come from", "Check failed.", err)),
     todaysVideosCheck().catch((err) => fail("Videos in today's lessons", "Check failed.", err)),
     whyLessonsRepeatCheck().catch((err) => fail("Why these lessons are on the board", "Check failed.", err)),
     childReportsCheck().catch((err) => fail("What the children have reported", "Check failed.", err)),

@@ -7,7 +7,12 @@ import { prisma } from "@/lib/db";
 import type { DailyAssignment, Lesson, Programme, ReviewItem, StudentLessonProgress, Subject, Unit } from "@/generated/prisma/client";
 import { Prisma } from "@/generated/prisma/client";
 import { addDaysKey, dateOnlyKey, isoWeekday, schoolDayEnd, todayDateOnly, toDateOnly, weekStartKey } from "@/lib/dates";
-import { alignSchedulesToEnrolments, enrolStudentInYearGroup, fixYearGroupEnrolments } from "@/lib/admin/enrol";
+import {
+  PLACEHOLDER_PROVIDER,
+  alignSchedulesToEnrolments,
+  enrolStudentInYearGroup,
+  fixYearGroupEnrolments,
+} from "@/lib/admin/enrol";
 import { requeueAbandonedReviews, settleAbandonedLessons, settleFinishedLessons } from "@/lib/lessons/service";
 import { isLessonDone } from "@/lib/progress/aggregate";
 import { ensureLessonAssets } from "@/lib/curriculum/sync";
@@ -62,7 +67,19 @@ async function getIncompleteLessonSequence(studentId: string, programmeId: strin
     orderBy: { order: "asc" },
     include: { lessons: { orderBy: { order: "asc" } } },
   });
-  const lessons = units.flatMap((u) => u.lessons);
+  /**
+   * Never a placeholder. Not "prefer the real one" — never.
+   *
+   * The bundled sample curriculum exists so a fresh install has something on the screen. Its
+   * lessons are invented, its videos are `fixture://` addresses pointing at nothing, and a
+   * child put on them is doing made-up work with a broken player. Every guard against it so
+   * far has been at the enrolment level — pick Oak where Oak exists — which is a preference,
+   * and a preference fails the moment an enrolment is wrong in a way nobody predicted. It has
+   * failed that way twice.
+   *
+   * This is the floor: whatever the enrolments say, a placeholder lesson cannot be scheduled.
+   */
+  const lessons = units.flatMap((u) => u.lessons).filter((l) => l.provider !== PLACEHOLDER_PROVIDER);
   if (lessons.length === 0) return [];
 
   const progressRows = await prisma.studentLessonProgress.findMany({
