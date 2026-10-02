@@ -21,6 +21,7 @@ import { prisma } from "@/lib/db";
 import { getAiProvider } from "@/lib/ai/provider";
 import { parseNumericAnswer } from "@/lib/questions/oak-mapper";
 import type { Lesson } from "@/generated/prisma/client";
+import { sameTeaching, type LessonShape } from "@/lib/lessons/sameness";
 
 /** Stamped on everything written here, so it is never confused with the provider's own. */
 export const GENERATED_PROVIDER = "oakman";
@@ -166,7 +167,7 @@ export async function generateLessons(
   const existing = await prisma.lesson.findMany({
     where: { unit: { programmeId: programme.id } },
     orderBy: { order: "asc" },
-    select: { title: true, order: true },
+    select: { title: true, order: true, keyLearningPoints: true },
   });
   const nextOrder = existing.length > 0 ? Math.max(...existing.map((l) => l.order)) + 1 : 1;
 
@@ -223,8 +224,37 @@ export async function generateLessons(
     update: {},
   });
 
+  /**
+   * Anything already in this programme is not written again.
+   *
+   * The model is told to carry on from what is already done and mostly does, and "mostly" has
+   * put the same lesson on a child's timetable twice — same title, same content, a different
+   * row. Being told not to repeat yourself is not a mechanism. Matched loosely, because the
+   * wording drifts between runs while the lesson does not.
+   */
+  const written: LessonShape[] = existing.map((l, i) => ({
+    id: `existing-${i}`,
+    title: l.title,
+    keyLearningPoints: l.keyLearningPoints,
+  }));
+
+  const fresh = sequence.lessons.filter((spec, i) => {
+    const candidate: LessonShape = {
+      id: `new-${i}`,
+      title: spec.title,
+      keyLearningPoints: spec.keyLearningPoints,
+    };
+    if (written.some((w) => sameTeaching(w, candidate))) {
+      log(`  Skipping "${spec.title}" — this programme already teaches it.`);
+      return false;
+    }
+    // Also within this batch: a model asked for six lessons can hand back two of the same.
+    written.push(candidate);
+    return true;
+  });
+
   const created: Lesson[] = [];
-  for (const [i, spec] of sequence.lessons.slice(0, wanted).entries()) {
+  for (const [i, spec] of fresh.slice(0, wanted).entries()) {
     const order = nextOrder + i;
     const lesson = await prisma.lesson
       .upsert({

@@ -17,6 +17,7 @@ import { requeueAbandonedReviews, settleAbandonedLessons, settleFinishedLessons 
 import { isLessonDone } from "@/lib/progress/aggregate";
 import { ensureLessonAssets } from "@/lib/curriculum/sync";
 import { ensureExamForDay } from "@/lib/exams/schedule";
+import { lessonsTaught, sameTeaching } from "@/lib/lessons/sameness";
 import { catchUpImport } from "@/lib/curriculum/autofill";
 
 const REVIEW_MINUTES = 15;
@@ -65,7 +66,10 @@ async function getIncompleteLessonSequence(studentId: string, programmeId: strin
   const units = await prisma.unit.findMany({
     where: { programmeId },
     orderBy: { order: "asc" },
-    include: { lessons: { orderBy: { order: "asc" } } },
+    include: {
+      lessons: { orderBy: { order: "asc" } },
+      programme: { select: { subjectId: true } },
+    },
   });
   /**
    * Never a placeholder. Not "prefer the real one" — never.
@@ -100,7 +104,34 @@ async function getIncompleteLessonSequence(studentId: string, programmeId: strin
    * Anything with a finish time on it is behind them.
    */
   const doneIds = new Set(progressRows.filter(isLessonDone).map((p) => p.lessonId));
-  return lessons.filter((l) => !doneIds.has(l.id));
+
+  /**
+   * And never the same lesson twice under a different name.
+   *
+   * "Done" was matched on the lesson's id, and the same lesson exists as several rows: Oak's
+   * copy, the sample curriculum's copy, and one written here when the provider could not be
+   * reached. Different ids, identical content. So a child finished a topic, the planner looked
+   * up the id it had just used, found nothing against the other row, and set the same lesson
+   * again — which is the "the lessons duplicate the same content" complaint, and it is not a
+   * duplicate in the data, it is the same teaching twice.
+   *
+   * Matched on the title, loosely, because the wording drifts between providers and the lesson
+   * does not. Scoped to this subject: two subjects may legitimately have a lesson called
+   * "Introduction", and a maths lesson is not taught by an English one of the same name.
+   */
+  const subjectId = units[0]?.programme?.subjectId;
+  const taught = subjectId ? await lessonsTaught(studentId, subjectId) : [];
+
+  // Matched on what a lesson teaches, not only on its name — see `sameness.ts`. Two lessons
+  // still to do that teach the same thing: the first is taught, the second is skipped.
+  const queued: typeof lessons = [];
+  for (const lesson of lessons) {
+    if (doneIds.has(lesson.id)) continue;
+    if (taught.some((done) => sameTeaching(done, lesson))) continue;
+    if (queued.some((already) => sameTeaching(already, lesson))) continue;
+    queued.push(lesson);
+  }
+  return queued;
 }
 
 export async function planWeek(studentId: string, weekStart: string, opts?: { replace?: boolean }): Promise<DailyAssignment[]> {
@@ -466,6 +497,67 @@ async function purgeFillerReviews(studentId: string): Promise<void> {
   await prisma.reviewItem.updateMany({ where: { id: { in: ids } }, data: { status: "DISMISSED" } });
 }
 
+/**
+ * Takes a repeat off the board before the child gets to it.
+ *
+ * The planner no longer sets a lesson that teaches the same thing as one already done — but it
+ * only ever adds, so lessons planned before that rule existed are still sitting on this week's
+ * board. Left there, a child opens one and gets the lesson they did yesterday under another
+ * name. Only untouched slots go: a lesson a child has started is theirs, repeat or not, and the
+ * planner fills the gap with something new straight afterwards.
+ */
+async function purgeRepeatedLessons(studentId: string, dateKey: string): Promise<void> {
+  const monday = weekStartKey(dateKey);
+  const days = [0, 1, 2, 3, 4].map((i) => toDateOnly(addDaysKey(monday, i)));
+
+  const planned = await prisma.dailyAssignment.findMany({
+    where: { studentId, date: { in: days }, kind: "LESSON", status: "PLANNED", lessonId: { not: null } },
+    include: {
+      lesson: {
+        select: {
+          id: true,
+          title: true,
+          keyLearningPoints: true,
+          unit: { select: { programme: { select: { subjectId: true } } } },
+        },
+      },
+    },
+    orderBy: [{ date: "asc" }, { order: "asc" }],
+  });
+  if (planned.length === 0) return;
+
+  const taughtBySubject = new Map<string, Awaited<ReturnType<typeof lessonsTaught>>>();
+  const keptBySubject = new Map<string, { id: string; title: string; keyLearningPoints: unknown }[]>();
+  const repeats: string[] = [];
+
+  for (const slot of planned) {
+    const lesson = slot.lesson;
+    if (!lesson) continue;
+    const subjectId = lesson.unit.programme.subjectId;
+
+    if (!taughtBySubject.has(subjectId)) {
+      taughtBySubject.set(subjectId, await lessonsTaught(studentId, subjectId));
+    }
+    const taught = taughtBySubject.get(subjectId)!;
+    const kept = keptBySubject.get(subjectId) ?? [];
+
+    // Already taught, or the same as something earlier on this week's board.
+    const isRepeat =
+      taught.some((done) => done.id !== lesson.id && sameTeaching(done, lesson)) ||
+      kept.some((earlier) => earlier.id !== lesson.id && sameTeaching(earlier, lesson));
+
+    if (isRepeat) repeats.push(slot.id);
+    else {
+      kept.push(lesson);
+      keptBySubject.set(subjectId, kept);
+    }
+  }
+
+  if (repeats.length > 0) {
+    await prisma.dailyAssignment.deleteMany({ where: { id: { in: repeats }, status: "PLANNED" } });
+  }
+}
+
 export async function ensureDayPlanned(studentId: string, dateKey: string): Promise<DailyAssignment[]> {
   if (isoWeekday(dateKey) > 5) return []; // weekends: plan nothing
 
@@ -490,6 +582,7 @@ export async function ensureDayPlanned(studentId: string, dateKey: string): Prom
   await requeueAbandonedReviews(studentId).catch(() => undefined);
 
   await purgeFillerReviews(studentId).catch(() => undefined);
+  await purgeRepeatedLessons(studentId, dateKey).catch(() => undefined);
   // A child enrolled on the wrong year is taught the wrong curriculum every day until someone
   // notices. Cheap to check, and it repairs itself rather than waiting to be reported again.
   await fixYearGroupEnrolments(studentId).catch(() => undefined);

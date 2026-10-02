@@ -13,6 +13,7 @@ import { plainMaths, plainMathsDeep } from "@/lib/text/maths";
 import { ensureLessonAssets, type EnsureAssetsOutcome } from "@/lib/curriculum/sync";
 import { deriveVideoUnavailableReason } from "@/lib/curriculum/video-status";
 import { schoolDayKey, toDateOnly } from "@/lib/dates";
+import { nextNewLesson } from "@/lib/lessons/sameness";
 
 type RawQuestion = {
   id: string;
@@ -83,22 +84,16 @@ export default async function LessonPage({
   const { lesson } = view;
   const subject = lesson.unit.programme.subject;
 
-  // Next lesson: the next one in this unit by order, else the first lesson of the next unit.
-  const siblingLessons = await prisma.lesson.findMany({
-    where: { unitId: lesson.unitId },
-    orderBy: { order: "asc" },
-    select: { id: true },
-  });
-  const idx = siblingLessons.findIndex((l) => l.id === lesson.id);
-  let nextLessonId: string | null = idx >= 0 && idx < siblingLessons.length - 1 ? siblingLessons[idx + 1].id : null;
-  if (!nextLessonId) {
-    const nextUnit = await prisma.unit.findFirst({
-      where: { programmeId: lesson.unit.programmeId, order: { gt: lesson.unit.order } },
-      orderBy: { order: "asc" },
-      include: { lessons: { orderBy: { order: "asc" }, take: 1 } },
-    });
-    nextLessonId = nextUnit?.lessons[0]?.id ?? null;
-  }
+  /**
+   * The next lesson that is actually new to them — not the next row.
+   *
+   * This took the next lesson by order and nothing else, so "Start the next topic" could hand a
+   * child the lesson they had just finished under another row, or one they did last week. That
+   * is the "the next lesson is absolutely the same" complaint. Now it skips anything done and
+   * anything that teaches the same thing as something done. See `sameness.ts`.
+   */
+  const nextNew = await nextNewLesson(studentId, lesson.id).catch(() => null);
+  const nextLessonId: string | null = nextNew?.id ?? null;
 
   const oakUrl = lesson.canonicalUrl ?? lesson.providerUrl;
 
