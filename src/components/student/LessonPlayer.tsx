@@ -2443,8 +2443,21 @@ export function LessonPlayer(props: LessonPlayerProps) {
             <p className="text-xs text-ink-faint">{formatMinutes(lessonMinutes)}</p>
           </div>
           <div className="flex shrink-0 items-center gap-3">
+            {/*
+              The period's clock, not this topic's.
+
+              Starting the second topic of a period reset the timer to zero, because this was
+              handed the new attempt's own elapsed time. To the child that reads as the lesson
+              starting again — forty-five more minutes — and it is the one number on screen they
+              use to pace themselves. The server already works out how long they have been on
+              this subject today; that is the figure that belongs here.
+            */}
             {viewStage !== "COMPLETE" ? (
-              <LessonTimer attemptId={attemptId} minutes={lessonMinutes} initialSeconds={elapsedSeconds} />
+              <LessonTimer
+                attemptId={attemptId}
+                minutes={lessonMinutes}
+                initialSeconds={Math.max(elapsedSeconds, periodSpentSeconds ?? 0)}
+              />
             ) : null}
             <p className="text-sm font-medium text-ink-muted">
               {viewStage === "COMPLETE" ? "Complete" : `Step ${Math.min(stageIndex(viewStage) + 1, 5)} of 5`}

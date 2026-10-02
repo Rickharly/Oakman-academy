@@ -13,11 +13,22 @@
  */
 import { Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/db";
+import { isLessonDone } from "@/lib/progress/aggregate";
 import { getOrCreateExplainer } from "@/lib/lessons/explainer";
 import { syncMany, type SyncScope } from "./sync";
 
 /** How far ahead to keep the curriculum stocked. */
 export const WEEKS_AHEAD = 2;
+
+/**
+ * How many topics a period may get through.
+ *
+ * A child who finishes one topic with time left carries straight on into the next, so a
+ * forty-five minute period is no longer one lesson. Two is the working figure: enough that a
+ * fast child does not run the subject dry, not so much that importing the buffer spends the
+ * provider's whole window.
+ */
+export const TOPICS_PER_PERIOD = 2;
 
 export interface AheadTarget extends SyncScope {
   subjectSlug: string;
@@ -101,17 +112,35 @@ export async function lessonsNeededAhead(weeks: number = WEEKS_AHEAD): Promise<A
       const sequence = units.flatMap((u) => u.lessons.map((l) => ({ ...l, unitSlug: u.providerSlug })));
       if (sequence.length === 0) continue;
 
-      const done = await prisma.studentLessonProgress.findMany({
-        where: {
-          studentId: student.id,
-          lessonId: { in: sequence.map((l) => l.id) },
-          status: { in: ["COMPLETED", "MASTERED"] },
-        },
-        select: { lessonId: true },
+      /**
+       * The same definition of "done" the planner uses. Not a narrower one.
+       *
+       * This asked for COMPLETED and MASTERED only, which is the definition the planner stopped
+       * using weeks ago: a lesson finished below seventy per cent, or with a gap the tutoring
+       * loop parked, is NEEDS_REVIEW, and one a child placed out of is ALREADY_KNOWN. Both are
+       * behind them and the planner knows it.
+       *
+       * So the two halves disagreed about how much curriculum was left: this would decide four
+       * lessons were still ahead of a child the planner had already walked past, understating
+       * the shortfall and spending provider requests re-fetching lessons that were already
+       * here. Not enough on its own to empty a day — but two halves of one system answering the
+       * same question differently is worth closing regardless.
+       */
+      const progress = await prisma.studentLessonProgress.findMany({
+        where: { studentId: student.id, lessonId: { in: sequence.map((l) => l.id) } },
+        select: { lessonId: true, status: true, completedAt: true },
       });
-      const doneIds = new Set(done.map((p) => p.lessonId));
+      const doneIds = new Set(progress.filter(isLessonDone).map((p) => p.lessonId));
 
-      const wanted = schedule.weeklyFrequency * weeks;
+      /**
+       * A period can get through more than one topic now.
+       *
+       * Finish a topic with time left and the next one starts inside the same period, which is
+       * the whole point of it — and it means a week of English can eat two or three times the
+       * lessons a week of English used to. Importing one per period was right when a period was
+       * one lesson; now it is how a subject runs dry by Tuesday.
+       */
+      const wanted = schedule.weeklyFrequency * weeks * TOPICS_PER_PERIOD;
       const remaining = sequence.filter((l) => !doneIds.has(l.id));
       const upcoming = remaining.slice(0, wanted);
 

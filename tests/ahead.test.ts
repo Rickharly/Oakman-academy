@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { prisma } from "@/lib/db";
 import { resetDb } from "./helpers/db";
-import { lessonsNeededAhead } from "@/lib/curriculum/ahead";
+import { TOPICS_PER_PERIOD, lessonsNeededAhead } from "@/lib/curriculum/ahead";
 
 /**
  * What the weekly import decides to fetch.
@@ -98,10 +98,19 @@ describe("the lessons the next fortnight needs", () => {
     expect(targets).toHaveLength(1);
     expect(targets[0].subjectSlug).toBe("maths");
     expect(targets[0].yearGroup).toBe(7);
-    // Two a week for two weeks is four lessons; l1 is already teachable, so three are wanted.
-    expect(targets[0].lessonSlugs).toEqual(["l2", "l3", "l4"]);
-    // Six lessons exist and four are needed — nothing to go looking for.
-    expect(targets[0].discover).toBe(0);
+    /**
+     * Two a week for two weeks, times the topics a period can get through.
+     *
+     * A period is no longer one lesson: finish a topic with time left and the next one starts
+     * inside the same period. So the fortnight's buffer is the frequency times the weeks times
+     * `TOPICS_PER_PERIOD`, and expressing it that way rather than as a number means this test
+     * says the rule instead of restating an arithmetic result that moves.
+     */
+    const wanted = 2 * 2 * TOPICS_PER_PERIOD;
+    // l1 is already teachable, so everything after it up to the buffer is wanted.
+    expect(targets[0].lessonSlugs).toEqual(["l2", "l3", "l4", "l5", "l6"].slice(0, wanted - 1));
+    // Six lessons exist; nothing to go looking for while the buffer fits inside them.
+    expect(targets[0].discover).toBe(Math.max(0, wanted - 6));
     // And it knows which unit to read, so it does not walk the whole year to find them.
     expect(targets[0].unitSlugs).toEqual(["maths-u1"]);
   });
@@ -122,7 +131,7 @@ describe("the lessons the next fortnight needs", () => {
 
     const targets = await lessonsNeededAhead(2);
 
-    // One a week for two weeks, starting from where they actually are — not from lesson one.
+    // Starting from where they actually are — not from lesson one.
     expect(targets[0].lessonSlugs).toEqual(["l2", "l3"]);
   });
 
@@ -139,24 +148,30 @@ describe("the lessons the next fortnight needs", () => {
     const targets = await lessonsNeededAhead(2);
 
     expect(targets).toHaveLength(1);
-    // One lesson exists and six periods are coming: five have to be found.
-    expect(targets[0].discover).toBe(5);
+    // One lesson exists and the fortnight's periods are coming: the rest have to be found.
+    expect(targets[0].discover).toBe(3 * 2 * TOPICS_PER_PERIOD - 1);
     expect(targets[0].lessonSlugs).toEqual([]);
   });
 
   it("asks for nothing when the fortnight ahead is already teachable", async () => {
+    /**
+     * Enough ready lessons to cover the whole buffer, and one unready behind it.
+     *
+     * The buffer is the frequency times the weeks times the topics a period can cover, so it is
+     * built from the constant rather than from a number — the point of the test is "nothing is
+     * asked for once the fortnight is teachable", not any particular arithmetic.
+     */
+    const buffer = 1 * 2 * TOPICS_PER_PERIOD;
     await buildStudent({
       username: "ready",
       weeklyFrequency: 1,
       lessons: [
-        { slug: "l1", ready: true },
-        { slug: "l2", ready: true },
-        { slug: "l3", ready: false },
+        ...Array.from({ length: buffer }, (_, i) => ({ slug: `l${i + 1}`, ready: true })),
+        { slug: `l${buffer + 1}`, ready: false },
       ],
     });
 
-    // One a week for two weeks reaches l1 and l2, both of which are teachable, and a third
-    // exists behind them. l3 can wait — importing it now is quota spent early, not saved.
+    // The one behind the buffer can wait — importing it now is quota spent early, not saved.
     expect(await lessonsNeededAhead(2)).toEqual([]);
   });
 

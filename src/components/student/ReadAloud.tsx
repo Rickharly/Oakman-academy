@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Loader2, Pause, Volume2 } from "lucide-react";
 import { cn } from "@/lib/cn";
+import { deviceVoice, warmUpVoices } from "@/lib/speech/device-voice";
 
 /**
  * Reads a whole written lesson aloud, in order.
@@ -43,7 +44,7 @@ async function fetchSpeech(text: string): Promise<string> {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ text }),
   });
-  if (!res.ok) throw new Error("no audio");
+  if (!res.ok) throw new Error(res.status === 503 ? "not configured" : "no audio");
   return URL.createObjectURL(await res.blob());
 }
 
@@ -54,14 +55,27 @@ export function ReadAloud({ parts, className }: { parts: string[]; className?: s
   const [index, setIndex] = useState(0);
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  /**
+   * The tablet's own voice, for when the good one is not available.
+   *
+   * This is the written lesson — several hundred words, and for a nine-year-old the single
+   * place where being read to matters most. It has fallen silent three times, every time
+   * because of a third-party key, and a silent Learn page is a child staring at prose they
+   * cannot get through. The device voice is worse and it is always there.
+   */
+  const device = useRef(deviceVoice());
+  const usingDevice = useRef(false);
   // Object URLs, kept so a child can listen to the lesson twice without paying twice.
   const urls = useRef<Map<number, string>>(new Map());
   const stopped = useRef(false);
 
   useEffect(() => {
     const cache = urls.current;
+    warmUpVoices();
+    const voice = device.current;
     return () => {
       audioRef.current?.pause();
+      voice.stop();
       stopped.current = true;
       for (const url of cache.values()) URL.revokeObjectURL(url);
     };
@@ -81,6 +95,39 @@ export function ReadAloud({ parts, className }: { parts: string[]; className?: s
     void urlFor(i).catch(() => undefined);
   }
 
+  /**
+   * Finishes the lesson with the tablet's voice, from this part onwards.
+   *
+   * Spoken part by part, in the same order, so pausing and the "Part 3 of 7" counter keep
+   * working — a child who switches to the device voice mid-lesson should not notice anything
+   * except that it sounds different. Returns false only when the browser has no voice at all.
+   */
+  async function readRestOnDevice(from: number): Promise<boolean> {
+    if (!device.current.supported) return false;
+    usingDevice.current = true;
+
+    for (let i = from; i < chunks.length; i += 1) {
+      if (stopped.current) return true;
+      setIndex(i);
+      setState("playing");
+      const spoken = await new Promise<boolean>((resolve) => {
+        const ok = device.current.speak(chunks[i], {
+          onEnd: () => resolve(true),
+          onError: () => resolve(false),
+        });
+        if (!ok) resolve(false);
+      });
+      if (!spoken) {
+        usingDevice.current = false;
+        return false;
+      }
+    }
+    setState("idle");
+    setIndex(0);
+    usingDevice.current = false;
+    return true;
+  }
+
   async function playFrom(start: number) {
     stopped.current = false;
     for (let i = start; i < chunks.length; i += 1) {
@@ -92,13 +139,13 @@ export function ReadAloud({ parts, className }: { parts: string[]; className?: s
         url = await urlFor(i);
       } catch {
         /**
-         * Say so. Do not vanish.
+         * The good voice is not available. Read it with the tablet's own.
          *
-         * This used to remove itself the moment a request failed, on the reasoning that the
-         * lesson is on screen anyway. What it did was make the button a child relies on
-         * disappear mid-lesson with nothing to press and nothing to report — only that it was
-         * gone. Admitting to trouble is far kinder than deleting yourself.
+         * This used to stop here with an apology — and before that it removed itself entirely.
+         * Both leave a child in front of several hundred words they cannot get through, over a
+         * key they have never heard of. The device voice finishes the lesson.
          */
+        if (await readRestOnDevice(i)) return;
         setProblem("I can't read this out just now. Tap to try again.");
         setState("idle");
         return;
@@ -116,6 +163,8 @@ export function ReadAloud({ parts, className }: { parts: string[]; className?: s
         audio.play().catch(() => resolve(false));
       });
       if (!finished) {
+        // The file arrived and would not play. The tablet's voice still can.
+        if (await readRestOnDevice(i)) return;
         setProblem("That didn't play. Tap to try again.");
         setState("idle");
         return;
@@ -134,11 +183,17 @@ export function ReadAloud({ parts, className }: { parts: string[]; className?: s
    * on this clip to end, so resuming carries on into the next section by itself.
    */
   function pause() {
-    audioRef.current?.pause();
+    if (usingDevice.current) device.current.pause();
+    else audioRef.current?.pause();
     setState("paused");
   }
 
   function resume() {
+    if (usingDevice.current) {
+      device.current.resume();
+      setState("playing");
+      return;
+    }
     const audio = audioRef.current;
     if (!audio) {
       void playFrom(index);
