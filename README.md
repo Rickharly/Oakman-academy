@@ -31,6 +31,8 @@ when a key is configured, and from a bundled sample curriculum otherwise.
    | `SESSION_SECRET` | any long random string (e.g. `openssl rand -hex 32`) |
    | `OPENAI_API_KEY` | your OpenAI key |
    | `AI_PROVIDER` | `openai` (use `mock` to run with no AI cost) |
+   | `OPENAI_MODEL` | model for all AI calls. Defaults to `gpt-4.1-mini` (cheapest). Optional. |
+   | `OPENAI_MODEL_FAST` / `OPENAI_MODEL_STRONG` | override just the fast or strong tier (optional; both fall back to `OPENAI_MODEL`) |
    | `CURRICULUM_PROVIDER` | `fixture` until your Oak key arrives, then `oak` |
    | `OAK_API_KEY` | your Oak key, once you have it |
    | `SEED_PARENT_EMAIL` | the email you will log in with |

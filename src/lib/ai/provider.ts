@@ -56,10 +56,25 @@ export class AiError extends Error {
   }
 }
 
-/** "fast" -> OPENAI_MODEL_FAST (default gpt-5-mini); "strong" -> OPENAI_MODEL_STRONG (default gpt-5). */
+/**
+ * The model every AI call uses unless an environment variable overrides it. Deliberately
+ * the cheapest capable model — the app must not spend more than it has to.
+ */
+const DEFAULT_MODEL = "gpt-4.1-mini";
+
+/**
+ * Resolves the concrete OpenAI model id for a request tier.
+ *
+ * "strong" -> OPENAI_MODEL_STRONG, else OPENAI_MODEL, else gpt-4.1-mini.
+ * "fast"   -> OPENAI_MODEL_FAST,   else OPENAI_MODEL, else gpt-4.1-mini.
+ *
+ * `OPENAI_MODEL` is a single override for both tiers; the two per-tier variables
+ * override one tier each.
+ */
 export function resolveModelId(model: "fast" | "strong"): string {
-  if (model === "strong") return process.env.OPENAI_MODEL_STRONG || "gpt-5";
-  return process.env.OPENAI_MODEL_FAST || "gpt-5-mini";
+  const shared = process.env.OPENAI_MODEL;
+  if (model === "strong") return process.env.OPENAI_MODEL_STRONG || shared || DEFAULT_MODEL;
+  return process.env.OPENAI_MODEL_FAST || shared || DEFAULT_MODEL;
 }
 
 let mockSingleton: AiProvider | undefined;
