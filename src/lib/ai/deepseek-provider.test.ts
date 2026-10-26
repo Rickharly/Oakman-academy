@@ -30,7 +30,7 @@ describe("DeepSeekProvider.structured", () => {
       lastArgs = args;
       return {
         choices: [{ message: { content: '{"answer":"42"}' } }],
-        model: "deepseek-chat",
+        model: "deepseek-v4-pro",
         usage: { prompt_tokens: 11, completion_tokens: 3 },
       };
     });
@@ -45,7 +45,7 @@ describe("DeepSeekProvider.structured", () => {
     });
 
     expect(data).toEqual({ answer: "42" });
-    expect(model).toBe("deepseek-chat");
+    expect(model).toBe("deepseek-v4-pro");
     expect(tokensIn).toBe(11);
     expect(tokensOut).toBe(3);
     // JSON mode must be requested, and the schema serialised into the prompt.
@@ -119,6 +119,6 @@ describe("DeepSeekProvider.stream", () => {
     expect(text && text.type === "text" ? text.text : "").toBe("Looking…");
     expect(toolCall).toMatchObject({ type: "tool_call", name: "lookup" });
     expect(toolCall && toolCall.type === "tool_call" ? toolCall.result : undefined).toEqual({ result: "apple" });
-    expect(done).toMatchObject({ type: "done", model: "deepseek-chat" });
+    expect(done).toMatchObject({ type: "done", model: "deepseek-v4-pro" });
   });
 });

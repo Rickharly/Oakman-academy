@@ -18,10 +18,10 @@ import { AiError } from "./provider";
 import type { AiProvider, ChatMessage, StreamEvent, StreamRequest, StructuredRequest, ToolDefinition } from "./provider";
 
 const DEEPSEEK_BASE_URL = "https://api.deepseek.com";
-const DEFAULT_MODEL = "deepseek-chat";
+const DEFAULT_MODEL = "deepseek-v4-pro";
 const MAX_TOOL_ROUNDS = 4;
 
-/** "fast"/"strong" -> DEEPSEEK_MODEL_FAST/STRONG, else DEEPSEEK_MODEL, else deepseek-chat. */
+/** "fast"/"strong" -> DEEPSEEK_MODEL_FAST/STRONG, else DEEPSEEK_MODEL, else deepseek-v4-pro. */
 export function resolveDeepSeekModelId(model: "fast" | "strong"): string {
   const shared = process.env.DEEPSEEK_MODEL;
   if (model === "strong") return process.env.DEEPSEEK_MODEL_STRONG || shared || DEFAULT_MODEL;
