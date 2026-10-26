@@ -243,6 +243,21 @@ async function extractError(res: Response): Promise<string> {
   return "Something went wrong. Please try again.";
 }
 
+/**
+ * Reads a JSON body without ever surfacing Safari's generic
+ * "The string did not match the expected pattern." SyntaxError. Safari throws that exact
+ * message when `res.json()` meets a non-JSON (or empty) body — a proxy/HTML error page, a
+ * cut-off response, or a 204 — and the raw text means nothing to a child tapping Submit.
+ * Fold it into a plain message the parent can actually act on.
+ */
+async function readJson(res: Response): Promise<unknown> {
+  try {
+    return await res.json();
+  } catch {
+    throw new Error("The answer couldn't be saved — please try again.");
+  }
+}
+
 function scorePct(score: { score: number | null; maxScore: number | null } | undefined): number | null {
   if (!score || !score.maxScore || score.maxScore <= 0) return null;
   return Math.round(((score.score ?? 0) / score.maxScore) * 100);
@@ -767,10 +782,10 @@ export function LessonPlayer(props: LessonPlayerProps) {
         body: JSON.stringify({ stage }),
       });
       if (!res.ok) throw new Error(await extractError(res));
-      const data: {
+      const data = (await readJson(res)) as {
         activity: { score: number | null; maxScore: number | null; percentage: number | null };
         results: { questionId: string; isCorrect: boolean | null; score: number | null; maxScore: number; feedback: string | null; question?: { answerKey?: unknown } }[];
-      } = await res.json();
+      };
 
       setResults((prev) => {
         const next = { ...prev };

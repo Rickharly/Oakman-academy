@@ -1,10 +1,12 @@
 /**
  * AI provider abstraction (spec §45-50, ARCHITECTURE §6). Everything the app does
  * with an LLM goes through this interface; concrete implementations live in
- * `openai-provider.ts` (real, Responses API) and `mock-provider.ts` (deterministic,
- * used whenever `AI_PROVIDER !== "openai"` and in every test).
+ * `openai-provider.ts` (OpenAI Responses API), `deepseek-provider.ts` (DeepSeek's
+ * OpenAI-compatible Chat Completions API) and `mock-provider.ts` (deterministic,
+ * used whenever `AI_PROVIDER` is not a real provider and in every test).
  */
 import type { z } from "zod";
+import { DeepSeekProvider } from "./deepseek-provider";
 import { MockProvider } from "./mock-provider";
 import { OpenAiProvider } from "./openai-provider";
 
@@ -41,7 +43,7 @@ export type StreamEvent =
   | { type: "done"; model: string; tokensIn?: number; tokensOut?: number };
 
 export interface AiProvider {
-  readonly name: "openai" | "mock";
+  readonly name: "openai" | "deepseek" | "mock";
   structured<T>(req: StructuredRequest<T>): Promise<{ data: T; model: string; tokensIn?: number; tokensOut?: number }>;
   stream(req: StreamRequest): AsyncIterable<StreamEvent>;
 }
@@ -79,13 +81,14 @@ export function resolveModelId(model: "fast" | "strong"): string {
 
 let mockSingleton: AiProvider | undefined;
 let openaiSingleton: AiProvider | undefined;
+let deepseekSingleton: AiProvider | undefined;
 let warnedFallback = false;
 
 /**
- * `AI_PROVIDER` env: "openai" | "mock". Defaults to mock (unset, or any value other
- * than "openai"). If "openai" is requested but `OPENAI_API_KEY` is missing, falls back
- * to the mock provider with a one-time console.warn — the app must never crash for
- * lack of a key.
+ * `AI_PROVIDER` env: "openai" | "deepseek" | "mock". Defaults to mock (unset, or any
+ * value other than the two real providers). If a real provider is requested but its
+ * API key is missing, falls back to the mock provider with a one-time console.warn —
+ * the app must never crash for lack of a key.
  */
 export function getAiProvider(): AiProvider {
   const requested = (process.env.AI_PROVIDER || "mock").toLowerCase();
@@ -101,6 +104,19 @@ export function getAiProvider(): AiProvider {
       return (mockSingleton ??= new MockProvider());
     }
     return (openaiSingleton ??= new OpenAiProvider());
+  }
+
+  if (requested === "deepseek") {
+    if (!process.env.DEEPSEEK_API_KEY) {
+      if (!warnedFallback) {
+        console.warn(
+          "[ai] AI_PROVIDER=deepseek but DEEPSEEK_API_KEY is not set; falling back to the mock AI provider.",
+        );
+        warnedFallback = true;
+      }
+      return (mockSingleton ??= new MockProvider());
+    }
+    return (deepseekSingleton ??= new DeepSeekProvider());
   }
 
   return (mockSingleton ??= new MockProvider());

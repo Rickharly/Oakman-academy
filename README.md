@@ -29,11 +29,20 @@ when a key is configured, and from a bundled sample curriculum otherwise.
    | Variable | Value |
    |---|---|
    | `SESSION_SECRET` | any long random string (e.g. `openssl rand -hex 32`) |
-   | `OPENAI_API_KEY` | your OpenAI key |
-   | `AI_PROVIDER` | `openai` (use `mock` to run with no AI cost) |
-   | `OPENAI_MODEL` | model for all AI calls. Defaults to `gpt-4.1-mini` (cheapest). Optional. |
-   | `OPENAI_MODEL_FAST` / `OPENAI_MODEL_STRONG` | override just the fast or strong tier (optional; both fall back to `OPENAI_MODEL`) |
+   | `AI_PROVIDER` | `deepseek`, `openai`, or `mock` (see below). Defaults to `mock`. |
+   | `OPENAI_API_KEY` | your OpenAI key (only needed when `AI_PROVIDER=openai`) |
+   | `OPENAI_MODEL` | OpenAI model for all AI calls. Defaults to `gpt-4.1-mini` (cheapest). Optional. |
+   | `OPENAI_MODEL_FAST` / `OPENAI_MODEL_STRONG` | override just the fast or strong OpenAI tier (optional; both fall back to `OPENAI_MODEL`) |
+   | `DEEPSEEK_API_KEY` | your DeepSeek key (only needed when `AI_PROVIDER=deepseek`) |
+   | `DEEPSEEK_MODEL` | DeepSeek model for all AI calls. Defaults to `deepseek-chat`. Optional. |
+   | `DEEPSEEK_MODEL_FAST` / `DEEPSEEK_MODEL_STRONG` | override just the fast or strong DeepSeek tier (optional; both fall back to `DEEPSEEK_MODEL`) |
    | `CURRICULUM_PROVIDER` | `fixture` until your Oak key arrives, then `oak` |
+
+   **Switching AI providers.** Set `AI_PROVIDER=deepseek` to use DeepSeek (recommended
+   while your OpenAI credits are out) or `AI_PROVIDER=openai` to switch back — both are
+   drop-in. Leave `AI_PROVIDER=mock` to run with no AI cost. For DeepSeek keep the model
+   on `deepseek-chat` (the default); `deepseek-reasoner` does not support JSON mode or
+   function calling, which this app needs.
    | `OAK_API_KEY` | your Oak key, once you have it |
    | `SEED_PARENT_EMAIL` | the email you will log in with |
    | `SEED_PARENT_PASSWORD` | your initial password (change it after first login) |

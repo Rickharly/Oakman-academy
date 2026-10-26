@@ -14,6 +14,7 @@ import fsp from "node:fs/promises";
 import { Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/db";
 import { getAiProvider, resolveModelId } from "@/lib/ai/provider";
+import { resolveDeepSeekModelId } from "@/lib/ai/deepseek-provider";
 import { explainerSchema } from "@/lib/lessons/explainer";
 import { describeFetchError, resolveAssetUrl } from "@/lib/curriculum/asset-fetch";
 import { resolveMedia } from "@/lib/curriculum/media-link";
@@ -59,15 +60,21 @@ function deployCheck(): Check {
  * have passed while every real call failed.
  */
 async function explainerCheck(): Promise<Check> {
-  const name = "Writing a lesson (OpenAI)";
-  if (!process.env.OPENAI_API_KEY) {
-    return { name, status: "fail", summary: "No OPENAI_API_KEY on the server." };
-  }
-  if ((process.env.AI_PROVIDER ?? "").toLowerCase() !== "openai") {
+  const name = "Writing a lesson (AI)";
+  const provider = (process.env.AI_PROVIDER ?? "mock").toLowerCase();
+  if (provider !== "openai" && provider !== "deepseek") {
     return {
       name,
       status: "fail",
       summary: `AI_PROVIDER is "${process.env.AI_PROVIDER ?? "unset"}" — lessons are being faked, not written.`,
+    };
+  }
+  const apiKey = provider === "deepseek" ? process.env.DEEPSEEK_API_KEY : process.env.OPENAI_API_KEY;
+  if (!apiKey) {
+    return {
+      name,
+      status: "fail",
+      summary: `No ${provider === "deepseek" ? "DEEPSEEK_API_KEY" : "OPENAI_API_KEY"} on the server.`,
     };
   }
 
@@ -88,7 +95,8 @@ async function explainerCheck(): Promise<Check> {
       detail: data.intro.slice(0, 200),
     };
   } catch (err) {
-    return fail(name, `Lessons cannot be written. Model: ${resolveModelId("strong")}.`, err);
+    const model = provider === "deepseek" ? resolveDeepSeekModelId("strong") : resolveModelId("strong");
+    return fail(name, `Lessons cannot be written. Model: ${model}.`, err);
   }
 }
 
