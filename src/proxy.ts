@@ -32,6 +32,7 @@ export const config = {
   matcher: [
     // `api/health` is excluded so the platform health check gets a plain 200 rather than
     // a redirect to a login page.
-    "/((?!_next/static|_next/image|api/auth|api/health|login|student-login|favicon.ico|.*\\..*).*)",
+    // `api/ops` is excluded because it authenticates with a bearer token, not a cookie.
+    "/((?!_next/static|_next/image|api/auth|api/health|api/ops|login|student-login|favicon.ico|.*\\..*).*)",
   ],
 };

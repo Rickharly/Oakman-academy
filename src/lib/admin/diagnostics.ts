@@ -22,6 +22,7 @@ import { isPlaceholderUrl, isPlayableResource } from "@/lib/curriculum/video-sta
 import { imageSchema } from "@/lib/questions/types";
 import { isLessonDone } from "@/lib/progress/aggregate";
 import { lessonProvenance } from "./no-placeholders";
+import { normaliseTitle, sameTeaching } from "@/lib/lessons/sameness";
 import { addDaysKey, dateOnlyKey, toDateOnly, todayDateOnly, weekStartKey } from "@/lib/dates";
 
 export type CheckStatus = "ok" | "warn" | "fail" | "skip";
@@ -1230,12 +1231,122 @@ export async function timetableCheck(): Promise<Check> {
   };
 }
 
+/**
+ * Every child's board for the week, side by side — and anything they share.
+ *
+ * "The kids have the same classes." Eva is Year 7 and Mikhael Year 4; the family's week gives
+ * them the same subjects, but never the same lesson. This lists what each one actually has this
+ * week, with the programme each lesson comes from, and flags the three ways it can go wrong:
+ * the very same lesson on both boards, two lessons that teach the same thing under different
+ * rows, and a lesson from a year that is not the child's.
+ */
+export async function boardsSideBySideCheck(): Promise<Check> {
+  const name = "Each child's lessons this week";
+  const students = await prisma.studentProfile.findMany({
+    include: { user: { select: { displayName: true } } },
+    orderBy: { yearGroup: "desc" },
+  });
+  if (students.length === 0) return { name, status: "skip", summary: "No students." };
+
+  const weekStart = weekStartKey(dateOnlyKey(todayDateOnly()));
+  const from = toDateOnly(weekStart);
+  const to = toDateOnly(addDaysKey(weekStart, 7));
+
+  type Row = {
+    student: string;
+    yearGroup: number;
+    date: string;
+    status: string;
+    lessonId: string;
+    title: string;
+    keyLearningPoints: unknown;
+    subject: string;
+    programme: string;
+    programmeYear: number;
+  };
+  const rowsByStudent = new Map<string, Row[]>();
+  const lines: string[] = [];
+  let wrongYear = 0;
+
+  for (const student of students) {
+    const week = await prisma.dailyAssignment.findMany({
+      where: { studentId: student.id, kind: "LESSON", status: { not: "MOVED" }, date: { gte: from, lt: to } },
+      include: {
+        lesson: { include: { unit: { include: { programme: { include: { subject: true } } } } } },
+      },
+      orderBy: [{ date: "asc" }, { order: "asc" }],
+    });
+    const rows: Row[] = week
+      .filter((a) => a.lesson)
+      .map((a) => ({
+        student: student.user.displayName,
+        yearGroup: student.yearGroup,
+        date: dateOnlyKey(a.date),
+        status: a.status,
+        lessonId: a.lesson!.id,
+        title: a.lesson!.title,
+        keyLearningPoints: a.lesson!.keyLearningPoints,
+        subject: a.lesson!.unit.programme.subject.slug,
+        programme: `${a.lesson!.unit.programme.provider}:y${a.lesson!.unit.programme.yearGroup}`,
+        programmeYear: a.lesson!.unit.programme.yearGroup,
+      }));
+    rowsByStudent.set(student.id, rows);
+
+    lines.push(`${student.user.displayName} — Year ${student.yearGroup}`);
+    for (const r of rows) {
+      const off = r.programmeYear !== student.yearGroup;
+      if (off) wrongYear += 1;
+      lines.push(
+        `  ${r.date} ${r.status.padEnd(11)} ${r.subject.padEnd(9)} ${r.programme.padEnd(10)} ${r.title}` +
+          (off ? `  <-- YEAR ${r.programmeYear} LESSON FOR A YEAR ${student.yearGroup} CHILD` : ""),
+      );
+    }
+    if (rows.length === 0) lines.push("  (nothing planned this week yet)");
+    lines.push("");
+  }
+
+  const shared: string[] = [];
+  for (let i = 0; i < students.length; i += 1) {
+    for (let j = i + 1; j < students.length; j += 1) {
+      const a = rowsByStudent.get(students[i].id) ?? [];
+      const b = rowsByStudent.get(students[j].id) ?? [];
+      for (const x of a) {
+        const twin = b.find(
+          (y) =>
+            y.lessonId === x.lessonId ||
+            normaliseTitle(y.title) === normaliseTitle(x.title) ||
+            (y.subject === x.subject && sameTeaching({ id: x.lessonId, ...x }, { id: y.lessonId, ...y })),
+        );
+        if (twin) {
+          shared.push(
+            `  ${x.student} ${x.date} "${x.title}" (${x.programme})  ==  ${twin.student} ${twin.date} "${twin.title}" (${twin.programme})` +
+              (twin.lessonId === x.lessonId ? "  [the very same lesson row]" : ""),
+          );
+        }
+      }
+    }
+  }
+  if (shared.length > 0) lines.push("SHARED BETWEEN CHILDREN:", ...shared);
+
+  const problems = shared.length + wrongYear;
+  return {
+    name,
+    status: problems > 0 ? "fail" : "ok",
+    summary:
+      problems > 0
+        ? `${shared.length} lesson(s) shared between children, ${wrongYear} from the wrong year — see below.`
+        : "Every child has their own year's lessons; nothing is shared between them.",
+    detail: lines.join("\n"),
+  };
+}
+
 /** Runs every check. Never throws — a broken check is itself a finding. */
 export async function runDiagnostics(): Promise<Check[]> {
   const checks = await Promise.all([
     Promise.resolve(deployCheck()),
     curriculumCheck().catch((err) => fail("Lessons ready to teach", "Check failed.", err)),
     timetableCheck().catch((err) => fail("Why today looks like this", "Check failed.", err)),
+    boardsSideBySideCheck().catch((err) => fail("Each child's lessons this week", "Check failed.", err)),
     pictureCheck().catch((err) => fail("Questions with missing pictures", "Check failed.", err)),
     questionImageCheck().catch((err) => fail("Showing a question's picture", "Check failed.", err)),
     explainerCheck().catch((err) => fail("Writing a lesson (OpenAI)", "Check failed.", err)),

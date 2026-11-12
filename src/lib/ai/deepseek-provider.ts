@@ -108,7 +108,7 @@ export class DeepSeekProvider implements AiProvider {
 
     const messages: Msg[] = [{ role: "system", content: req.system }, ...toChatMessages(req.messages)];
 
-    let finalModel = model;
+    const finalModel = model;
     let roundsLeft = MAX_TOOL_ROUNDS;
 
     for (;;) {
