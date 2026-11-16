@@ -26,7 +26,13 @@ import { getAiProvider } from "@/lib/ai/provider";
  * children who already have the old one instead of only new lessons. The first fractions
  * lesson we wrote opened with "the top number is called the numerator" — correct, and useless.
  */
-export const EXPLAINER_VERSION = 2;
+/**
+ * 3: every lesson told the same story. The instructions showed one example (a pizza) and said
+ * to use the child's hobby, and nothing said what the last lesson had used — so lesson after
+ * lesson was the same pizza or the same football match, and a child said the maths lesson was
+ * "still the same" with a different title on it. Every lesson written before that is rewritten.
+ */
+export const EXPLAINER_VERSION = 3;
 
 /**
  * The shape the model is asked for.
@@ -140,6 +146,39 @@ function registerFor(yearGroup: number): string {
   );
 }
 
+/** The everyday example a stored lesson was explained with, if it has one. */
+function anchorOf(explainer: unknown): string | null {
+  const anchor = (explainer as { everydayAnchor?: unknown } | null)?.everydayAnchor;
+  return typeof anchor === "string" && anchor.trim() ? anchor.trim() : null;
+}
+
+/**
+ * Examples this lesson must not reuse: the ones in the lessons around it in its programme, and
+ * the ones in whatever this child has done most recently, in any subject.
+ */
+async function anchorsUsedRecently(lessonId: string, programmeId: string, studentId?: string): Promise<string[]> {
+  const [neighbours, recent] = await Promise.all([
+    prisma.lesson.findMany({
+      where: { unit: { programmeId }, id: { not: lessonId }, explainerAt: { not: null } },
+      orderBy: { explainerAt: "desc" },
+      select: { explainer: true },
+      take: 8,
+    }),
+    studentId
+      ? prisma.lessonAttempt.findMany({
+          where: { studentId, lessonId: { not: lessonId } },
+          orderBy: { startedAt: "desc" },
+          select: { lesson: { select: { explainer: true } } },
+          take: 12,
+        })
+      : Promise.resolve([]),
+  ]);
+  const anchors = [...recent.map((a) => a.lesson.explainer), ...neighbours.map((l) => l.explainer)]
+    .map(anchorOf)
+    .filter((a): a is string => Boolean(a));
+  return [...new Set(anchors)].slice(0, 14);
+}
+
 /**
  * The lesson written out, generated on first request and stored on the lesson.
  *
@@ -170,9 +209,21 @@ export async function getOrCreateExplainer(
   const interests = Array.isArray(student?.interests)
     ? (student.interests as unknown[]).filter((v): v is string => typeof v === "string")
     : [];
+  const usedAlready = await anchorsUsedRecently(lesson.id, lesson.unit.programmeId, opts.studentId);
   const interestsLine =
     interests.length > 0
-      ? `\nThis child is into ${interests.join(", ")}. If one of those makes a natural anchor for this topic, use it. If it would be a stretch, pick something everyday instead — a forced example is worse than a plain one.`
+      ? `\nThis child is into ${interests.join(", ")}. Now and then one of those makes a natural anchor — use it only when it genuinely fits this topic AND it is not one of the examples already used below. Most lessons should use something else from everyday life.`
+      : "";
+  const variety =
+    usedAlready.length > 0
+      ? [
+          "",
+          "ALREADY USED — these everyday examples were used in this child's recent lessons and the",
+          "lessons around this one. Do NOT use any of them, or anything close (another kind of pizza",
+          "is still pizza). A child who meets the same example every lesson thinks it is the same",
+          "lesson, and stops listening:",
+          ...usedAlready.map((a) => `- ${a}`),
+        ].join("\n")
       : "";
 
   const keyPoints = asStrings(lesson.keyLearningPoints);
@@ -196,6 +247,7 @@ export async function getOrCreateExplainer(
       "",
       registerFor(yearGroup),
       interestsLine,
+      variety,
       "",
       "The one rule that matters most: TEACH THE THING BEFORE YOU NAME IT.",
       "",
@@ -210,7 +262,7 @@ export async function getOrCreateExplainer(
       '   parts we have. The bottom number is the denominator."',
       "That teaches nothing. It is three names and no picture.",
       "",
-      "What a good version looks like:",
+      "What a good version looks like (the pizza is only to show the style — do not reuse it):",
       '  "You cut a pizza down the middle and take one piece. You have got one piece, out of the',
       '   two the whole pizza was cut into. That is what we write as 1/2 — the 2 underneath says',
       '   how many pieces the pizza was cut into, the 1 on top says how many you took."',
