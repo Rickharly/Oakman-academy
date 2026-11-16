@@ -24,6 +24,8 @@ import { formatMinutes } from "@/components/student/format";
 import type { LessonExplainer } from "@/lib/lessons/explainer";
 import { isPlaceholderUrl, isPlayableResource, type VideoUnavailableReason } from "@/lib/curriculum/video-status";
 import { pickLatest, pickLatestWithMarks } from "@/lib/lessons/activity-picks";
+import { preCheckQuestions } from "@/lib/lessons/pre-check-subset";
+import { useRouter } from "next/navigation";
 import { cn } from "@/lib/cn";
 
 /**
@@ -416,6 +418,7 @@ export function LessonPlayer(props: LessonPlayerProps) {
   const videoReportSent = useRef(false);
   const [generatingPractice, setGeneratingPractice] = useState(false);
   // The "do you already know this?" check, offered once before a lesson is started.
+  const router = useRouter();
   const [preCheckOpen, setPreCheckOpen] = useState(offerPreCheck);
   const [preCheckAnswers, setPreCheckAnswers] = useState<Record<string, unknown>>({});
   const [preCheckBusy, setPreCheckBusy] = useState(false);
@@ -2352,7 +2355,13 @@ export function LessonPlayer(props: LessonPlayerProps) {
       const data = (await res.json()) as { passed?: boolean; message?: string; error?: string };
       if (!res.ok) throw new Error(data.error ?? "Could not check that.");
       setPreCheckResult({ passed: Boolean(data.passed), message: data.message ?? "" });
-      if (!data.passed) setTimeout(() => setPreCheckOpen(false), 1800);
+      if (!data.passed) {
+        setTimeout(() => setPreCheckOpen(false), 1800);
+        // What they got right in the check is taken out of the lesson's own quiz on the server;
+        // this fetches the page's questions again so the screen agrees, rather than asking them
+        // the same thing at the end of the lesson.
+        router.refresh();
+      }
     } catch {
       // If the check cannot be marked, the lesson is the safe place to be.
       setPreCheckOpen(false);
@@ -2362,7 +2371,7 @@ export function LessonPlayer(props: LessonPlayerProps) {
   }
 
   function renderPreCheck() {
-    const qs = questionsByStage.CHECK;
+    const qs = preCheckQuestions(questionsByStage.CHECK);
     const answered = Object.keys(preCheckAnswers).length;
 
     if (preCheckResult) {

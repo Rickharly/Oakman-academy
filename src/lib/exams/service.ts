@@ -13,6 +13,7 @@
  * something happens about it.
  */
 import { prisma } from "@/lib/db";
+import { alreadyAnsweredRight, wasAnsweredRight } from "@/lib/questions/seen";
 import { ApiError } from "@/lib/auth/api";
 import type { Exam, ExamQuestion, Question } from "@/generated/prisma/client";
 import { gradeQuestion, type GradingContext } from "@/lib/grading/grade";
@@ -103,11 +104,31 @@ export async function buildExam(studentId: string, opts: BuildExamOptions): Prom
   });
   if (questions.length === 0) return null;
 
+  /**
+   * Fresh questions first, within each topic.
+   *
+   * An exam checks the topic, not whether they remember a particular question: one they have
+   * already got right, or already met in an earlier exam, goes to the back of its topic's
+   * queue and is only used when the topic has nothing new. A question they got wrong is
+   * exactly what an exam should ask again, so it is not pushed back for that.
+   */
+  const [right, examinedBefore] = await Promise.all([
+    alreadyAnsweredRight(studentId, questions),
+    prisma.examQuestion.findMany({
+      where: { exam: { studentId }, questionId: { in: questions.map((q) => q.id) } },
+      select: { questionId: true },
+    }),
+  ]);
+  const examined = new Set(examinedBefore.map((e) => e.questionId));
+  const staleness = (q: Question) => (examined.has(q.id) ? 2 : 0) + (wasAnsweredRight(q, right) ? 1 : 0);
+
   const byLesson = new Map<string, Question[]>();
   for (const question of questions) {
     if (!byLesson.has(question.lessonId)) byLesson.set(question.lessonId, []);
     byLesson.get(question.lessonId)!.push(question);
   }
+  // Stable, so within the same staleness the lesson's own order is kept.
+  for (const items of byLesson.values()) items.sort((a, b) => staleness(a) - staleness(b));
 
   const chosen = spread(byLesson, MAX_QUESTIONS, MAX_PER_LESSON);
   if (chosen.length === 0) return null;

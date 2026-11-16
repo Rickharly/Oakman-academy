@@ -26,6 +26,7 @@ import { teacherAgent, teacherModeForStage } from "@/lib/ai/teacher-agent";
 import { recomputeLessonProgress } from "@/lib/progress/aggregate";
 import { schoolDayKey, schoolDayStart, toDateOnly, todayDateOnly } from "@/lib/dates";
 import { hideUnanswerableQuestions } from "@/lib/questions/unanswerable";
+import { alreadyAnsweredRight, withoutRepeats } from "@/lib/questions/seen";
 import { parkOpenGaps } from "@/lib/lessons/understanding";
 import { afterActivityGraded } from "@/lib/progress/review";
 import { completeReview } from "@/lib/progress/review";
@@ -63,16 +64,48 @@ async function loadOwnedAttempt(attemptId: string, studentId: string): Promise<L
   return attempt;
 }
 
-/** Questions visible to a student: not excluded, and AI-generated only when generated for them. */
+/**
+ * Questions visible to a student: not excluded, and AI-generated only when written for the
+ * lesson itself or for this student.
+ *
+ * `generatedForStudentId: null` is the quiz written for a lesson nobody else provides (Writing,
+ * Logic — see `curriculum/generate.ts`). This filter used to require the id to be this
+ * student's, which hid those quizzes from every child: a Writing lesson had no end-of-lesson
+ * quiz at all, so nothing could mark it and the same stored practice was handed back instead.
+ * What stays hidden is practice written for a *sibling* — including a sibling's whose account
+ * has gone (the owner column is SET NULL then, but its `ai:<student>:…` providerRef remains).
+ */
 function visibleQuestionsWhere(studentId: string) {
   return {
     excluded: false,
-    OR: [{ source: { not: "AI_GENERATED" as const } }, { generatedForStudentId: studentId }],
+    OR: [
+      { source: { not: "AI_GENERATED" as const } },
+      { generatedForStudentId: studentId },
+      { generatedForStudentId: null, providerRef: null },
+    ],
   };
 }
 
-async function getVisibleQuestions(lessonId: string, studentId: string, stage?: LessonStage): Promise<Question[]> {
-  return prisma.question.findMany({
+/** Exported for the routes that read a lesson's questions outside an attempt (pre-check, practice). */
+export const studentCanSeeQuestion = visibleQuestionsWhere;
+
+/**
+ * The questions this attempt shows, without the ones the child has already got right.
+ *
+ * Without `attempt`, every visible question (the raw set). With it:
+ * - Quiz questions written for this child are only used in attempts that started after they
+ *   were written. The player is handed its questions when the page opens and does not ask
+ *   again, so a question appearing mid-attempt would be marked as left blank.
+ * - Anything answered correctly in another attempt, an exam or a pre-check is left out
+ *   (`withoutRepeats`), unless it has been answered in this attempt already.
+ */
+async function getVisibleQuestions(
+  lessonId: string,
+  studentId: string,
+  stage?: LessonStage,
+  attempt?: Pick<LessonAttempt, "id" | "startedAt">,
+): Promise<Question[]> {
+  const all = await prisma.question.findMany({
     where: {
       lessonId,
       stage: stage ? stage : { in: ["STARTER", "PRACTICE", "CHECK"] },
@@ -80,6 +113,40 @@ async function getVisibleQuestions(lessonId: string, studentId: string, stage?: 
     },
     orderBy: { order: "asc" },
   });
+  if (!attempt) return all;
+
+  const inTime = all.filter(
+    (q) =>
+      !(q.stage === "CHECK" && q.source === "AI_GENERATED" && q.generatedForStudentId === studentId) ||
+      q.createdAt < attempt.startedAt,
+  );
+
+  const [right, answered] = await Promise.all([
+    alreadyAnsweredRight(studentId, inTime, { exceptAttemptId: attempt.id, before: attempt.startedAt }),
+    prisma.questionAttempt.findMany({
+      where: { activityAttempt: { lessonAttemptId: attempt.id }, questionId: { in: inTime.map((q) => q.id) } },
+      select: { questionId: true },
+    }),
+  ]);
+  return withoutRepeats(inTime, right, new Set(answered.map((a) => a.questionId)));
+}
+
+/**
+ * The questions the child's open attempt at this lesson shows, for routes that only have the
+ * lesson (the pre-check, practice). The same set the page was given; the raw set when no
+ * attempt is open.
+ */
+export async function visibleQuestionsForLesson(
+  studentId: string,
+  lessonId: string,
+  stage: LessonStage,
+): Promise<{ questions: Question[]; attemptId: string | null }> {
+  const attempt = await prisma.lessonAttempt.findFirst({
+    where: { studentId, lessonId, status: "IN_PROGRESS" },
+    orderBy: { attemptNumber: "desc" },
+  });
+  const questions = await getVisibleQuestions(lessonId, studentId, stage, attempt ?? undefined);
+  return { questions, attemptId: attempt?.id ?? null };
 }
 
 /**
@@ -328,7 +395,7 @@ export async function getAttemptView(attemptId: string, studentId: string): Prom
 
   const { lesson, ...attemptFields } = attempt;
 
-  const questions = await getVisibleQuestions(lesson.id, studentId);
+  const questions = await getVisibleQuestions(lesson.id, studentId, undefined, attempt);
   const questionsByStage: Record<"STARTER" | "PRACTICE" | "CHECK", StudentQuestion[]> = {
     STARTER: [],
     PRACTICE: [],
@@ -604,7 +671,7 @@ export async function submitStage(
   const isCurrent = attempt.currentStage === stage;
   if (!isCurrent && !alreadyDone) throw new ApiError(400, "Stage is not available yet");
 
-  const questions = await getVisibleQuestions(attempt.lessonId, studentId, stage);
+  const questions = await getVisibleQuestions(attempt.lessonId, studentId, stage, attempt);
 
   if (questions.length === 0) {
     // An activity for this stage may already exist — a PRACTICE round created by

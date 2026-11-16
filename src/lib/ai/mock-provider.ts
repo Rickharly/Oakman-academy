@@ -223,15 +223,24 @@ function fakeDataFor(schemaName: string, system: string, messages: ChatMessage[]
       // `choices` and `acceptedAnswers` are nullable, not optional (see practiceSchema) for the
       // same reason: both have to be present on every question, `choices: null` for the
       // non-multiple-choice ones here.
-      return {
+      // A new set each round, as a real model writes when it is told what has been asked: a
+      // mock that always wrote the same three would be (correctly) rejected as repeats.
+      {
+        const lastMessage = messages[messages.length - 1]?.content ?? "";
+        const asked = lastMessage.split("Already asked")[1]?.split("\n").filter((l) => l.startsWith("- ")).length ?? 0;
+        const round = Math.floor(asked / 3);
+        const VOCAB = ["amber", "birch", "cedar", "delta", "ember", "fjord", "grove", "heron", "indigo", "juniper"];
+        const tag = [0, 1, 2].map((k) => VOCAB[(round * 3 + k) % VOCAB.length]).join(" ");
+        return {
         questions: [1, 2, 3].map((n) => ({
           type: "SHORT_ANSWER" as const,
-          prompt: `Practice question ${n} for ${lessonTitle}.`,
+          prompt: round === 0 ? `Practice question ${n} for ${lessonTitle}.` : `Round ${tag}: question ${n} on ${lessonTitle}.`,
           choices: null,
           acceptedAnswers: ["answer"],
           explanation: 'Any answer that includes the word "answer" is right for this mock question.',
         })),
-      };
+        };
+      }
     case "misconceptions":
       return {
         observations: [

@@ -22,6 +22,7 @@ import type {
 } from "@/generated/prisma/client";
 import { gradeResultSchema, type GradeResult } from "@/lib/questions/types";
 import { parseNumericAnswer } from "@/lib/questions/oak-mapper";
+import { alreadyAnsweredRight, looksLikeSameQuestion, wasAnsweredRight } from "@/lib/questions/seen";
 import type { GradingContext } from "@/lib/grading/grade";
 import { schoolDayEnd, schoolDayStart } from "@/lib/dates";
 import { getAiProvider, AiError, type AiProvider, type ChatMessage } from "./provider";
@@ -589,7 +590,13 @@ async function generatePractice(args: {
 /** Turns the model's questions into stored, gradable `Question` rows. */
 async function persistGeneratedQuestions(
   questions: z.infer<typeof practiceSchema>["questions"],
-  opts: { lessonId: string; studentId: string; context: object; baseOrder: number },
+  opts: {
+    lessonId: string;
+    studentId: string;
+    context: object;
+    baseOrder: number;
+    stage?: "PRACTICE" | "CHECK";
+  },
 ): Promise<Question[]> {
   const created: Question[] = [];
   const baseOrder = opts.baseOrder;
@@ -625,7 +632,7 @@ async function persistGeneratedQuestions(
       data: {
         lessonId: opts.lessonId,
         source: "AI_GENERATED",
-        stage: "PRACTICE",
+        stage: opts.stage ?? "PRACTICE",
         order: baseOrder + i,
         type: q.type,
         prompt: q.prompt,
@@ -672,8 +679,14 @@ async function generateLessonPractice(args: {
    * lesson is finished, whatever the clock says; get one wrong and that is what they practise.
    */
   finalTest?: boolean;
+  /**
+   * "CHECK" writes end-of-lesson quiz questions instead of practice: fresh ones for a child who
+   * has already answered most of this lesson's own quiz correctly (see `fresh-questions.ts`).
+   */
+  stage?: "PRACTICE" | "CHECK";
 }): Promise<Question[]> {
-  const count = args.count ?? (args.finalTest ? 4 : 5);
+  const forQuiz = args.stage === "CHECK";
+  const count = args.count ?? (args.finalTest || forQuiz ? 4 : 5);
 
   const lesson = await prisma.lesson.findUnique({
     where: { id: args.lessonId },
@@ -690,7 +703,7 @@ async function generateLessonPractice(args: {
   const aimed = (args.missedPrompts ?? []).filter((p) => p.trim().length > 0);
   // Extension work is always fresh: a child who has finished the lesson has seen the stored
   // set already, and handing it back is not more work, it is the same work.
-  if (aimed.length === 0 && !args.extension && !args.finalTest) {
+  if (aimed.length === 0 && !args.extension && !args.finalTest && !forQuiz) {
     // Scoped to this student: `getVisibleQuestions` (lessons/service.ts) never shows an
     // AI_GENERATED question to anyone but the student it was generated for, so a lookup that
     // forgot this filter handed back a sibling's practice — questions this student can never
@@ -699,7 +712,11 @@ async function generateLessonPractice(args: {
       where: { lessonId: lesson.id, stage: "PRACTICE", source: "AI_GENERATED", generatedForStudentId: args.studentId },
       orderBy: { order: "asc" },
     });
-    if (existing.length >= count) return existing;
+    // Only the ones they have not already got right: last time's practice, handed back on a
+    // new attempt, is exactly the "same questions again" this was meant to prevent.
+    const right = await alreadyAnsweredRight(args.studentId, existing);
+    const unanswered = existing.filter((q) => !wasAnsweredRight(q, right));
+    if (unanswered.length >= count) return unanswered;
   }
 
   /**
@@ -710,18 +727,23 @@ async function generateLessonPractice(args: {
    * "more questions" and got back the set he had just finished. Knowing what has been asked is
    * the whole difference between more practice and the same practice.
    */
+  // Newest first, and only what this child can see. This took the *oldest* forty across every
+  // child, so once a lesson had a few rounds of practice the ones just written — the ones the
+  // child had actually been answering — were never on the "do not repeat" list at all.
   const alreadyAsked = await prisma.question.findMany({
     where: {
       lessonId: lesson.id,
-      OR: [{ source: "AI_GENERATED" }, { stage: { in: ["PRACTICE", "CHECK", "STARTER"] } }],
+      excluded: false,
+      OR: [
+        { source: { not: "AI_GENERATED" } },
+        { generatedForStudentId: args.studentId },
+        { generatedForStudentId: null, providerRef: null },
+      ],
     },
     select: { prompt: true },
-    orderBy: { order: "asc" },
-    take: 40,
+    orderBy: { createdAt: "desc" },
+    take: 60,
   });
-  /** Loose comparison: wording drifts, the question does not. */
-  const normalise = (prompt: string) => prompt.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
-  const seen = new Set(alreadyAsked.map((q) => normalise(q.prompt)));
 
   const asStrings = (value: unknown): string[] =>
     Array.isArray(value) ? value.filter((v): v is string => typeof v === "string") : [];
@@ -734,103 +756,141 @@ async function generateLessonPractice(args: {
       : [];
 
   const ai = getAiProvider();
-  const { data } = await ai.structured({
-    model: "fast",
-    schemaName: "practice",
-    schema: practiceSchema,
-    system: [
-      `Write ${count} practice questions on the lesson "${lesson.title}" for a Year`,
-      `${student.yearGroup} child studying ${lesson.unit.programme.subject.title}.`,
-      "",
-      args.finalTest
-        ? [
-            "This is a short test at the end of the lesson, for a child who has finished the",
-            "work with time left in the period. Test whether they have actually understood it:",
-            "cover the lesson's main ideas, one question each, at the level the lesson taught",
-            "them — not harder, not easier. Nothing they have already been asked, and nothing",
-            "that needs anything the lesson did not cover.",
-          ].join(" ")
-        : args.extension
-        ? [
-            "This child has finished the lesson comfortably and has time left in the period.",
-            "Write questions that go FURTHER than the lesson's own quiz: apply the idea in an",
-            "unfamiliar situation, combine it with something they already know, or ask them to",
-            "explain why it works rather than only to get the answer. Still answerable from",
-            "this lesson — stretch, not new material.",
-          ].join(" ")
-        : aimed.length > 0
-        ? [
-            "This child has just got some questions wrong, listed below. Every question you write",
-            "must target what those mistakes reveal they have not understood — approach the same",
-            "idea from a different angle, do not simply reword the questions they failed. Start",
-            "easier than the question they missed and build back up to it.",
-          ].join(" ")
-        : [
-            "These replace a worksheet, so they should work like one: start with the straightforward",
-            "recall and build to something that needs the idea applied. Every question must be",
-            "answerable from this lesson alone — never assume anything taught later.",
-          ].join(" "),
-      "",
-      "This child is learning at home, alone, with only their teacher to talk to. Never write a",
-      "task that needs a partner, a group, the class, or equipment — no 'discuss with a partner',",
-      "no 'swap answers', no 'ask three people'. Where the skill genuinely is a two-person one",
-      "(asking questions, debating, explaining to someone), the teacher is the other person: have",
-      "them write their side, and say you will give yours once they have had a go.",
-      "",
-      "Use only SHORT_ANSWER, NUMERIC or MULTIPLE_CHOICE. For MULTIPLE_CHOICE give 3 or 4 choices",
-      "with the correct one first and wrong ones that a child who half-understood would pick.",
-      "For SHORT_ANSWER and NUMERIC list every acceptable answer, including spellings and forms a",
-      "child would reasonably write.",
-      "",
-      "explanation: why the answer is right, in one or two sentences, addressed to the child.",
-      "UK English.",
-      "Write maths in ordinary symbols a page can show: 3/4, 6 × 7, x², √9. Never LaTeX, never dollar signs — the child sees the raw code and cannot answer it.",
-      "",
-      alreadyAsked.length > 0
-        ? "They have already answered the questions listed at the end. Do not write any of them again, and do not write the same question with the numbers or the wording changed — they will recognise it, and it teaches nothing. Take a different angle on the same skill."
-        : "",
-    ]
-      .filter(Boolean)
-      .join("\n"),
-    messages: [
-      {
-        role: "user",
-        content: [
-          `Lesson: ${lesson.title}`,
-          `Unit: ${lesson.unit.title}`,
-          lesson.pupilOutcome ? `What they should be able to do: ${lesson.pupilOutcome}` : "",
-          "",
-          "Key learning points:",
-          ...asStrings(lesson.keyLearningPoints).map((p) => `- ${p}`),
-          "",
-          "Keywords:",
-          ...asPairs(lesson.keywords, "keyword", "description").map((k) => `- ${k}`),
-          "",
-          "Common misconceptions to write distractors around:",
-          ...asPairs(lesson.misconceptions, "misconception", "response").map((m) => `- ${m}`),
-          "",
-          aimed.length > 0 ? `\nThey got these wrong:\n${aimed.map((p) => `- ${p}`).join("\n")}` : "",
-          lesson.transcript ? `Transcript extract:\n${lesson.transcript.slice(0, 6000)}` : "",
-          alreadyAsked.length > 0
-            ? `\nAlready asked — write none of these:\n${alreadyAsked.map((q) => `- ${q.prompt}`).join("\n")}`
-            : "",
-        ]
-          .filter(Boolean)
-          .join("\n"),
-      },
-    ],
-  });
+  const ask = (rejected: string[]) =>
+    ai.structured({
+      model: "fast",
+      schemaName: "practice",
+      schema: practiceSchema,
+      system: [
+        `Write ${count} practice questions on the lesson "${lesson.title}" for a Year`,
+        `${student.yearGroup} child studying ${lesson.unit.programme.subject.title}.`,
+        "",
+        forQuiz
+          ? [
+              "This is the end-of-lesson quiz the lesson is marked on. This child has already",
+              "answered the lesson's own quiz questions, so these must be new ones that test the",
+              "same ideas: cover the lesson's main ideas, one question each, at the level the",
+              "lesson taught them — not harder, not easier. Every answer must be checkable",
+              "exactly: prefer MULTIPLE_CHOICE and NUMERIC.",
+            ].join(" ")
+          : args.finalTest
+          ? [
+              "This is a short test at the end of the lesson, for a child who has finished the",
+              "work with time left in the period. Test whether they have actually understood it:",
+              "cover the lesson's main ideas, one question each, at the level the lesson taught",
+              "them — not harder, not easier. Nothing they have already been asked, and nothing",
+              "that needs anything the lesson did not cover.",
+            ].join(" ")
+          : args.extension
+          ? [
+              "This child has finished the lesson comfortably and has time left in the period.",
+              "Write questions that go FURTHER than the lesson's own quiz: apply the idea in an",
+              "unfamiliar situation, combine it with something they already know, or ask them to",
+              "explain why it works rather than only to get the answer. Still answerable from",
+              "this lesson — stretch, not new material.",
+            ].join(" ")
+          : aimed.length > 0
+          ? [
+              "This child has just got some questions wrong, listed below. Every question you write",
+              "must target what those mistakes reveal they have not understood — approach the same",
+              "idea from a different angle, do not simply reword the questions they failed. Start",
+              "easier than the question they missed and build back up to it.",
+            ].join(" ")
+          : [
+              "These replace a worksheet, so they should work like one: start with the straightforward",
+              "recall and build to something that needs the idea applied. Every question must be",
+              "answerable from this lesson alone — never assume anything taught later.",
+            ].join(" "),
+        "",
+        "This child is learning at home, alone, with only their teacher to talk to. Never write a",
+        "task that needs a partner, a group, the class, or equipment — no 'discuss with a partner',",
+        "no 'swap answers', no 'ask three people'. Where the skill genuinely is a two-person one",
+        "(asking questions, debating, explaining to someone), the teacher is the other person: have",
+        "them write their side, and say you will give yours once they have had a go.",
+        "",
+        "Use only SHORT_ANSWER, NUMERIC or MULTIPLE_CHOICE. For MULTIPLE_CHOICE give 3 or 4 choices",
+        "with the correct one first and wrong ones that a child who half-understood would pick.",
+        "For SHORT_ANSWER and NUMERIC list every acceptable answer, including spellings and forms a",
+        "child would reasonably write.",
+        "",
+        "explanation: why the answer is right, in one or two sentences, addressed to the child.",
+        "UK English.",
+        "Write maths in ordinary symbols a page can show: 3/4, 6 × 7, x², √9. Never LaTeX, never dollar signs — the child sees the raw code and cannot answer it.",
+        "",
+        alreadyAsked.length > 0
+          ? "They have already answered the questions listed at the end. Do not write any of them again, and do not write the same question with the numbers or the wording changed — they will recognise it, and it teaches nothing. Take a different angle on the same skill."
+          : "",
+      ]
+        .filter(Boolean)
+        .join("\n"),
+      messages: [
+        {
+          role: "user",
+          content: [
+            `Lesson: ${lesson.title}`,
+            `Unit: ${lesson.unit.title}`,
+            lesson.pupilOutcome ? `What they should be able to do: ${lesson.pupilOutcome}` : "",
+            "",
+            "Key learning points:",
+            ...asStrings(lesson.keyLearningPoints).map((p) => `- ${p}`),
+            "",
+            "Keywords:",
+            ...asPairs(lesson.keywords, "keyword", "description").map((k) => `- ${k}`),
+            "",
+            "Common misconceptions to write distractors around:",
+            ...asPairs(lesson.misconceptions, "misconception", "response").map((m) => `- ${m}`),
+            "",
+            aimed.length > 0 ? `\nThey got these wrong:\n${aimed.map((p) => `- ${p}`).join("\n")}` : "",
+            lesson.transcript ? `Transcript extract:\n${lesson.transcript.slice(0, 6000)}` : "",
+            alreadyAsked.length > 0
+              ? `\nAlready asked — write none of these:\n${alreadyAsked.map((q) => `- ${q.prompt}`).join("\n")}`
+              : "",
+            rejected.length > 0
+              ? `\nYou already wrote these and they repeat what they have done — write different ones:\n${rejected.map((p) => `- ${p}`).join("\n")}`
+              : "",
+          ]
+            .filter(Boolean)
+            .join("\n"),
+        },
+      ],
+    });
 
-  // Belt and braces: the instruction is not a guarantee, and handing back a question they have
-  // just answered is the exact complaint this is fixing.
-  const fresh = data.questions.filter((q) => !seen.has(normalise(q.prompt)));
+  /**
+   * Belt and braces: the instruction is not a guarantee.
+   *
+   * This kept only exact matches out, and when every question the model wrote was a repeat it
+   * used them anyway — so "more questions" could hand back the very set the child had just
+   * done. Near-repeats (the same question with the numbers changed) are out too, and a round
+   * with nothing new in it is an empty round: the player says there is nothing more to
+   * practise, which is true, rather than asking the same thing twice.
+   */
+  type Written = Awaited<ReturnType<typeof ask>>["data"]["questions"];
+  const fresh: Written = [];
+  const rejected: string[] = [];
+  const keepNew = (written: Written) => {
+    for (const q of written) {
+      const repeat =
+        alreadyAsked.some((a) => looksLikeSameQuestion(a.prompt, q.prompt)) ||
+        fresh.some((f) => looksLikeSameQuestion(f.prompt, q.prompt));
+      if (repeat) rejected.push(q.prompt);
+      else fresh.push(q);
+    }
+  };
+  keepNew((await ask([])).data.questions);
+  // One more go when most of it was repeats: an empty end-of-lesson test counts as passed, so
+  // "the model only wrote repeats" must not be how a child gets through a lesson untested.
+  if (fresh.length < Math.min(count, 2) && rejected.length > 0) {
+    keepNew((await ask(rejected)).data.questions);
+  }
 
-  return persistGeneratedQuestions((fresh.length > 0 ? fresh : data.questions).slice(0, count), {
+  return persistGeneratedQuestions(fresh.slice(0, count), {
     lessonId: lesson.id,
     studentId: args.studentId,
     context: {
       lessonId: lesson.id,
-      reason: args.extension
+      reason: forQuiz
+        ? "fresh_quiz"
+        : args.extension
         ? "finished_early"
         : aimed.length > 0
           ? "missed_questions"
@@ -838,6 +898,7 @@ async function generateLessonPractice(args: {
       ...(aimed.length > 0 ? { missedPrompts: aimed } : {}),
     },
     baseOrder: 900,
+    stage: forQuiz ? "CHECK" : "PRACTICE",
   });
 }
 

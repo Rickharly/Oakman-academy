@@ -4,6 +4,8 @@ import { plainQuestion } from "@/lib/questions/display";
 import { requireStudentApi, jsonError } from "@/lib/auth/api";
 import { teacherAgent } from "@/lib/ai/teacher-agent";
 import { buildWorksheetPractice } from "@/lib/lessons/worksheet";
+import { studentCanSeeQuestion } from "@/lib/lessons/service";
+import { alreadyAnsweredRight, wasAnsweredRight } from "@/lib/questions/seen";
 
 
 /**
@@ -18,6 +20,21 @@ export async function POST(req: Request, ctx: { params: Promise<{ lessonId: stri
   try {
     const user = await requireStudentApi(req);
     const { lessonId } = await ctx.params;
+
+    /**
+     * Never hand back a question they have already got right in another attempt — the stored
+     * practice from last time is exactly what came back as "the same questions again". Their
+     * answers in this attempt do not count, so a reload shows them what they were working on.
+     */
+    const open = await prisma.lessonAttempt.findFirst({
+      where: { studentId: user.studentProfile.id, lessonId, status: "IN_PROGRESS" },
+      orderBy: { attemptNumber: "desc" },
+      select: { id: true },
+    });
+    const withoutAlreadyRight = async <Q extends { id: string; prompt: string }>(qs: Q[]): Promise<Q[]> => {
+      const right = await alreadyAnsweredRight(user.studentProfile.id, qs, { exceptAttemptId: open?.id });
+      return qs.filter((q) => !wasAnsweredRight(q, right));
+    };
 
     // The questions they got wrong, when this is a "practise what I missed" request. Aimed
     // practice beats another round of the same quiz.
@@ -41,10 +58,12 @@ export async function POST(req: Request, ctx: { params: Promise<{ lessonId: stri
     // teacher who wrote the lesson chose. Only for plain practice — a child asking for more, or
     // for practice on what they missed, wants something new.
     if (!body.extension && !body.finalTest && !body.missedPrompts?.length) {
-      const fromWorksheet = await buildWorksheetPractice(lessonId).catch((err: unknown) => {
-        console.error("[practice] worksheet could not be read; falling back", err);
-        return [];
-      });
+      const fromWorksheet = await withoutAlreadyRight(
+        await buildWorksheetPractice(lessonId).catch((err: unknown) => {
+          console.error("[practice] worksheet could not be read; falling back", err);
+          return [];
+        }),
+      );
       if (fromWorksheet.length > 0) {
         return Response.json({
           source: "worksheet",
@@ -84,16 +103,14 @@ export async function POST(req: Request, ctx: { params: Promise<{ lessonId: stri
       // else: an AI_GENERATED question only counts here when it was generated for this
       // student. Without it, this fallback could hand back a sibling's practice — questions
       // this student's own player would never show, so the stage could never be completed.
-      questions = await prisma.question.findMany({
-        where: {
-          lessonId,
-          stage: "PRACTICE",
-          excluded: false,
-          OR: [{ source: { not: "AI_GENERATED" } }, { generatedForStudentId: user.studentProfile.id }],
-        },
-        orderBy: { order: "asc" },
-        take: 5,
-      });
+      questions = (
+        await withoutAlreadyRight(
+          await prisma.question.findMany({
+            where: { lessonId, stage: "PRACTICE", ...studentCanSeeQuestion(user.studentProfile.id) },
+            orderBy: { order: "asc" },
+          }),
+        )
+      ).slice(0, 5);
     }
 
     // Only what the player needs. The answer key never leaves the server.

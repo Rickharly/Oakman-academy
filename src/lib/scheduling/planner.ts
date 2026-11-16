@@ -16,6 +16,7 @@ import {
 import { requeueAbandonedReviews, settleAbandonedLessons, settleFinishedLessons } from "@/lib/lessons/service";
 import { isLessonDone } from "@/lib/progress/aggregate";
 import { ensureLessonAssets } from "@/lib/curriculum/sync";
+import { ensureFreshCheckQuestions } from "@/lib/lessons/fresh-questions";
 import { ensureExamForDay } from "@/lib/exams/schedule";
 import { lessonsTaught, sameTeaching } from "@/lib/lessons/sameness";
 import { catchUpImport } from "@/lib/curriculum/autofill";
@@ -657,6 +658,20 @@ export async function ensureDayPlanned(studentId: string, dateKey: string): Prom
       .filter((a) => a.kind === "LESSON" && a.lessonId)
       .map((a) => ensureLessonAssets(a.lessonId!).catch(() => 0)),
   ).catch(() => undefined);
+
+  /**
+   * New quiz questions for any lesson today whose own quiz this child has already answered —
+   * a carried-over lesson, a review. Written now, hours before the lesson is opened, so the
+   * quiz is fresh when they get there. One at a time: this is model calls, behind a page.
+   */
+  void (async () => {
+    for (const a of planned) {
+      // Not yet started: a lesson already open has its quiz, and new questions wait for the next one.
+      if ((a.kind === "LESSON" || a.kind === "REVIEW") && a.lessonId && a.status === "PLANNED") {
+        await ensureFreshCheckQuestions(studentId, a.lessonId);
+      }
+    }
+  })().catch(() => undefined);
 
   return planned;
 }

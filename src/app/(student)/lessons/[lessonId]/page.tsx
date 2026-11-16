@@ -14,6 +14,7 @@ import { ensureLessonAssets, type EnsureAssetsOutcome } from "@/lib/curriculum/s
 import { deriveVideoUnavailableReason } from "@/lib/curriculum/video-status";
 import { schoolDayKey, toDateOnly } from "@/lib/dates";
 import { nextNewLesson } from "@/lib/lessons/sameness";
+import { ensureFreshCheckQuestions } from "@/lib/lessons/fresh-questions";
 
 type RawQuestion = {
   id: string;
@@ -69,9 +70,30 @@ export default async function LessonPage({
    * land, short enough that a lesson never starts late waiting for it; the race still means a
    * genuinely stuck provider can never block the lesson opening.
    */
-  const assetsOutcome = await Promise.race<EnsureAssetsOutcome | "timeout">([
-    ensureLessonAssets(lessonId).then((r) => r.outcome).catch((): EnsureAssetsOutcome => "failed"),
-    new Promise<"timeout">((resolve) => setTimeout(() => resolve("timeout"), 9000)),
+  const [assetsOutcome] = await Promise.all([
+    Promise.race<EnsureAssetsOutcome | "timeout">([
+      ensureLessonAssets(lessonId).then((r) => r.outcome).catch((): EnsureAssetsOutcome => "failed"),
+      new Promise<"timeout">((resolve) => setTimeout(() => resolve("timeout"), 9000)),
+    ]),
+    /**
+     * New quiz questions, when this child has already answered this lesson's own — written
+     * here, in the same wait as the video, so they exist before the attempt below starts and
+     * are part of it. Normally already done when the day was planned; a no-op then. Bounded
+     * like the video: if the teacher is slow, today's quiz leaves out what they already know
+     * and tomorrow's has the new questions.
+     */
+    // Only when this open starts a new attempt — new questions are never added to one already
+    // under way, so writing them for a lesson that is open, or finished, is a wasted model call.
+    prisma.lessonAttempt
+      .findFirst({ where: { studentId, lessonId, status: "IN_PROGRESS" }, select: { id: true } })
+      .then((open) =>
+        open
+          ? 0
+          : Promise.race([
+              ensureFreshCheckQuestions(studentId, lessonId).catch(() => 0),
+              new Promise<number>((resolve) => setTimeout(() => resolve(0), 9000)),
+            ]),
+      ),
   ]);
 
   // A REVIEW assignment re-runs the CHECK stage; anything else starts/resumes normally.

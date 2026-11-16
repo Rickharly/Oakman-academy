@@ -3,6 +3,9 @@ import { requireStudentApi, jsonError } from "@/lib/auth/api";
 import { judgePreCheck } from "@/lib/lessons/pre-check";
 import { gradeQuestion } from "@/lib/grading/grade";
 import { prisma } from "@/lib/db";
+import { visibleQuestionsForLesson } from "@/lib/lessons/service";
+import { preCheckQuestions } from "@/lib/lessons/pre-check-subset";
+import { recordPreCheckCorrect } from "@/lib/questions/seen";
 
 /**
  * Marks a "do you already know this?" check.
@@ -22,22 +25,15 @@ export async function POST(req: Request, ctx: { params: Promise<{ lessonId: stri
       return Response.json({ error: "Answer at least one question first." }, { status: 400 });
     }
 
-    // The pre-check is the lesson's own CHECK-stage questions (see pre-check.ts): the same set
-    // `questionsByStage.CHECK` puts on screen, loaded fresh here rather than trusted from the
-    // request. Grading only `body.answers`' keys made the total the count *answered*, not the
-    // count *shown* — a child who answered 1 of 4 and left the rest blank scored "1 of 1".
-    const [questions, lesson] = await Promise.all([
-      prisma.question.findMany({
-        where: {
-          lessonId,
-          stage: "CHECK",
-          excluded: false,
-          OR: [{ source: { not: "AI_GENERATED" } }, { generatedForStudentId: user.studentProfile.id }],
-        },
-        orderBy: { order: "asc" },
-      }),
+    // The questions the page showed: part of the lesson's own quiz (`preCheckQuestions`), as
+    // this attempt sees it — loaded fresh here rather than trusted from the request. Grading
+    // only `body.answers`' keys made the total the count *answered*, not the count *shown* — a
+    // child who answered 1 of 4 and left the rest blank scored "1 of 1".
+    const [visible, lesson] = await Promise.all([
+      visibleQuestionsForLesson(user.studentProfile.id, lessonId, "CHECK"),
       prisma.lesson.findUniqueOrThrow({ where: { id: lessonId } }),
     ]);
+    const questions = preCheckQuestions(visible.questions);
 
     const gradingContext = {
       studentYearGroup: user.studentProfile.yearGroup,
@@ -63,6 +59,13 @@ export async function POST(req: Request, ctx: { params: Promise<{ lessonId: stri
       }),
     );
     const correct = verdicts.filter(Boolean).length;
+
+    // What they got right here is not asked again at the end of the lesson.
+    await recordPreCheckCorrect(
+      user.studentProfile.id,
+      lessonId,
+      questions.filter((_, i) => verdicts[i]).map((q) => q.id),
+    ).catch(() => undefined);
 
     const outcome = await judgePreCheck({
       studentId: user.studentProfile.id,
