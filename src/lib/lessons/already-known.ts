@@ -16,12 +16,18 @@
 import { prisma } from "@/lib/db";
 import { ApiError } from "@/lib/auth/api";
 import { reportAlreadyKnown } from "@/lib/admin/report-to-github";
+import { nextNewLesson } from "@/lib/lessons/sameness";
 
 export interface AlreadyKnownResult {
   /** True when we can see them finishing a lesson of the same name before. */
   seenBefore: boolean;
   /** What we found, in a sentence, for the child and the parent. */
   message: string;
+  /** The new lesson that takes this one's place in the period, when there is one. */
+  nextLessonId: string | null;
+  nextLessonTitle: string | null;
+  /** The period's slot, now pointing at `nextLessonId`. */
+  assignmentId: string | null;
 }
 
 export async function markAlreadyLearned(
@@ -83,8 +89,36 @@ export async function markAlreadyLearned(
     },
   });
 
-  // The day moves on. SKIPPED rather than COMPLETED, because they did not do it.
-  if (opts.assignmentId) {
+  /**
+   * The period carries on with something new — it does not end.
+   *
+   * This used to mark the slot SKIPPED and send them back to Today: a child who was handed a
+   * maths lesson they had already done lost the maths period with it. "He needs to study." The
+   * lesson they already know is closed, the slot is pointed at the next lesson that is new to
+   * them (`nextNewLesson`: not done, and not the same teaching as anything done), and they go
+   * straight into it. The period's clock is per subject, so the time they have spent carries on.
+   * Only when the whole programme is behind them does the slot close.
+   */
+  await prisma.lessonAttempt.updateMany({
+    where: { studentId, lessonId, status: "IN_PROGRESS" },
+    data: { status: "ALREADY_KNOWN", completedAt: new Date(), currentStage: "COMPLETE" },
+  });
+
+  const next = await nextNewLesson(studentId, lessonId).catch(() => null);
+  const slot = opts.assignmentId
+    ? await prisma.dailyAssignment.findFirst({
+        where: { id: opts.assignmentId, studentId, kind: "LESSON", status: { in: ["PLANNED", "IN_PROGRESS"] } },
+      })
+    : null;
+  if (slot) {
+    await prisma.dailyAssignment.update({
+      where: { id: slot.id },
+      data: next
+        ? { lessonId: next.id, status: "IN_PROGRESS" }
+        : { status: "SKIPPED", completedAt: new Date() },
+    });
+  } else if (opts.assignmentId) {
+    // A review slot, or one already moved on: nothing to carry, the day just moves on.
     await prisma.dailyAssignment
       .updateMany({
         where: { id: opts.assignmentId, studentId, status: { in: ["PLANNED", "IN_PROGRESS"] } },
@@ -123,8 +157,16 @@ export async function markAlreadyLearned(
 
   return {
     seenBefore,
-    message: seenBefore
-      ? "You're right — you have done this one before. I've taken it off your day and I'll find out why it came back."
-      : "Alright, I've taken it off your day and told your teacher, who will have a look.",
+    message: next
+      ? seenBefore
+        ? `You're right — you've done this one before. I've told your teacher. Here's something new: ${next.title}.`
+        : `Alright — I've told your teacher. On to something new: ${next.title}.`
+      : seenBefore
+        ? "You're right — you have done this one before. I've taken it off your day and I'll find out why it came back."
+        : "Alright, I've taken it off your day and told your teacher, who will have a look.",
+    nextLessonId: next?.id ?? null,
+    nextLessonTitle: next?.title ?? null,
+    assignmentId: slot && next ? slot.id : null,
   };
+
 }

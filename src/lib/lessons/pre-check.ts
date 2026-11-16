@@ -18,6 +18,7 @@
 import { prisma } from "@/lib/db";
 import { isLessonDone } from "@/lib/progress/aggregate";
 import { ApiError } from "@/lib/auth/api";
+import { nextNewLesson } from "@/lib/lessons/sameness";
 
 /** Score needed to skip. Deliberately near-perfect: the cost of a wrong skip is a hidden gap. */
 export const PRE_CHECK_PASS = 0.9;
@@ -122,7 +123,9 @@ export async function placeOutOfLesson(
    * is pointed at the next lesson they have not done and the period keeps running, which is the
    * same rule as passing the end-of-topic test.
    */
-  const next = await nextUntaughtLesson(studentId, lessonId);
+  // Not just the next row: the next lesson that is new to them, skipping any that teach the
+  // same thing as one they have done — or they place out of a lesson into its twin.
+  const next = (await nextNewLesson(studentId, lessonId).catch(() => null)) ?? (await nextUntaughtLesson(studentId, lessonId));
   if (next) {
     await prisma.dailyAssignment.updateMany({
       where: { studentId, lessonId, status: { in: ["PLANNED", "IN_PROGRESS"] } },

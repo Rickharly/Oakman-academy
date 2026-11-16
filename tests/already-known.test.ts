@@ -4,7 +4,8 @@ import { resetDb } from "./helpers/db";
 import { markAlreadyLearned } from "@/lib/lessons/already-known";
 import { ensureDayPlanned } from "@/lib/scheduling/planner";
 import { buildAcademicRecord } from "@/lib/records/academic-record";
-import { weekStartKey, toDateOnly } from "@/lib/dates";
+import { weekStartKey, toDateOnly, schoolDayKey } from "@/lib/dates";
+import { startOrResumeAttempt, unfinishedPeriod } from "@/lib/lessons/service";
 
 /**
  * A child saying they have already been taught a lesson.
@@ -123,5 +124,37 @@ describe("I've already learned this", () => {
     });
     expect(progress.status).toBe("MASTERED");
     expect(progress.bestScorePct).toBe(100);
+  });
+
+  it("puts a new lesson in the period instead of ending it — he still has to study", async () => {
+    const { studentId, lessons } = await build();
+    const today = schoolDayKey();
+    const subjectId = (await prisma.subject.findFirstOrThrow({ where: { slug: "maths" } })).id;
+    const slot = await prisma.dailyAssignment.create({
+      data: {
+        studentId,
+        date: toDateOnly(today),
+        kind: "LESSON",
+        subjectId,
+        lessonId: lessons[0].id,
+        estimatedMinutes: 45,
+        order: 0,
+        source: "AUTO",
+      },
+    });
+    await startOrResumeAttempt(studentId, lessons[0].id, slot.id);
+
+    const result = await markAlreadyLearned(studentId, lessons[0].id, { assignmentId: slot.id });
+
+    expect(result.nextLessonId).toBe(lessons[1].id);
+    expect(result.assignmentId).toBe(slot.id);
+    const after = await prisma.dailyAssignment.findUniqueOrThrow({ where: { id: slot.id } });
+    expect(after.lessonId).toBe(lessons[1].id);
+    expect(after.status).toBe("IN_PROGRESS");
+    // The old lesson is closed, and coming back to Today goes to the new one, not the repeat.
+    const old = await prisma.lessonAttempt.findFirstOrThrow({ where: { studentId, lessonId: lessons[0].id } });
+    expect(old.status).toBe("ALREADY_KNOWN");
+    const resume = await unfinishedPeriod(studentId, today);
+    expect(resume?.lessonId).toBe(lessons[1].id);
   });
 });

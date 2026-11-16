@@ -33,6 +33,7 @@ export function AlreadyLearned({
   const [note, setNote] = useState("");
   const [sending, setSending] = useState(false);
   const [done, setDone] = useState<string | null>(null);
+  const [next, setNext] = useState<string | null>(null);
 
   async function send() {
     if (sending) return;
@@ -43,7 +44,18 @@ export function AlreadyLearned({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ assignmentId: assignmentId ?? null, note: note.trim() || null }),
       });
-      const data = (await res.json()) as { message?: string; error?: string };
+      const data = (await res.json()) as {
+        message?: string;
+        error?: string;
+        nextLessonId?: string | null;
+        assignmentId?: string | null;
+      };
+      // Straight into the new lesson: the period is not over because this one was.
+      if (res.ok && data.nextLessonId) {
+        setNext(
+          `/lessons/${data.nextLessonId}${data.assignmentId ? `?assignmentId=${data.assignmentId}` : ""}`,
+        );
+      }
       setDone(
         res.ok
           ? (data.message ?? "Alright — that one is off your day.")
@@ -72,13 +84,17 @@ export function AlreadyLearned({
           {done ? (
             <div className="space-y-3">
               <p className="text-base font-medium text-ink">{done}</p>
-              <Button onClick={() => router.push("/today")}>Back to Today</Button>
+              {next ? (
+                <Button onClick={() => router.push(next)}>Start the new lesson</Button>
+              ) : (
+                <Button onClick={() => router.push("/today")}>Back to Today</Button>
+              )}
             </div>
           ) : (
             <div className="space-y-3">
               <p className="text-sm text-ink">
                 If you have already been taught <span className="font-medium">{lessonTitle}</span>,
-                you don&apos;t have to sit through it again. I&apos;ll take it off your day.
+                you don&apos;t have to sit through it again. I&apos;ll give you a new lesson instead.
               </p>
               <p className="text-xs text-ink-muted">
                 Your teacher gets told, and checks — so only say it if it&apos;s true. If the app

@@ -652,10 +652,13 @@ export async function unfinishedPeriod(
       lesson: { unit: { programme: { subjectId: started.lesson.unit.programme.subjectId } } },
     },
     orderBy: { startedAt: "desc" },
-    select: { lessonId: true },
+    select: { lessonId: true, status: true },
   });
 
-  return { assignmentId: started.id, lessonId: latest?.lessonId ?? started.lessonId! };
+  // A lesson they said they already know is not where they are: the slot has been pointed at
+  // the new one (`markAlreadyLearned`), so that is where to go back to.
+  const lessonId = latest && latest.status !== "ALREADY_KNOWN" ? latest.lessonId : started.lessonId!;
+  return { assignmentId: started.id, lessonId };
 }
 
 export async function submitStage(

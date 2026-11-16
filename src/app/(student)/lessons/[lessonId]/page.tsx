@@ -1,4 +1,4 @@
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { requireStudent } from "@/lib/auth/session";
 import { prisma } from "@/lib/db";
 import { getAttemptView, periodSecondsSpent, startOrResumeAttempt } from "@/lib/lessons/service";
@@ -12,9 +12,10 @@ import { parseExplainer } from "@/lib/lessons/explainer";
 import { plainMaths, plainMathsDeep } from "@/lib/text/maths";
 import { ensureLessonAssets, type EnsureAssetsOutcome } from "@/lib/curriculum/sync";
 import { deriveVideoUnavailableReason } from "@/lib/curriculum/video-status";
-import { schoolDayKey, toDateOnly } from "@/lib/dates";
+import { schoolDayKey, schoolDayStart, toDateOnly } from "@/lib/dates";
 import { nextNewLesson } from "@/lib/lessons/sameness";
 import { ensureFreshCheckQuestions } from "@/lib/lessons/fresh-questions";
+import { swapRepeatInSlot } from "@/lib/lessons/repeat-guard";
 
 type RawQuestion = {
   id: string;
@@ -54,6 +55,15 @@ export default async function LessonPage({
 
   const lessonExists = await prisma.lesson.findUnique({ where: { id: lessonId }, select: { id: true } });
   if (!lessonExists) notFound();
+
+  // A lesson from today's board that they already did on an earlier day is swapped for the next
+  // new one before anything else happens. See `repeat-guard.ts`.
+  if (assignmentId && kind !== "REVIEW") {
+    const instead = await swapRepeatInSlot(studentId, lessonId, assignmentId, schoolDayStart(schoolDayKey())).catch(
+      () => null,
+    );
+    if (instead) redirect(`/lessons/${instead}?assignmentId=${assignmentId}`);
+  }
 
   /**
    * The video, fetched for this lesson if nobody has fetched it yet — or if it was fetched once
