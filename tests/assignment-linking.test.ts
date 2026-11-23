@@ -60,8 +60,11 @@ describe("assignment id validation", () => {
     expect(untouched.status).toBe("PLANNED");
   });
 
-  it("ignores an assignment id that names a different lesson", async () => {
+  it("ignores an assignment id that names a different lesson in another subject", async () => {
     const a = await buildStudentAndLesson("eva2");
+    const otherSubject = await prisma.subject.create({
+      data: { provider: "test", slug: `other${Math.random()}`, title: "History" },
+    });
     const otherLesson = await prisma.lesson.create({
       data: { provider: "test", providerSlug: `other${Math.random()}`, unitId: (await prisma.unit.findFirstOrThrow({ where: { programme: { subjectId: a.subjectId } } })).id, title: "Other lesson", order: 2 },
     });
@@ -72,7 +75,7 @@ describe("assignment id validation", () => {
         order: 0,
         kind: "LESSON",
         source: "AUTO",
-        subjectId: a.subjectId,
+        subjectId: otherSubject.id,
         lessonId: otherLesson.id,
         estimatedMinutes: 45,
       },
@@ -80,6 +83,28 @@ describe("assignment id validation", () => {
 
     const attempt = await startOrResumeAttempt(a.studentId, a.lessonId, wrongLessonAssignment.id);
     expect(attempt.assignmentId).toBeNull();
+  });
+
+  it("accepts today's slot for the same subject: a period carries the next topic too", async () => {
+    const a = await buildStudentAndLesson("eva2b");
+    const firstTopic = await prisma.lesson.create({
+      data: { provider: "test", providerSlug: `first${Math.random()}`, unitId: (await prisma.unit.findFirstOrThrow({ where: { programme: { subjectId: a.subjectId } } })).id, title: "First topic", order: 0 },
+    });
+    const slot = await prisma.dailyAssignment.create({
+      data: {
+        studentId: a.studentId,
+        date: todayDateOnly(),
+        order: 0,
+        kind: "LESSON",
+        source: "AUTO",
+        subjectId: a.subjectId,
+        lessonId: firstTopic.id,
+        estimatedMinutes: 45,
+      },
+    });
+
+    const attempt = await startOrResumeAttempt(a.studentId, a.lessonId, slot.id);
+    expect(attempt.assignmentId).toBe(slot.id);
   });
 
   it("ignores an assignment id for a kind that can never be this lesson (e.g. READING)", async () => {
@@ -174,7 +199,13 @@ describe("resuming an attempt attaches today's assignment", () => {
     const attempt = await startOrResumeAttempt(a.studentId, a.lessonId);
     expect(attempt.assignmentId).toBeNull();
 
-    await prisma.lessonAttempt.update({ where: { id: attempt.id }, data: { currentStage: "CHECK" } });
+    // A full period of real study behind it: the board ticks a period when its time is
+    // served, not when the first topic is (see `closeTheBoard`).
+    const { lessonMinutes } = await prisma.studentProfile.findUniqueOrThrow({ where: { id: a.studentId } });
+    await prisma.lessonAttempt.update({
+      where: { id: attempt.id },
+      data: { currentStage: "CHECK", timeSpentSeconds: lessonMinutes * 60 },
+    });
     await submitStage(attempt.id, a.studentId, "CHECK");
     await completeStage(attempt.id, a.studentId, "FEEDBACK");
     const done = await completeStage(attempt.id, a.studentId, "COMPLETE");

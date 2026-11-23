@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Clock } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { SteppedAway } from "./SteppedAway";
+import { isStudyingNow, startStudyClock } from "./study-clock";
 
 /**
  * The lesson clock: counts down the period while the child is actually working.
@@ -30,7 +31,6 @@ type LessonTimerProps = {
 
 const SAVE_EVERY_SECONDS = 30;
 /** No click, key, scroll or touch for this long and the time stops counting as work. */
-const IDLE_AFTER_SECONDS = 120;
 
 function format(seconds: number): string {
   const s = Math.max(0, Math.round(seconds));
@@ -55,6 +55,7 @@ export function LessonTimer({ attemptId, minutes, initialSeconds, className }: L
 
   useEffect(() => {
     let cancelled = false;
+    startStudyClock();
 
     async function save(slice: { active: number; idle: number; awayTime: number }) {
       const seconds = slice.active + slice.idle + slice.awayTime;
@@ -90,11 +91,12 @@ export function LessonTimer({ attemptId, minutes, initialSeconds, className }: L
       if (awayRef.current) {
         // Flagged time is neither work nor drifting off. The countdown pauses for it.
         pending.awayTime += 1;
-      } else {
-        sinceInteractionRef.current += 1;
+      } else if (isStudyingNow()) {
+        // Only real study moves the clock: an idle screen is not a period being served.
         setElapsed((e) => e + 1);
-        if (sinceInteractionRef.current > IDLE_AFTER_SECONDS) pending.idle += 1;
-        else pending.active += 1;
+        pending.active += 1;
+      } else {
+        pending.idle += 1;
       }
 
       if (pending.active + pending.idle + pending.awayTime >= SAVE_EVERY_SECONDS) {

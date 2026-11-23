@@ -769,17 +769,19 @@ async function generateLessonPractice(args: {
           ? [
               "This is the end-of-lesson quiz the lesson is marked on. This child has already",
               "answered the lesson's own quiz questions, so these must be new ones that test the",
-              "same ideas: cover the lesson's main ideas, one question each, at the level the",
-              "lesson taught them — not harder, not easier. Every answer must be checkable",
-              "exactly: prefer MULTIPLE_CHOICE and NUMERIC.",
+              "same ideas: cover the lesson's main ideas, one question each. Pitch them for a",
+              "strong child of this age — no bare recall; each one needs the idea used, and at",
+              "least one takes more than one step. Every answer must be checkable exactly:",
+              "prefer MULTIPLE_CHOICE and NUMERIC.",
             ].join(" ")
           : args.finalTest
           ? [
               "This is a short test at the end of the lesson, for a child who has finished the",
               "work with time left in the period. Test whether they have actually understood it:",
-              "cover the lesson's main ideas, one question each, at the level the lesson taught",
-              "them — not harder, not easier. Nothing they have already been asked, and nothing",
-              "that needs anything the lesson did not cover.",
+              "cover the lesson's main ideas, one question each, pitched for a strong child of",
+              "this age: the idea applied, not recited, and at least one problem that takes more",
+              "than one step. Passing should mean they really have it. Nothing they have already",
+              "been asked, and nothing that needs anything the lesson did not cover.",
             ].join(" ")
           : args.extension
           ? [
@@ -797,9 +799,10 @@ async function generateLessonPractice(args: {
               "easier than the question they missed and build back up to it.",
             ].join(" ")
           : [
-              "These replace a worksheet, so they should work like one: start with the straightforward",
-              "recall and build to something that needs the idea applied. Every question must be",
-              "answerable from this lesson alone — never assume anything taught later.",
+              "These replace a worksheet. Not easy: start where the lesson's own examples are, and",
+              "climb — most questions need the idea applied, at least two take more than one step,",
+              "and the last is a genuine challenge for a strong child of this age. Every question",
+              "must be answerable from this lesson alone — never assume anything taught later.",
             ].join(" "),
         "",
         "This child is learning at home, alone, with only their teacher to talk to. Never write a",

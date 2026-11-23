@@ -12,6 +12,7 @@
  * parent would use.
  */
 import { prisma } from "@/lib/db";
+import { TOPICS_PER_PERIOD } from "@/lib/curriculum/ahead";
 
 export interface SubjectSupply {
   subjectTitle: string;
@@ -83,8 +84,9 @@ export async function subjectSupply(studentId: string): Promise<SubjectSupply[]>
       problem = "No lessons imported for this subject yet, so its periods get filled by other subjects.";
     } else if (left === 0) {
       problem = "Every imported lesson has been done. Import more, or this subject drops out of the week.";
-    } else if (left < schedule.weeklyFrequency) {
-      problem = `Only ${left} lesson${left === 1 ? "" : "s"} left — fewer than the ${schedule.weeklyFrequency} periods a week it is meant to get.`;
+    } else if (left < schedule.weeklyFrequency * TOPICS_PER_PERIOD) {
+      // A period gets through several topics now, so a week's worth is several per period.
+      problem = `Only ${left} lesson${left === 1 ? "" : "s"} left — less than a week at ${TOPICS_PER_PERIOD} topics a period.`;
     }
 
     rows.push({

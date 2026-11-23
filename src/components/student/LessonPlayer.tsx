@@ -20,11 +20,13 @@ import { UnderstandingLoop } from "@/components/student/UnderstandingLoop";
 import { ReportBug } from "@/components/student/ReportBug";
 import { AlreadyLearned } from "@/components/student/AlreadyLearned";
 import { StillThere } from "@/components/student/StillThere";
+import { AutoNext } from "@/components/student/AutoNext";
 import { formatMinutes } from "@/components/student/format";
 import type { LessonExplainer } from "@/lib/lessons/explainer";
 import { isPlaceholderUrl, isPlayableResource, type VideoUnavailableReason } from "@/lib/curriculum/video-status";
 import { pickLatest, pickLatestWithMarks } from "@/lib/lessons/activity-picks";
 import { preCheckQuestions } from "@/lib/lessons/pre-check-subset";
+import { isStudyingNow, startStudyClock } from "@/components/student/study-clock";
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/cn";
 
@@ -615,8 +617,10 @@ export function LessonPlayer(props: LessonPlayerProps) {
   // that asks "how much of the lesson is left" has to keep counting.
   const [spentSeconds, setSpentSeconds] = useState(elapsedSeconds);
   useEffect(() => {
+    startStudyClock();
+    // The same rule as the visible timer (`study-clock.ts`): only real study counts.
     const id = setInterval(() => {
-      if (!document.hidden) setSpentSeconds((s) => s + 1);
+      if (isStudyingNow()) setSpentSeconds((s) => s + 1);
     }, 1000);
     return () => clearInterval(id);
   }, []);
@@ -659,8 +663,26 @@ export function LessonPlayer(props: LessonPlayerProps) {
    * So the lock needs three things, not one: time left, work available, and a lesson that is
    * actually still running. Reviewing something already done is never a reason to trap anyone.
    */
-  const lessonStillRunning = currentStage !== "COMPLETE" && !finalAttempt && !periodAlreadyClosed;
-  const periodHoldsThemHere = minutesLeftInPeriod > 0 && !outOfWork && lessonStillRunning;
+  const lessonStillRunning = currentStage !== "COMPLETE" && !finalAttempt;
+  /**
+   * A finished topic is not a finished period.
+   *
+   * The lock used to let go the moment a lesson was complete, and the "start the next topic"
+   * offer only showed while the lock held — so it never showed, the break timer did, and a
+   * quick child had the whole day done in two hours. Now the period holds while it has time
+   * left and there is work: this lesson, or the next new topic, which starts by itself.
+   * `periodAlreadyClosed` (worked out on the server) is true when this lesson is not part of
+   * a period running today at all — browsing an old lesson never locks anybody in.
+   */
+  const periodHoldsThemHere =
+    !periodAlreadyClosed &&
+    minutesLeftInPeriod > 0 &&
+    !outOfWork &&
+    (lessonStillRunning || Boolean(nextLessonId));
+  /** The next topic, inside the same period's slot so the board and the clock follow it. */
+  const nextHref = nextLessonId
+    ? `/lessons/${nextLessonId}${assignmentId ? `?assignmentId=${encodeURIComponent(assignmentId)}` : ""}`
+    : "/today";
 
   /**
    * Hides the way out while the period is running.
@@ -697,6 +719,7 @@ export function LessonPlayer(props: LessonPlayerProps) {
 
   const strandedWithNothingToDo =
     periodHoldsThemHere &&
+    !nextLessonId &&
     submittedStage.CHECK &&
     extraPractice.length === 0 &&
     !generatingPractice &&
@@ -1478,8 +1501,8 @@ export function LessonPlayer(props: LessonPlayerProps) {
                   child who had just proved they knew the topic was shown a door that would not
                   open. Knowing it is the reason to move on, and moving on is what happens.
                 */
-                nextLessonId && minutesLeftInPeriod >= 8 ? (
-                  <Button href={`/lessons/${nextLessonId}`}>
+                nextLessonId && minutesLeftInPeriod > 0 ? (
+                  <Button href={nextHref}>
                     Start {nextLessonTitle ? `"${nextLessonTitle}"` : "the next topic"}
                   </Button>
                 ) : (
@@ -2074,7 +2097,7 @@ export function LessonPlayer(props: LessonPlayerProps) {
           next topic starts. More practice on the same thing is there for anyone who wants it,
           and it is not the way out.
         */}
-        {secure && minutesLeftInPeriod >= 8 ? (
+        {secure && minutesLeftInPeriod > 0 && !periodAlreadyClosed ? (
           <Card padding="lg" className="space-y-3 bg-accent-soft">
             <h3 className="text-base font-semibold text-ink">
               {nextLessonId
@@ -2088,9 +2111,12 @@ export function LessonPlayer(props: LessonPlayerProps) {
                   we don&apos;t finish it today you&apos;ll pick it up at the start of tomorrow.
                 </p>
                 <div className="flex flex-wrap items-center gap-3">
-                  <Button href={`/lessons/${nextLessonId}`}>
-                    Start {nextLessonTitle ? `"${nextLessonTitle}"` : "the next topic"}
-                  </Button>
+                  <AutoNext
+                    href={nextHref}
+                    seconds={30}
+                    paused={generatingPractice}
+                    label={`Start ${nextLessonTitle ? `"${nextLessonTitle}"` : "the next topic"}`}
+                  />
                   <Button
                     variant="ghost"
                     onClick={() => void practiseMore()}
@@ -2239,7 +2265,7 @@ export function LessonPlayer(props: LessonPlayerProps) {
           they have finished this one properly and there is real time left, the next topic starts
           here, inside the same period, with the same clock still running.
         */}
-        {periodHoldsThemHere && nextLessonId && minutesLeftInPeriod >= 8 ? (
+        {periodHoldsThemHere && nextLessonId && minutesLeftInPeriod > 0 ? (
           <div className="space-y-3 rounded-2xl bg-accent-soft p-5 text-left">
             <p className="text-base font-medium text-ink">
               You know this one. There are {minutesLeftInPeriod} minutes left, so let&apos;s
@@ -2252,9 +2278,7 @@ export function LessonPlayer(props: LessonPlayerProps) {
               If we don&apos;t finish it today you&apos;ll pick it up at the start of tomorrow&apos;s
               lesson — nothing gets lost.
             </p>
-            <Button href={`/lessons/${nextLessonId}`}>
-              Start {nextLessonTitle ? `"${nextLessonTitle}"` : "the next topic"}
-            </Button>
+            <AutoNext href={nextHref} label={nextLessonTitle ? `Start "${nextLessonTitle}" now` : "Start now"} />
           </div>
         ) : testPassed && !periodHoldsThemHere ? (
           <div className="space-y-2 rounded-2xl bg-success-soft p-5 text-left">
@@ -2329,7 +2353,7 @@ export function LessonPlayer(props: LessonPlayerProps) {
             <BreakTimer
               minutes={breakMinutes}
               storageKey={attemptId}
-              nextHref={nextLessonId ? `/lessons/${nextLessonId}` : "/today"}
+              nextHref={nextHref}
               nextLabel={nextLessonId ? "Start the next lesson" : "Back to Today"}
             />
             <div className="pt-3">
@@ -2384,7 +2408,7 @@ export function LessonPlayer(props: LessonPlayerProps) {
           )}
           <h2 className="text-xl font-semibold text-ink">{preCheckResult.message}</h2>
           {preCheckResult.passed ? (
-            <Button href={nextLessonId ? `/lessons/${nextLessonId}` : "/today"} size="lg">
+            <Button href={nextHref} size="lg">
               {nextLessonId ? "On to the next lesson" : "Back to Today"}
             </Button>
           ) : (

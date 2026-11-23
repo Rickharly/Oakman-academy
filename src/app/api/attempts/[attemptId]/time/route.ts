@@ -18,7 +18,9 @@ export async function POST(req: Request, ctx: { params: Promise<{ attemptId: str
     const body = bodySchema.parse(await req.json());
     const studentId = user.studentProfile.id;
 
-    await recordTime(attemptId, studentId, body.seconds);
+    // The period clock counts real study only: time the screen sat idle, or the child was
+    // flagged as stepped away, is recorded in the breakdown below but does not serve the period.
+    await recordTime(attemptId, studentId, body.activeSeconds ?? body.seconds);
     await recordTimeBreakdown(attemptId, studentId, {
       activeSeconds: body.activeSeconds ?? body.seconds,
       idleSeconds: body.idleSeconds ?? 0,

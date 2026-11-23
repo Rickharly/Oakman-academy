@@ -23,6 +23,7 @@ import { imageSchema } from "@/lib/questions/types";
 import { isLessonDone } from "@/lib/progress/aggregate";
 import { lessonProvenance } from "./no-placeholders";
 import { normaliseTitle, sameTeaching } from "@/lib/lessons/sameness";
+import { PERIOD_MINUTES } from "@/lib/admin/timetable";
 import { addDaysKey, dateOnlyKey, toDateOnly, todayDateOnly, weekStartKey } from "@/lib/dates";
 
 export type CheckStatus = "ok" | "warn" | "fail" | "skip";
@@ -258,6 +259,13 @@ async function videoCheck(): Promise<Check> {
  */
 async function speechCheck(): Promise<Check> {
   const name = "Reading text aloud";
+  if ((process.env.ELEVENLABS_VOICE ?? "").toLowerCase() !== "on") {
+    return {
+      name,
+      status: "skip",
+      summary: "The ElevenLabs voice is switched off (set ELEVENLABS_VOICE=on to use it). Listen uses the tablet's own voice.",
+    };
+  }
   if (!process.env.ELEVENLABS_API_KEY) {
     return { name, status: "skip", summary: "No ELEVENLABS_API_KEY — nothing is read aloud, which is allowed." };
   }
@@ -1091,7 +1099,7 @@ export async function timetableCheck(): Promise<Check> {
       // nothing on any page said so.
       `${student.user.displayName} — Year ${student.yearGroup}, ` +
         `${student.lessonsPerDay} periods/day × ${student.lessonMinutes} min` +
-        `${student.lessonMinutes !== 45 ? "  <-- NOT A 45 MINUTE PERIOD" : ""}`,
+        `${student.lessonMinutes < PERIOD_MINUTES ? `  <-- SHORTER THAN THE ${PERIOD_MINUTES} MINUTE PERIOD` : ""}`,
     );
     lines.push(
       `  today: ${today.filter((a) => a.kind === "LESSON").length} lesson(s), ` +

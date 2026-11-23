@@ -139,13 +139,25 @@ export default async function LessonPage({
   const dayStart = toDateOnly(schoolDayKey());
   const periodSpentSeconds = await periodSecondsSpent(studentId, subject.id, dayStart);
 
-  /** Has the board already signed this period off? Then there is nothing to hold them to. */
-  const periodClosed = assignmentId
-    ? ((await prisma.dailyAssignment.findUnique({
-        where: { id: assignmentId },
-        select: { status: true },
-      }))?.status ?? null) === "COMPLETED"
-    : false;
+  /**
+   * Is this lesson part of a period running today? Only then does the period hold them.
+   *
+   * Today's LESSON slot for this subject, still open. Not just "the slot this link named":
+   * a period carries several topics, and a lesson opened from Subjects in a subject that has
+   * no period today, or whose period is already done, must never lock anybody in.
+   */
+  const openSlot = await prisma.dailyAssignment.findFirst({
+    where: {
+      studentId,
+      kind: "LESSON",
+      date: toDateOnly(schoolDayKey()),
+      subjectId: subject.id,
+      status: { in: ["PLANNED", "IN_PROGRESS"] },
+      ...(assignmentId ? { id: assignmentId } : {}),
+    },
+    select: { id: true },
+  });
+  const periodClosed = !openSlot;
 
   /** The next topic in the sequence, named — so the offer to carry on says what it is. */
   const nextLesson = nextLessonId

@@ -211,7 +211,21 @@ async function requestSpeech(text: string, voiceId: string, modelId: string, api
   });
 }
 
+/**
+ * The ElevenLabs voice is off unless `ELEVENLABS_VOICE=on`.
+ *
+ * Switched off at the family's request. Off, the speak route answers 503 and every Listen
+ * button reads aloud with the tablet's own voice instead (`SpeakButton`, `device-voice.ts`),
+ * so nothing goes silent. Listening to the child (`transcribe`) is not affected.
+ */
+export function elevenLabsVoiceOn(): boolean {
+  return (process.env.ELEVENLABS_VOICE ?? "").toLowerCase() === "on";
+}
+
 export async function speak(text: string, voiceId: string): Promise<{ audio: ArrayBuffer; contentType: string }> {
+  if (!elevenLabsVoiceOn()) {
+    throw new VoiceUnavailable("The ElevenLabs voice is switched off; the tablet's own voice reads aloud instead.");
+  }
   const apiKey = process.env.ELEVENLABS_API_KEY;
   if (!apiKey) throw new VoiceUnavailable("No ELEVENLABS_API_KEY is set on the server.");
 

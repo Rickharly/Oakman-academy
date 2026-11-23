@@ -18,7 +18,7 @@ import { getOrCreateExplainer } from "@/lib/lessons/explainer";
 import { syncMany, type SyncScope } from "./sync";
 
 /** How far ahead to keep the curriculum stocked. */
-export const WEEKS_AHEAD = 2;
+export const WEEKS_AHEAD = 3;
 
 /**
  * How many topics a period may get through.
@@ -28,7 +28,9 @@ export const WEEKS_AHEAD = 2;
  * fast child does not run the subject dry, not so much that importing the buffer spends the
  * provider's whole window.
  */
-export const TOPICS_PER_PERIOD = 2;
+// Three since periods became four hours of real study a day, with the next topic starting by
+// itself whenever one is finished: a quick child gets through two or three in a period.
+export const TOPICS_PER_PERIOD = 3;
 
 export interface AheadTarget extends SyncScope {
   subjectSlug: string;

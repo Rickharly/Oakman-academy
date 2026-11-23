@@ -168,9 +168,19 @@ async function ownedLessonAssignmentId(
   const assignment = await prisma.dailyAssignment.findUnique({ where: { id: assignmentId } });
   if (!assignment) return null;
   if (assignment.studentId !== studentId) return null;
-  if (assignment.lessonId !== lessonId) return null;
   if (assignment.kind !== "LESSON" && assignment.kind !== "REVIEW") return null;
-  return assignment.id;
+  if (assignment.lessonId === lessonId) return assignment.id;
+  /**
+   * A period holds more than one topic. A child who finishes a topic early moves on to the
+   * next one inside the same period, so today's LESSON slot for this subject is theirs to
+   * carry it — the board ticks, and the period's clock counts, whichever topic they are on.
+   */
+  if (assignment.kind !== "LESSON" || assignment.date.getTime() !== todayDateOnly().getTime()) return null;
+  const lesson = await prisma.lesson.findUnique({
+    where: { id: lessonId },
+    select: { unit: { select: { programme: { select: { subjectId: true } } } } },
+  });
+  return lesson && lesson.unit.programme.subjectId === assignment.subjectId ? assignment.id : null;
 }
 
 /**
@@ -593,12 +603,41 @@ async function closeTheBoard(
     id = todays?.id ?? null;
   }
   if (!id) return;
+
+  /**
+   * Today's period closes when its time is served, not when a topic is finished.
+   *
+   * Closing it at the end of the first topic is how five periods took two hours: a quick child
+   * finished each lesson in twenty minutes and the board said the day was done. A slot from an
+   * earlier day closes as before — that period is over whatever happened in it.
+   */
+  const slot = await prisma.dailyAssignment.findUnique({ where: { id } });
+  if (!slot) return;
+  if (
+    slot.kind === "LESSON" &&
+    slot.date.getTime() === todayDateOnly().getTime() &&
+    slot.subjectId &&
+    !(await periodTimeServed(slot.studentId, slot.subjectId))
+  ) {
+    await prisma.dailyAssignment
+      .updateMany({ where: { id, status: "PLANNED" }, data: { status: "IN_PROGRESS" } })
+      .catch(() => undefined);
+    return;
+  }
   await prisma.dailyAssignment
     .updateMany({
       where: { id, status: { in: ["PLANNED", "IN_PROGRESS"] } },
       data: { status: "COMPLETED", completedAt: new Date() },
     })
     .catch(() => undefined);
+}
+
+/** Has this child done a full period of real study in this subject today? */
+export async function periodTimeServed(studentId: string, subjectId: string): Promise<boolean> {
+  const student = await prisma.studentProfile.findUnique({ where: { id: studentId }, select: { lessonMinutes: true } });
+  if (!student) return true;
+  const spent = await periodSecondsSpent(studentId, subjectId, schoolDayStart(schoolDayKey()));
+  return spent >= student.lessonMinutes * 60;
 }
 
 /**
@@ -657,8 +696,24 @@ export async function unfinishedPeriod(
 
   // A lesson they said they already know is not where they are: the slot has been pointed at
   // the new one (`markAlreadyLearned`), so that is where to go back to.
-  const lessonId = latest && latest.status !== "ALREADY_KNOWN" ? latest.lessonId : started.lessonId!;
-  return { assignmentId: started.id, lessonId };
+  if (!latest || latest.status === "ALREADY_KNOWN") return { assignmentId: started.id, lessonId: started.lessonId! };
+  if (latest.status === "IN_PROGRESS") return { assignmentId: started.id, lessonId: latest.lessonId };
+
+  /**
+   * The topic is finished and the period is not: on to the next new one.
+   *
+   * This sent them back to the finished lesson, whose screen offered a break — so leaving and
+   * coming back was a way to end a period early. Nothing new left anywhere in the subject is
+   * the one honest reason to stop, and then the period closes.
+   */
+  const { nextNewLesson } = await import("@/lib/lessons/sameness");
+  const next = await nextNewLesson(studentId, latest.lessonId).catch(() => null);
+  if (next) return { assignmentId: started.id, lessonId: next.id };
+  await prisma.dailyAssignment.update({
+    where: { id: started.id },
+    data: { status: "COMPLETED", completedAt: new Date() },
+  });
+  return null;
 }
 
 export async function submitStage(
@@ -1338,6 +1393,19 @@ export async function recordTime(attemptId: string, studentId: string, seconds: 
       data: { timeSpentSeconds: { increment: capped }, lastActivityAt: new Date() },
     })
     .catch(() => undefined);
+
+  // The moment the period's time is served, the board ticks it — whichever topic they are on.
+  const lesson = await prisma.lesson.findUnique({
+    where: { id: attempt.lessonId },
+    select: { unit: { select: { programme: { select: { subjectId: true } } } } },
+  });
+  const subjectId = lesson?.unit.programme.subjectId;
+  if (subjectId && (await periodTimeServed(studentId, subjectId))) {
+    await prisma.dailyAssignment.updateMany({
+      where: { studentId, subjectId, kind: "LESSON", date: todayDateOnly(), status: "IN_PROGRESS" },
+      data: { status: "COMPLETED", completedAt: new Date() },
+    });
+  }
 }
 
 // re-export for convenience within this module's neighbours

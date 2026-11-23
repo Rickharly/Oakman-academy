@@ -103,7 +103,29 @@ export interface TimetableResult {
  */
 /** The shape of a school day, the same for every child in the family. */
 export const PERIODS_PER_DAY = 5;
-export const PERIOD_MINUTES = 45;
+/**
+ * 48, so that five periods are four hours of real study (5 × 48 = 240 minutes).
+ *
+ * "They finish all lessons in like 2h … they should study at least 4h, even if they are smart."
+ * The period clock only counts real study (`study-clock.ts`), and a period is not over until
+ * this much of it has been done in that subject — see `periodTimeServed` in lessons/service.ts.
+ */
+export const PERIOD_MINUTES = 48;
+
+/**
+ * Brings a child up to the family's school day if their settings fall short of it.
+ *
+ * A floor, not a reset: a parent who sets a longer period keeps it. Run whenever a day is
+ * planned, so the four hours hold without anyone having to press "Set the week".
+ */
+export async function ensureFullSchoolDay(studentId: string): Promise<void> {
+  const student = await prisma.studentProfile.findUnique({ where: { id: studentId } });
+  if (!student) return;
+  const lessonMinutes = Math.max(student.lessonMinutes, PERIOD_MINUTES);
+  const lessonsPerDay = Math.max(student.lessonsPerDay, PERIODS_PER_DAY);
+  if (lessonMinutes === student.lessonMinutes && lessonsPerDay === student.lessonsPerDay) return;
+  await prisma.studentProfile.update({ where: { id: studentId }, data: { lessonMinutes, lessonsPerDay } });
+}
 
 export async function applyCoreTimetable(studentId: string): Promise<TimetableResult> {
   const student = await prisma.studentProfile.findUnique({ where: { id: studentId } });

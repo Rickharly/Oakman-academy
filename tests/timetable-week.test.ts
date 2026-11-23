@@ -94,7 +94,7 @@ describe("the length of a school day", () => {
     await applyCoreTimetable(student.id);
 
     const after = await prisma.studentProfile.findUniqueOrThrow({ where: { id: student.id } });
-    expect(after.lessonMinutes).toBe(45);
+    expect(after.lessonMinutes).toBe(48);
     expect(after.lessonsPerDay).toBe(5);
   });
 });

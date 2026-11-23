@@ -17,9 +17,11 @@ import { requeueAbandonedReviews, settleAbandonedLessons, settleFinishedLessons 
 import { isLessonDone } from "@/lib/progress/aggregate";
 import { ensureLessonAssets } from "@/lib/curriculum/sync";
 import { ensureFreshCheckQuestions } from "@/lib/lessons/fresh-questions";
+import { ensureFullSchoolDay } from "@/lib/admin/timetable";
 import { ensureExamForDay } from "@/lib/exams/schedule";
 import { lessonsTaught, sameTeaching } from "@/lib/lessons/sameness";
 import { catchUpImport } from "@/lib/curriculum/autofill";
+import { subjectSupply } from "@/lib/scheduling/gaps";
 
 const REVIEW_MINUTES = 15;
 /**
@@ -591,6 +593,9 @@ export async function ensureDayPlanned(studentId: string, dateKey: string): Prom
   // called Maths; a timetable on one and an enrolment on the other is an empty school day.
   await alignSchedulesToEnrolments(studentId).catch(() => undefined);
 
+  // Four hours of real study a day, whatever the settings say (`ensureFullSchoolDay`).
+  await ensureFullSchoolDay(studentId).catch(() => undefined);
+
   const dayDate = toDateOnly(dateKey);
   const read = () =>
     prisma.dailyAssignment.findMany({ where: { studentId, date: dayDate }, orderBy: { order: "asc" } });
@@ -643,7 +648,14 @@ export async function ensureDayPlanned(studentId: string, dateKey: string): Prom
   // having to notice and press anything.
   // New material specifically: a day propped up with revision still needs its real lessons.
   const lessonsPlanned = planned.filter((a) => a.kind === "LESSON" && a.status !== "MOVED").length;
-  if (lessonsPlanned < lessonsWanted) void catchUpImport(studentId).catch(() => undefined);
+  /**
+   * And before it runs out, not after: a subject with less than a week left at three topics a
+   * period gets topped up now, behind the page, so a fast child never reaches the end of it.
+   */
+  const runningLow =
+    lessonsPlanned < lessonsWanted ||
+    (await subjectSupply(studentId).catch(() => [])).some((s) => !s.healthy);
+  if (runningLow) void catchUpImport(studentId).catch(() => undefined);
 
   /**
    * Today's videos, collected before anybody opens them.
