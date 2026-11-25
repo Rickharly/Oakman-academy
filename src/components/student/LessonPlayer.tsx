@@ -422,6 +422,44 @@ export function LessonPlayer(props: LessonPlayerProps) {
   // The "do you already know this?" check, offered once before a lesson is started.
   const router = useRouter();
   const [preCheckOpen, setPreCheckOpen] = useState(offerPreCheck);
+
+  /**
+   * Stay in step with the server.
+   *
+   * Swiping back on an iPad shows this page as the browser remembered it — the starter of a
+   * lesson already finished — and a parent may have moved the child on from Admin. Asked on
+   * opening and every 20 seconds: a lesson the server has closed sends them to Today (which
+   * takes them to wherever they should be), and a lesson the server has further along than
+   * the screen reloads its data.
+   */
+  const stageRef = useRef(currentStage);
+  stageRef.current = currentStage;
+  useEffect(() => {
+    let stopped = false;
+    async function check() {
+      try {
+        const res = await fetch(`/api/attempts/${attemptId}/state`, { cache: "no-store" });
+        if (!res.ok || stopped) return;
+        const data = (await res.json()) as { status: string; currentStage: LessonStage };
+        const onScreen = stageRef.current;
+        if (data.status !== "IN_PROGRESS" && onScreen !== "COMPLETE" && data.currentStage === "COMPLETE") {
+          router.push("/today");
+        } else if (stageIndex(data.currentStage) > stageIndex(onScreen)) {
+          // A full reload, not a refresh: the step on screen is held here, and only a fresh
+          // page reads it from the server again.
+          window.location.reload();
+        }
+      } catch {
+        // Offline for a moment: the next check will catch up.
+      }
+    }
+    void check();
+    const id = setInterval(() => void check(), 20_000);
+    return () => {
+      stopped = true;
+      clearInterval(id);
+    };
+  }, [attemptId, router]);
   const [preCheckAnswers, setPreCheckAnswers] = useState<Record<string, unknown>>({});
   const [preCheckBusy, setPreCheckBusy] = useState(false);
   const [preCheckResult, setPreCheckResult] = useState<{ passed: boolean; message: string } | null>(null);

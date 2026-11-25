@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/Badge";
 import { requireParent } from "@/lib/auth/session";
 import { prisma } from "@/lib/db";
 import { getStudentOverview } from "@/lib/progress/aggregate";
+import { MoveToNextLesson } from "@/components/admin/MoveToNextLesson";
 
 const REASON_LABEL: Record<string, string> = {
   LOW_SCORE: "Low score",
@@ -75,6 +76,7 @@ export default async function AdminOverviewPage() {
                 </div>
                 <Button href={`/admin/students/${profile.id}`}>View</Button>
               </div>
+              <MoveToNextLesson studentId={profile.id} name={s.displayName} />
               <div className="grid grid-cols-2 gap-4">
                 <Stat label="Today" value={`${overview.today.done} / ${overview.today.total} complete`} />
                 <Stat label="This week" value={`${overview.week.pct}%`} />
