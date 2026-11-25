@@ -16,6 +16,7 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { subjectTheme } from "@/components/student/subjectTheme";
 import { firstName, formatDateWords, formatMinutes, greetingForHour } from "@/components/student/format";
 import { WelcomeOverlay } from "@/components/student/WelcomeOverlay";
+import { AutoNext } from "@/components/student/AutoNext";
 import { buildTimetable, dayEndsAt, teachingMinutes } from "@/lib/scheduling/timetable";
 
 export default async function TodayPage({
@@ -85,6 +86,42 @@ export default async function TodayPage({
   const preview = welcome === "1";
   const showWelcome = preview || !preferences.welcomeSeenAt;
 
+  /**
+   * The next period starts by itself.
+   *
+   * A child who came back from a break to this board had to pick their next lesson and press
+   * Start, and a child who would rather not simply sat there — "he's sitting around and he
+   * should be studying". The next unfinished period is named at the top and begins after a
+   * short countdown, or at once if they press.
+   */
+  const hrefFor = (a: (typeof cards)[number]): string | undefined =>
+    a.kind === "EXAM"
+      ? a.examId
+        ? `/exams/${a.examId}`
+        : undefined
+      : a.kind === "READING"
+        ? `/reading?assignmentId=${a.id}`
+        : a.lesson
+          ? `/lessons/${a.lesson.id}?assignmentId=${a.id}&kind=${a.kind}`
+          : undefined;
+  const nextUp = isWeekend
+    ? null
+    : (cards.find(
+        (a) => a.status !== "COMPLETED" && a.status !== "SKIPPED" && !a.optional && hrefFor(a) !== undefined,
+      ) ?? null);
+  const nextUpLabel = nextUp
+    ? [
+        timetable.get(nextUp.id)?.period ? `Period ${timetable.get(nextUp.id)!.period}` : null,
+        nextUp.kind === "EXAM"
+          ? "Exam"
+          : nextUp.kind === "READING"
+            ? "Reading"
+            : (nextUp.lesson?.unit.programme.subject.title ?? null),
+      ]
+        .filter(Boolean)
+        .join(": ")
+    : "";
+
   return (
     <div className="space-y-8">
       {showWelcome ? (
@@ -98,6 +135,17 @@ export default async function TodayPage({
         <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight text-ink">{greeting}</h1>
         <p className="text-sm sm:text-base text-ink-muted">{formatDateWords(dateKey)}</p>
       </div>
+
+      {nextUp && !showWelcome ? (
+        <Card padding="lg" className="space-y-3 border-accent/40 bg-accent-soft">
+          <p className="text-xs font-semibold uppercase tracking-wide text-accent-ink">Up next</p>
+          <h2 className="text-xl font-semibold text-ink">
+            {nextUpLabel}
+            {nextUp.lesson?.title && nextUp.kind !== "EXAM" ? ` — ${nextUp.lesson.title}` : ""}
+          </h2>
+          <AutoNext href={hrefFor(nextUp)!} seconds={20} label="Start now" />
+        </Card>
+      ) : null}
 
       {isWeekend ? (
         <EmptyState

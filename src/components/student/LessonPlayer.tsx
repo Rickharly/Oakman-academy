@@ -2350,11 +2350,19 @@ export function LessonPlayer(props: LessonPlayerProps) {
           </div>
         ) : (
           <div className="pt-2">
+            {/*
+              After the break comes the next PERIOD, not more of this subject. This sent them on
+              to the next topic of the same subject, outside any period — no lock, no clock —
+              and then waited for them to press it: the child sat there.
+            */}
             <BreakTimer
               minutes={breakMinutes}
               storageKey={attemptId}
-              nextHref={nextHref}
-              nextLabel={nextLessonId ? "Start the next lesson" : "Back to Today"}
+              nextHref="/today"
+              nextLabel="Start your next period"
+              // Only straight after a period studied today — not when looking back at an old
+              // lesson from Subjects, whose "break" ended long ago.
+              autoGo={(periodSpentSeconds ?? 0) > 0}
             />
             <div className="pt-3">
               <Button href="/today" variant="ghost">

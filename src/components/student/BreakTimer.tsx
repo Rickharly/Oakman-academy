@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Coffee } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 
@@ -18,6 +19,8 @@ type BreakTimerProps = {
   nextLabel: string;
   /** Distinguishes one lesson's break from another in storage. */
   storageKey: string;
+  /** Go to `nextHref` by itself when the break is over, rather than waiting to be pressed. */
+  autoGo?: boolean;
 };
 
 function format(seconds: number): string {
@@ -25,7 +28,8 @@ function format(seconds: number): string {
   return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
 }
 
-export function BreakTimer({ minutes, nextHref, nextLabel, storageKey }: BreakTimerProps) {
+export function BreakTimer({ minutes, nextHref, nextLabel, storageKey, autoGo = false }: BreakTimerProps) {
+  const router = useRouter();
   const total = minutes * 60;
   const [remaining, setRemaining] = useState(total);
 
@@ -51,6 +55,11 @@ export function BreakTimer({ minutes, nextHref, nextLabel, storageKey }: BreakTi
 
   const over = remaining <= 0;
 
+  // The break ends and the day carries on — nobody has to notice it is over.
+  useEffect(() => {
+    if (autoGo && over) router.push(nextHref);
+  }, [autoGo, over, nextHref, router]);
+
   return (
     <div className="rounded-2xl border border-line bg-surface p-6 text-center">
       <span className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-accent-soft">
@@ -61,7 +70,9 @@ export function BreakTimer({ minutes, nextHref, nextLabel, storageKey }: BreakTi
       </p>
       <p className="mt-1 text-sm text-ink-muted">
         {over
-          ? "Stretch done? Start the next lesson."
+          ? autoGo
+            ? "Break over — on to your next period."
+            : "Stretch done? Start the next lesson."
           : `Get a drink and move about. The next lesson starts in ${Math.ceil(remaining / 60)} minute${
               Math.ceil(remaining / 60) === 1 ? "" : "s"
             }.`}
