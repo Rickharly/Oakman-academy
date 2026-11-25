@@ -360,6 +360,30 @@ export async function startOrResumeAttempt(
     return existing;
   }
 
+  /**
+   * A topic finished today is finished — opening it again shows how it went, not question one.
+   *
+   * With no attempt in progress this always started a fresh one, so any reload of a lesson
+   * just completed (the page refreshing, coming back to it, a link to it) put a child back at
+   * the start of the topic they had just done, with the clock at zero: "the timer went back to
+   * the start and gave him the same topic". The finished attempt is where they are; its screen
+   * moves them on to the next topic. A review, or a new day, still starts afresh.
+   */
+  const finishedToday = await prisma.lessonAttempt.findFirst({
+    where: {
+      studentId,
+      lessonId,
+      startedAt: { gte: schoolDayStart(schoolDayKey()) },
+      status: { not: "IN_PROGRESS" },
+    },
+    orderBy: { attemptNumber: "desc" },
+  });
+  const forReview = safeAssignmentId
+    ? (await prisma.dailyAssignment.findUnique({ where: { id: safeAssignmentId }, select: { kind: true } }))?.kind ===
+      "REVIEW"
+    : false;
+  if (finishedToday && !forReview) return finishedToday;
+
   const priorCount = await prisma.lessonAttempt.count({ where: { studentId, lessonId } });
 
   const attempt = await prisma.lessonAttempt.create({

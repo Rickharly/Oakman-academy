@@ -2470,6 +2470,14 @@ export function LessonPlayer(props: LessonPlayerProps) {
           </span>
           <h1 className="text-2xl font-semibold tracking-tight text-ink">{lesson.title}</h1>
         </div>
+        {/* The period's clock keeps running here: answering these is study too. */}
+        {!periodAlreadyClosed ? (
+          <LessonTimer
+            attemptId={attemptId}
+            minutes={lessonMinutes}
+            initialSeconds={periodSeconds}
+          />
+        ) : null}
         {renderPreCheck()}
       </div>
     );
@@ -2504,7 +2512,7 @@ export function LessonPlayer(props: LessonPlayerProps) {
               <LessonTimer
                 attemptId={attemptId}
                 minutes={lessonMinutes}
-                initialSeconds={Math.max(elapsedSeconds, periodSpentSeconds ?? 0)}
+                initialSeconds={periodSeconds}
               />
             ) : null}
             <p className="text-sm font-medium text-ink-muted">

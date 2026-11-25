@@ -37,6 +37,9 @@ export type EnrolResult = { programmes: number; subjects: number };
  */
 export const PLACEHOLDER_PROVIDER = "fixture";
 
+/** Subjects written here rather than imported (see `curriculum/generate.ts`). */
+const WRITTEN_HERE = new Set(["writing", "logic"]);
+
 /** Real material for a subject-year, if any exists. Placeholder only when nothing else does. */
 async function bestProgrammesFor(yearGroup: number) {
   const all = await prisma.programme.findMany({ where: { yearGroup }, include: { subject: true } });
@@ -123,85 +126,69 @@ export async function fixYearGroupEnrolments(studentId: string): Promise<{ remov
     include: { programme: { include: { subject: true } } },
   });
 
-  // Real material for the subjects this child is currently taking, so a placeholder enrolment
-  // can be told apart from the only thing available.
+  // Real material for this child's year, by subject — what each wrong enrolment moves onto.
   const real = await prisma.programme.findMany({
-    where: {
-      yearGroup: student.yearGroup,
-      provider: { not: PLACEHOLDER_PROVIDER },
-      subject: { slug: { in: active.map((e) => e.programme.subject.slug) } },
-    },
+    where: { yearGroup: student.yearGroup, provider: { not: PLACEHOLDER_PROVIDER } },
     include: { subject: true },
+    orderBy: { provider: "asc" }, // "oak" before "oakman": Oak's own wherever both exist
   });
-  const realSlugs = new Set(real.map((p) => p.subject.slug));
+  const realBySlug = new Map<string, (typeof real)[number]>();
+  for (const p of real) if (!realBySlug.has(p.subject.slug) || p.provider === "oak") realBySlug.set(p.subject.slug, p);
 
   const wrong = active.filter(
     (e) =>
-      // The wrong year — a Year 4 child on Year 5 material.
+      // The wrong year — a Year 4 child on Year 5 material, or the other way round after a
+      // parent moves them up.
       e.programme.yearGroup !== student.yearGroup ||
       // Or the bundled placeholders, when real material for that subject exists. Invented
       // lessons with `fixture://` videos are not a curriculum, and a child on them is being
       // given made-up work and a broken player.
-      (e.programme.provider === PLACEHOLDER_PROVIDER && realSlugs.has(e.programme.subject.slug)),
+      (e.programme.provider === PLACEHOLDER_PROVIDER && realBySlug.has(e.programme.subject.slug)),
   );
   if (wrong.length === 0) return { removed: 0, added: 0 };
 
-  const lessons = await prisma.lesson.findMany({
-    where: { unit: { programmeId: { in: wrong.map((e) => e.programmeId) } } },
-    select: { id: true },
-  });
-
-  // Only what nobody has touched. Work already done against the wrong year is still work done,
-  // and deleting a child's history to tidy up a mistake of mine would be a worse mistake.
-  if (lessons.length > 0) {
-    await prisma.dailyAssignment.deleteMany({
-      where: { studentId, status: "PLANNED", source: { not: "PARENT" }, lessonId: { in: lessons.map((l) => l.id) } },
-    });
-  }
-
   /**
-   * Their own year has to have something in it before they are moved onto it.
+   * One subject at a time.
    *
-   * Mikhael was on Year 5 placeholders. Taking those away with no Year 4 material to replace
-   * them leaves him with nothing at all, which is a worse day than the wrong one he had. So the
-   * import is started, and the move waits for it to land.
-   *
-   * Started, not awaited. Importing five subjects is a couple of hundred requests to the
-   * provider taking minutes, and this runs while a child is waiting for their page to render —
-   * doing that work inline is how the server got taken down this morning. It runs behind the
-   * page, and the next visit finds the material and completes the move.
+   * This used to move nobody until EVERY subject on the timetable had material for the new
+   * year. Writing and Logic are written here, not imported, and nothing wrote them for a year
+   * nobody was in yet — so moving a child up a year left every subject where it was, for good.
+   * Now each subject moves as soon as its material exists, and the ones still waiting are
+   * fetched (or written) behind the page and move on a later visit.
    */
-  const schedules = await prisma.studentSchedule.findMany({
-    where: { studentId, active: true },
-    include: { subject: true },
-  });
-
+  let removed = 0;
+  let added = 0;
   const missing: string[] = [];
-  for (const schedule of schedules) {
-    const exists = await prisma.programme.findFirst({
-      where: {
-        yearGroup: student.yearGroup,
-        provider: { not: PLACEHOLDER_PROVIDER },
-        subject: { slug: schedule.subject.slug },
-      },
+  for (const e of wrong) {
+    const slug = e.programme.subject.slug;
+    const right = realBySlug.get(slug);
+    if (!right) {
+      missing.push(slug);
+      continue;
+    }
+
+    // Only what nobody has touched. Work already done against the old year is still work done.
+    const lessons = await prisma.lesson.findMany({
+      where: { unit: { programmeId: e.programmeId } },
+      select: { id: true },
     });
-    if (!exists) missing.push(schedule.subject.slug);
+    if (lessons.length > 0) {
+      await prisma.dailyAssignment.deleteMany({
+        where: { studentId, status: "PLANNED", source: { not: "PARENT" }, lessonId: { in: lessons.map((l) => l.id) } },
+      });
+    }
+    await prisma.studentEnrolment.update({ where: { id: e.id }, data: { active: false } });
+    await prisma.studentEnrolment.upsert({
+      where: { studentId_programmeId: { studentId, programmeId: right.id } },
+      create: { studentId, programmeId: right.id },
+      update: { active: true },
+    });
+    removed += 1;
+    added += 1;
   }
 
-  if (missing.length > 0) {
-    void importYearInBackground(student.yearGroup, missing);
-    // Nothing to move them onto yet. Leave them where they are — the wrong year taught is still
-    // better than an empty timetable — and finish the job on the next visit.
-    return { removed: 0, added: 0 };
-  }
-
-  await prisma.studentEnrolment.updateMany({
-    where: { id: { in: wrong.map((e) => e.id) } },
-    data: { active: false },
-  });
-
-  const { programmes } = await enrolStudentInYearGroup(studentId);
-  return { removed: wrong.length, added: programmes };
+  if (missing.length > 0) void importYearInBackground(student.yearGroup, [...new Set(missing)]);
+  return { removed, added };
 }
 
 /** Year groups already being imported, so a burst of page loads starts one job, not twenty. */
@@ -219,7 +206,13 @@ async function importYearInBackground(yearGroup: number, subjectSlugs: string[])
   importing.add(yearGroup);
   try {
     for (const subjectSlug of subjectSlugs) {
-      await syncProgramme({ subjectSlug, yearGroup }, { maxLessons: 6 }).catch(() => undefined);
+      if (WRITTEN_HERE.has(subjectSlug)) {
+        // Nobody else provides these: write the year's first lessons here.
+        const { generateLessons } = await import("@/lib/curriculum/generate");
+        await generateLessons(subjectSlug, yearGroup, 6).catch(() => undefined);
+      } else {
+        await syncProgramme({ subjectSlug, yearGroup }, { maxLessons: 6 }).catch(() => undefined);
+      }
     }
   } finally {
     importing.delete(yearGroup);

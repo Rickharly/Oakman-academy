@@ -1,5 +1,6 @@
-import { beforeAll, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { prisma } from "@/lib/db";
+import { PERIOD_MINUTES } from "@/lib/admin/timetable";
 import { resetDb } from "./helpers/db";
 
 vi.mock("@/lib/ai/teacher-agent", () => ({
@@ -32,7 +33,9 @@ describe("an interrupted CHECK retry", () => {
   let q1: string;
   let q2: string;
 
-  beforeAll(async () => {
+  // Fresh for each test: a lesson finished today stays finished (it is not restarted when
+  // opened again), so the second test cannot reuse the lesson the first one completed.
+  beforeEach(async () => {
     await resetDb();
 
     const user = await prisma.user.create({
@@ -123,7 +126,7 @@ describe("an interrupted CHECK retry", () => {
     });
     await prisma.lessonAttempt.update({
       where: { id: attempt.id },
-      data: { timeSpentSeconds: 46 * 60 },
+      data: { timeSpentSeconds: (PERIOD_MINUTES + 1) * 60 },
     });
 
     const settled = await settleFinishedLessons(studentId);

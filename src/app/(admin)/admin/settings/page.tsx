@@ -5,6 +5,7 @@ import { PageHeader } from "@/components/ui/PageHeader";
 import { Card } from "@/components/ui/Card";
 import { Avatar, isPhotoAvatar } from "@/components/ui/Avatar";
 import { PhotoUpload } from "@/components/admin/PhotoUpload";
+import { alignSchedulesToEnrolments, fixYearGroupEnrolments } from "@/lib/admin/enrol";
 import { ResetProgress } from "@/components/admin/ResetProgress";
 import { RemoveStudent } from "@/components/admin/RemoveStudent";
 import { enrolStudentInYearGroup } from "@/lib/admin/enrol";
@@ -132,6 +133,16 @@ export default async function AdminSettingsPage({
         },
       }),
     ]);
+
+    /**
+     * Moved up (or down) a year: change their lessons now, not on their next visit. Subjects
+     * whose new-year lessons already exist move at once; the rest are fetched or written in the
+     * background and move as they arrive (`fixYearGroupEnrolments`).
+     */
+    if (Number.isFinite(yearGroup) && yearGroup > 0 && yearGroup !== student.yearGroup) {
+      await fixYearGroupEnrolments(student.id).catch(() => undefined);
+      await alignSchedulesToEnrolments(student.id).catch(() => undefined);
+    }
     redirect("/admin/settings?ok=1");
   }
 
