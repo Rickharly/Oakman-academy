@@ -77,3 +77,35 @@ export async function moveToNextLesson(studentId: string): Promise<MoveResult> {
       : `"${fromTitle}" is closed. There was no new lesson left in that subject, so they go on to the next period.`,
   };
 }
+
+/**
+ * Ends the period the child is in, now — the parent's override of the clock.
+ *
+ * Today's open lesson periods are marked done, so nothing holds the child on the lesson and
+ * Today goes on to the next period. The lesson itself is not touched: if it was not finished,
+ * it carries over like any other unfinished lesson.
+ */
+export async function endPeriodNow(studentId: string): Promise<MoveResult> {
+  const today = toDateOnly(schoolDayKey());
+  const open = await prisma.dailyAssignment.findMany({
+    where: { studentId, date: today, kind: "LESSON", status: "IN_PROGRESS" },
+    include: { lesson: { select: { title: true } } },
+  });
+  if (open.length === 0) {
+    return { moved: false, fromTitle: null, toTitle: null, message: "No period is running right now." };
+  }
+  await prisma.dailyAssignment.updateMany({
+    where: { id: { in: open.map((a) => a.id) } },
+    data: { status: "COMPLETED", completedAt: new Date() },
+  });
+  await prisma.activityLog.create({
+    data: { studentId, kind: "parent_ended_period", data: { assignmentIds: open.map((a) => a.id) } },
+  });
+  const fromTitle = open[0]?.lesson?.title ?? null;
+  return {
+    moved: true,
+    fromTitle,
+    toTitle: null,
+    message: "Done. This period is over; the next period starts from Today.",
+  };
+}

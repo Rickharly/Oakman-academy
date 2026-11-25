@@ -434,15 +434,20 @@ export function LessonPlayer(props: LessonPlayerProps) {
    */
   const stageRef = useRef(currentStage);
   stageRef.current = currentStage;
+  /** Whether the period lock is on, for the server check above (set where the lock is decided). */
+  const holdingRef = useRef(false);
   useEffect(() => {
     let stopped = false;
     async function check() {
       try {
         const res = await fetch(`/api/attempts/${attemptId}/state`, { cache: "no-store" });
         if (!res.ok || stopped) return;
-        const data = (await res.json()) as { status: string; currentStage: LessonStage };
+        const data = (await res.json()) as { status: string; currentStage: LessonStage; periodOpen?: boolean };
         const onScreen = stageRef.current;
-        if (data.status !== "IN_PROGRESS" && onScreen !== "COMPLETE" && data.currentStage === "COMPLETE") {
+        if (data.periodOpen === false && holdingRef.current) {
+          // The period was ended (by a parent): nothing holds them here any more.
+          router.push("/today");
+        } else if (data.status !== "IN_PROGRESS" && onScreen !== "COMPLETE" && data.currentStage === "COMPLETE") {
           router.push("/today");
         } else if (stageIndex(data.currentStage) > stageIndex(onScreen)) {
           // A full reload, not a refresh: the step on screen is held here, and only a fresh
@@ -717,6 +722,7 @@ export function LessonPlayer(props: LessonPlayerProps) {
     minutesLeftInPeriod > 0 &&
     !outOfWork &&
     (lessonStillRunning || Boolean(nextLessonId));
+  holdingRef.current = periodHoldsThemHere;
   /** The next topic, inside the same period's slot so the board and the clock follow it. */
   const nextHref = nextLessonId
     ? `/lessons/${nextLessonId}${assignmentId ? `?assignmentId=${encodeURIComponent(assignmentId)}` : ""}`
